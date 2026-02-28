@@ -1,0 +1,3177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diversify QuantLab</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.2.0"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   DYVERSIFY DESIGN SYSTEM V3.2 — DIVERSIFY QUANTLAB V2
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg: #02030a;
+  --g900: #0a0a0a; --g800: #0d0d0d; --g700: #121212;
+  --g600: #1a1a1a; --g500: #222222; --g400: #2a2a2a; --g300: #333333;
+  --neon: #00ff88; --neon-dim: #00cc6a;
+  --neon-glow: rgba(0,255,136,0.4); --neon-bg: rgba(0,255,136,0.08);
+  --acc: #ffffff; --acc-dim: #cccccc;
+  --acc-glow: rgba(255,255,255,0.15); --acc-bg: rgba(255,255,255,0.06);
+  --amber: #ff9500;
+  --amber-glow: rgba(255,149,0,0.4); --amber-bg: rgba(255,149,0,0.1);
+  --crimson: #ff3b30;
+  --crimson-glow: rgba(255,59,48,0.4); --crimson-bg: rgba(255,59,48,0.1);
+  --violet: #a78bfa; --violet-glow: rgba(167,139,250,0.3);
+  --t1: #ffffff; --t2: #888888; --t3: #555555; --t4: #333333;
+  --mono: 'JetBrains Mono','SF Mono','Fira Code','Consolas',monospace;
+  --sans: Inter,-apple-system,system-ui,'Segoe UI',sans-serif;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--t1);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* Dot grid overlay */
+.dot-grid {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: radial-gradient(circle, #2a2a2a 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0.12;
+}
+
+/* Shell */
+.shell { display:flex; flex-direction:column; height:100vh; position:relative; z-index:1; }
+
+/* ─── TOP NAV ─── */
+.top-nav {
+  height: 44px; display:flex; align-items:center; justify-content:space-between;
+  padding: 0 24px; border-bottom: 1px solid var(--g400); background: var(--g900);
+  flex-shrink: 0; z-index: 10;
+}
+.nav-left { display:flex; align-items:center; gap:12px; }
+.nav-title {
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--t1);
+}
+.nav-right { display:flex; align-items:center; gap:8px; }
+.nav-btn {
+  font-family: var(--mono); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.1em; padding: 4px 12px; cursor: pointer;
+  border: 1px solid var(--g400); background: transparent; color: var(--t3);
+  transition: all 0.1s;
+}
+.nav-btn:hover { border-color: var(--t2); color: var(--t1); }
+.nav-btn.primary { background: var(--acc); color: var(--bg); border-color: var(--acc); }
+.nav-btn.primary:hover { background: var(--acc-dim); }
+
+/* ─── TAB BAR ─── */
+.tab-bar {
+  display: flex; gap: 0; padding: 0 24px;
+  border-bottom: 1px solid var(--g400); background: var(--g900); flex-shrink: 0;
+}
+.tab-btn {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.08em; padding: 10px 20px; cursor: pointer;
+  color: var(--t3); border: none; background: none;
+  border-bottom: 2px solid transparent; transition: all 0.12s;
+  position: relative; white-space: nowrap;
+}
+.tab-btn:hover { color: var(--t2); }
+.tab-btn.active {
+  color: var(--bg); background: var(--acc);
+  border-bottom-color: var(--acc);
+}
+.tab-btn .tab-badge {
+  font-size: 8px; margin-left: 4px; padding: 1px 5px;
+  background: var(--acc-bg); border: 1px solid var(--g400);
+  color: var(--t2); vertical-align: middle; display: none;
+}
+.tab-btn.active .tab-badge {
+  background: rgba(2,3,10,0.2); border-color: rgba(2,3,10,0.3);
+  color: var(--bg);
+}
+.tab-btn .tab-badge.has-items { display: inline-block; }
+
+/* ─── TAB PANES ─── */
+.tab-pane {
+  display: none; flex: 1; overflow-y: auto; overflow-x: hidden;
+  flex-direction: column;
+}
+.tab-pane.active { display: flex; }
+.tab-pane::-webkit-scrollbar { width: 4px; }
+.tab-pane::-webkit-scrollbar-track { background: var(--g800); }
+.tab-pane::-webkit-scrollbar-thumb { background: var(--g400); }
+
+/* ─── KPI STRIP ─── */
+.kpi-strip {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px;
+  padding: 12px 24px; border-bottom: 1px solid var(--g400);
+  background: var(--g900); flex-shrink: 0;
+}
+.kpi-card {
+  background: var(--g800); border: 1px solid var(--g400);
+  padding: 10px 14px; position: relative; overflow: hidden;
+}
+.kpi-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, transparent 0%, var(--g400) 20%, var(--g400) 80%, transparent 100%);
+}
+.kpi-label {
+  font-family: var(--mono); font-size: 9px; color: var(--t3);
+  text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;
+}
+.kpi-value {
+  font-family: var(--mono); font-size: 18px; color: var(--t1);
+  font-variant-numeric: tabular-nums;
+}
+.kpi-sub {
+  font-family: var(--mono); font-size: 9px; color: var(--t3);
+  margin-top: 2px; font-variant-numeric: tabular-nums;
+}
+
+/* ─── OVERVIEW: MINI CARD GRID ─── */
+.mini-card-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px; padding: 16px 24px;
+}
+.mini-card {
+  background: var(--g800); border: 1px solid var(--g400);
+  padding: 0; cursor: pointer; transition: all 0.12s; position: relative; overflow: hidden;
+}
+.mini-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, transparent 0%, var(--g400) 20%, var(--g400) 80%, transparent 100%);
+}
+.mini-card:hover { border-color: var(--t2); }
+.mini-card .mc-spark { height: 60px; padding: 8px 12px 0; }
+.mini-card .mc-spark svg { width: 100%; height: 100%; }
+.mini-card .mc-body { padding: 8px 12px 10px; }
+.mini-card .mc-symbol {
+  font-family: var(--mono); font-size: 11px; color: var(--t1);
+  font-weight: 500; letter-spacing: 0.04em; margin-bottom: 6px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.mini-card .mc-metrics {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px;
+}
+.mini-card .mc-metric {
+  display: flex; justify-content: space-between;
+  font-family: var(--mono); font-size: 9px;
+}
+.mini-card .mc-metric .mc-k { color: var(--t3); text-transform: uppercase; letter-spacing: 0.05em; }
+.mini-card .mc-metric .mc-v { color: var(--t2); font-variant-numeric: tabular-nums; }
+
+/* ─── REPORTS: TABLE CONTROLS + VIEWS ─── */
+.reports-toolbar {
+  display: flex; align-items: center; gap: 8px; padding: 8px 24px;
+  border-bottom: 1px solid var(--g400); flex-wrap: wrap; flex-shrink: 0;
+  background: var(--g900);
+}
+.filter-select {
+  font-family: var(--mono); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.05em; padding: 3px 8px;
+  background: var(--g700); color: var(--t2);
+  border: 1px solid var(--g400); cursor: pointer; appearance: none;
+  -webkit-appearance: none;
+}
+.filter-select:focus { outline: none; border-color: var(--t2); }
+.search-input {
+  font-family: var(--mono); font-size: 9px; padding: 3px 8px;
+  background: var(--g700); color: var(--t1);
+  border: 1px solid var(--g400); flex: 1; min-width: 80px;
+  letter-spacing: 0.05em;
+}
+.search-input::placeholder { color: var(--t4); text-transform: uppercase; }
+.search-input:focus { outline: none; border-color: var(--t2); }
+
+.view-toggle {
+  display: flex; gap: 0; margin-left: auto;
+}
+.view-toggle-btn {
+  font-family: var(--mono); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.05em; padding: 3px 10px; cursor: pointer;
+  border: 1px solid var(--g400); background: transparent; color: var(--t3);
+  transition: all 0.1s;
+}
+.view-toggle-btn:first-child { border-right: none; }
+.view-toggle-btn.active { color: var(--bg); background: var(--acc); border-color: var(--acc); }
+.view-toggle-btn:hover:not(.active) { border-color: var(--t2); color: var(--t2); }
+
+.reports-content { flex: 1; overflow-y: auto; padding: 0; }
+.reports-content::-webkit-scrollbar { width: 4px; }
+.reports-content::-webkit-scrollbar-track { background: var(--g800); }
+.reports-content::-webkit-scrollbar-thumb { background: var(--g400); }
+
+/* Reports card grid */
+.report-card-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px; padding: 16px 24px;
+}
+.report-card {
+  background: var(--g800); border: 1px solid var(--g400);
+  padding: 0; cursor: pointer; transition: all 0.12s; position: relative; overflow: hidden;
+}
+.report-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, transparent 0%, var(--g400) 20%, var(--g400) 80%, transparent 100%);
+}
+.report-card:hover { border-color: var(--t2); }
+.report-card .rc-top {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  border-bottom: 1px solid var(--g600);
+}
+.report-card .rc-cb { flex-shrink: 0; }
+.report-card .rc-symbol {
+  font-family: var(--mono); font-size: 11px; color: var(--t1);
+  font-weight: 500; flex: 1;
+}
+.report-card .rc-spark { height: 50px; padding: 6px 12px 0; }
+.report-card .rc-spark svg { width: 100%; height: 100%; }
+.report-card .rc-metrics {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+  border-top: 1px solid var(--g600);
+}
+.report-card .rc-m {
+  padding: 6px 8px; text-align: center;
+  border-right: 1px solid var(--g600);
+}
+.report-card .rc-m:last-child { border-right: none; }
+.report-card .rc-m .rc-mk {
+  font-family: var(--mono); font-size: 7px; color: var(--t3);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px;
+}
+.report-card .rc-m .rc-mv {
+  font-family: var(--mono); font-size: 10px; color: var(--t2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Reports table */
+.table-wrap { flex: 1; overflow-y: auto; overflow-x: auto; }
+.table-wrap::-webkit-scrollbar { width: 4px; }
+.table-wrap::-webkit-scrollbar-track { background: var(--g800); }
+.table-wrap::-webkit-scrollbar-thumb { background: var(--g400); }
+
+table.portfolio { width: 100%; border-collapse: collapse; }
+table.portfolio th {
+  font-family: var(--mono); font-size: 9px; color: var(--t3);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  padding: 6px 8px; text-align: right; cursor: pointer;
+  border-bottom: 1px solid var(--g400); position: sticky; top: 0;
+  background: var(--g900); user-select: none; white-space: nowrap;
+}
+table.portfolio th:first-child { text-align: left; }
+table.portfolio th:nth-child(2) { text-align: left; }
+table.portfolio th:hover { color: var(--t1); }
+table.portfolio th.sorted { color: var(--acc); }
+table.portfolio th .sort-arrow { font-size: 8px; margin-left: 2px; }
+
+table.portfolio td {
+  font-family: var(--mono); font-size: 10px; color: var(--t2);
+  padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--g600);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+table.portfolio td:first-child { text-align: left; }
+table.portfolio td:nth-child(2) { text-align: left; }
+table.portfolio tr { cursor: pointer; transition: background 0.05s; }
+table.portfolio tr:hover { background: var(--g700); }
+table.portfolio tr.selected { background: var(--g600); }
+table.portfolio tr.selected td { color: var(--t1); }
+
+.pnl-pos { color: var(--neon); text-shadow: 0 0 6px var(--neon-glow); }
+.pnl-neg { color: var(--crimson); text-shadow: 0 0 6px var(--crimson-glow); }
+
+.badge {
+  font-family: var(--mono); font-size: 8px; padding: 1px 6px;
+  letter-spacing: 0.05em; text-transform: uppercase; display: inline-block;
+}
+.badge-winner { color: var(--neon); background: var(--neon-bg); border: 1px solid rgba(0,255,136,0.25); }
+.badge-retest { color: var(--amber); background: var(--amber-bg); border: 1px solid rgba(255,149,0,0.25); }
+.badge-discard { color: var(--crimson); background: var(--crimson-bg); border: 1px solid rgba(255,59,48,0.25); }
+
+.cb-cell { width: 28px; text-align: center !important; }
+.cb-cell input[type="checkbox"],
+.rc-cb input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none; width: 12px; height: 12px;
+  border: 1px solid var(--g400); background: var(--g700); cursor: pointer;
+  vertical-align: middle; position: relative;
+}
+.cb-cell input[type="checkbox"]:checked,
+.rc-cb input[type="checkbox"]:checked {
+  background: var(--acc); border-color: var(--acc);
+}
+.cb-cell input[type="checkbox"]:checked::after,
+.rc-cb input[type="checkbox"]:checked::after {
+  content: ''; position: absolute; top: 1px; left: 3px;
+  width: 4px; height: 7px; border: solid var(--bg); border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+/* ─── DETAIL TAB ─── */
+.detail-content { padding: 16px 24px; }
+
+.breadcrumb {
+  font-family: var(--mono); font-size: 9px; color: var(--t3);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 0 0 12px; display: flex; align-items: center; gap: 6px;
+}
+.breadcrumb .bc-link { color: var(--t3); cursor: pointer; transition: color 0.1s; }
+.breadcrumb .bc-link:hover { color: var(--t1); }
+.breadcrumb .bc-sep { color: var(--t4); }
+.breadcrumb .bc-current { color: var(--t1); }
+
+/* Chart container */
+.chart-panel {
+  background: var(--g800); border: 1px solid var(--g400);
+  padding: 16px; position: relative; overflow: hidden; margin-bottom: 12px;
+}
+.chart-panel::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, transparent, var(--g400), transparent);
+}
+.chart-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+.chart-title {
+  font-family: var(--mono); font-size: 10px; color: var(--t3);
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+.chart-toggles { display: flex; gap: 4px; }
+.chart-toggle {
+  font-family: var(--mono); font-size: 8px; text-transform: uppercase;
+  letter-spacing: 0.05em; padding: 2px 8px; cursor: pointer;
+  border: 1px solid var(--g400); background: transparent; color: var(--t3);
+  transition: all 0.1s;
+}
+.chart-toggle.active { color: var(--bg); background: var(--acc); border-color: var(--acc); }
+.chart-toggle:hover:not(.active) { border-color: var(--t2); color: var(--t2); }
+
+.chart-canvas-wrap { height: 320px; position: relative; }
+.chart-canvas-wrap canvas { width: 100% !important; height: 100% !important; }
+.chart-canvas-wrap.short { height: 180px; }
+
+/* Metrics grid */
+.metrics-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;
+}
+.metric-card {
+  background: var(--g800); border: 1px solid var(--g400);
+  padding: 10px 12px; position: relative; overflow: hidden;
+}
+.metric-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, transparent 0%, var(--g400) 20%, var(--g400) 80%, transparent 100%);
+}
+.metric-label {
+  font-family: var(--mono); font-size: 8px; color: var(--t3);
+  text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;
+}
+.metric-value {
+  font-family: var(--mono); font-size: 14px; color: var(--t1);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Parameters accordion */
+.params-section { margin-bottom: 12px; }
+.params-header {
+  font-family: var(--mono); font-size: 10px; color: var(--t3);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  padding: 8px 12px; background: var(--g800); border: 1px solid var(--g400);
+  cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+  transition: all 0.1s; user-select: none;
+}
+.params-header:hover { border-color: var(--t2); color: var(--t2); }
+.params-header .arrow { font-size: 8px; transition: transform 0.15s; }
+.params-header.open .arrow { transform: rotate(90deg); }
+.params-body {
+  display: none; background: var(--g800);
+  border: 1px solid var(--g400); border-top: none; padding: 8px 12px;
+}
+.params-body.open { display: block; }
+.param-row {
+  display: flex; justify-content: space-between; padding: 2px 0;
+  font-family: var(--mono); font-size: 9px;
+}
+.param-key { color: var(--t3); }
+.param-val { color: var(--t1); font-variant-numeric: tabular-nums; }
+
+/* Drive-source notice */
+.drive-notice {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 32px; color: var(--t3); font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  background: var(--g800); border: 1px solid var(--g400); margin-bottom: 12px;
+}
+
+/* ─── COMPARE TAB ─── */
+.compare-section { margin-bottom: 16px; }
+.compare-title {
+  font-family: var(--mono); font-size: 10px; color: var(--t3);
+  text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;
+}
+.compare-table { width: 100%; border-collapse: collapse; }
+.compare-table th {
+  font-family: var(--mono); font-size: 8px; color: var(--t3);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--g400);
+  background: var(--g800);
+}
+.compare-table th:first-child { text-align: left; }
+.compare-table td {
+  font-family: var(--mono); font-size: 10px; color: var(--t2);
+  padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--g600);
+  font-variant-numeric: tabular-nums;
+}
+.compare-table td:first-child { text-align: left; color: var(--t1); }
+.compare-table td.best { color: var(--neon); text-shadow: 0 0 4px var(--neon-glow); }
+.compare-table td.worst { color: var(--crimson); text-shadow: 0 0 4px var(--crimson-glow); }
+
+/* ─── PERFORMANCE TAB ─── */
+.perf-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  padding: 8px 24px;
+}
+.perf-grid .chart-panel { margin-bottom: 0; }
+.perf-full { grid-column: 1 / -1; }
+
+.perf-controls {
+  display: flex; gap: 8px; align-items: center;
+}
+.perf-controls select {
+  font-family: var(--mono); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.05em; padding: 3px 8px;
+  background: var(--g700); color: var(--t2);
+  border: 1px solid var(--g400); cursor: pointer; appearance: none;
+}
+
+.ranking-list { padding: 0; }
+.ranking-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 12px; border-bottom: 1px solid var(--g600);
+  font-family: var(--mono); font-size: 10px; cursor: pointer;
+  transition: background 0.05s;
+}
+.ranking-item:hover { background: var(--g700); }
+.ranking-rank {
+  width: 24px; font-size: 9px; color: var(--t3);
+}
+.ranking-name { flex: 1; color: var(--t1); }
+.ranking-value { font-variant-numeric: tabular-nums; color: var(--t2); }
+
+/* ─── EMPTY STATES ─── */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 100%; min-height: 300px; gap: 16px; padding: 48px;
+}
+.empty-icon {
+  font-size: 32px; color: var(--t4); margin-bottom: 8px;
+}
+.empty-title {
+  font-family: var(--mono); font-size: 11px; color: var(--t3);
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+.empty-sub {
+  font-family: var(--mono); font-size: 9px; color: var(--t4);
+  margin-top: 4px; text-align: center;
+}
+.empty-actions {
+  display: flex; gap: 8px; margin-top: 8px;
+}
+
+/* ─── LABEL CONTEXT MENU ─── */
+.ctx-menu {
+  position: fixed; z-index: 100; background: var(--g700);
+  border: 1px solid var(--g400); min-width: 140px; display: none;
+}
+.ctx-menu.show { display: block; }
+.ctx-item {
+  font-family: var(--mono); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.05em; padding: 6px 12px; cursor: pointer;
+  color: var(--t2); display: flex; align-items: center; gap: 8px;
+  transition: background 0.05s;
+}
+.ctx-item:hover { background: var(--g600); color: var(--t1); }
+.ctx-dot { width: 6px; height: 6px; display: inline-block; }
+
+/* ─── BOTTOM STATUS BAR ─── */
+.status-bar {
+  height: 28px; display:flex; align-items:center; justify-content:space-between;
+  padding: 0 24px; border-top: 1px solid var(--g400); background: var(--g900);
+  font-family: var(--mono); font-size: 9px; color: var(--t3);
+  flex-shrink: 0; letter-spacing: 0.05em;
+}
+.status-left, .status-right { display:flex; align-items:center; gap:16px; }
+.status-dot {
+  width: 6px; height: 6px; background: var(--acc); display: inline-block;
+  margin-right: 4px;
+}
+.status-dot.live { box-shadow: 0 0 4px var(--acc), 0 0 8px var(--acc); }
+
+/* Scrollbar global */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--g800); }
+::-webkit-scrollbar-thumb { background: var(--g400); }
+
+/* Utility */
+.hidden { display: none !important; }
+
+@media (max-width: 900px) {
+  .kpi-strip { grid-template-columns: repeat(3, 1fr); }
+  .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  .perf-grid { grid-template-columns: 1fr; }
+}
+
+/* Correlation Matrix */
+.corr-table { border-collapse: collapse; }
+.corr-table th, .corr-table td {
+  font-family: var(--mono); font-size: 8px; padding: 4px 6px;
+  text-align: center; border: 1px solid var(--g600); min-width: 50px;
+}
+.corr-table th {
+  color: var(--t3); background: var(--g800); text-transform: uppercase;
+  letter-spacing: 0.05em; white-space: nowrap;
+}
+/* AI Analyst styles */
+.ai-section { margin-bottom: 10px; }
+.ai-section-title {
+  font-family: var(--mono); font-size: 9px; color: var(--t2);
+  text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;
+  border-bottom: 1px solid var(--g600); padding-bottom: 3px;
+}
+.ai-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 9px; }
+.ai-label { color: var(--t3); }
+.ai-value { color: var(--t1); }
+.ai-insight { color: var(--t2); margin: 2px 0 4px; font-size: 8px; line-height: 1.4; }
+.ai-grade { display: inline-block; padding: 1px 5px; font-size: 8px; font-weight: 500; letter-spacing: 0.08em; }
+.ai-grade.a { color: var(--neon); background: var(--neon-bg); border: 1px solid rgba(0,255,136,0.2); }
+.ai-grade.b { color: var(--amber); background: var(--amber-bg); border: 1px solid rgba(255,149,0,0.2); }
+.ai-grade.c { color: var(--crimson); background: var(--crimson-bg); border: 1px solid rgba(255,59,48,0.2); }
+.ai-score-bar { height: 2px; background: var(--g600); margin: 2px 0; position: relative; }
+.ai-score-fill { height: 100%; position: absolute; left: 0; top: 0; }
+</style>
+</head>
+<body>
+
+<div class="dot-grid"></div>
+
+<div class="shell">
+  <!-- TOP NAV -->
+  <nav class="top-nav">
+    <div class="nav-left">
+      <span class="nav-title">DIVERSIFY QUANTLAB</span>
+    </div>
+    <div class="nav-right">
+      <button class="nav-btn" id="btnSyncDrive" title="Sync from Google Drive via Apps Script">SYNC DRIVE</button>
+      <button class="nav-btn" id="btnImport" title="Import MT5 HTML reports">IMPORT</button>
+      <button class="nav-btn" id="btnLoadJSON" title="Load saved session">LOAD SESSION</button>
+      <button class="nav-btn" id="btnExportJSON" title="Export all data + labels as JSON">EXPORT JSON</button>
+      <button class="nav-btn" id="btnExportCSV" title="Export summary as CSV">EXPORT CSV</button>
+      <input type="file" id="fileInput" multiple accept=".html,.htm" style="display:none">
+      <input type="file" id="jsonInput" accept=".json" style="display:none">
+    </div>
+  </nav>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar" id="tabBar">
+    <button class="tab-btn active" data-tab="overview">OVERVIEW</button>
+    <button class="tab-btn" data-tab="reports">REPORTS</button>
+    <button class="tab-btn" data-tab="detail">DETAIL</button>
+    <button class="tab-btn" data-tab="compare">COMPARE <span class="tab-badge" id="compareBadge"></span></button>
+    <button class="tab-btn" data-tab="performance">PERFORMANCE</button>
+  </div>
+
+  <!-- ═══ TAB 1: OVERVIEW ═══ -->
+  <div class="tab-pane active" id="paneOverview">
+    <div class="kpi-strip" id="kpiStrip">
+      <div class="kpi-card">
+        <div class="kpi-label">REPORTS</div>
+        <div class="kpi-value" id="kpiReports">0</div>
+        <div class="kpi-sub" id="kpiSymbols">0 SYMBOLS</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">BEST NET P&L</div>
+        <div class="kpi-value" id="kpiBestPnl">&mdash;</div>
+        <div class="kpi-sub" id="kpiBestPnlSym">&mdash;</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">BEST PROFIT FACTOR</div>
+        <div class="kpi-value" id="kpiBestPF">&mdash;</div>
+        <div class="kpi-sub" id="kpiBestPFSym">&mdash;</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">BEST SHARPE</div>
+        <div class="kpi-value" id="kpiBestSharpe">&mdash;</div>
+        <div class="kpi-sub" id="kpiBestSharpeSym">&mdash;</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">WORST MAX DD</div>
+        <div class="kpi-value" id="kpiWorstDD">&mdash;</div>
+        <div class="kpi-sub" id="kpiWorstDDSym">&mdash;</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">AVG WIN RATE</div>
+        <div class="kpi-value" id="kpiAvgWR">&mdash;</div>
+        <div class="kpi-sub" id="kpiAvgWRSub">&mdash;</div>
+      </div>
+    </div>
+    <div class="mini-card-grid" id="overviewGrid"></div>
+    <div class="empty-state" id="overviewEmpty">
+      <div class="empty-icon">&#x26A1;</div>
+      <div class="empty-title">NO REPORTS LOADED</div>
+      <div class="empty-sub">Click SYNC DRIVE to auto-load from Google Drive<br>or use IMPORT to load local MT5 reports</div>
+      <div class="empty-actions">
+        <button class="nav-btn" onclick="syncFromDrive()">SYNC DRIVE</button>
+        <button class="nav-btn" onclick="document.getElementById('fileInput').click()">IMPORT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB 2: REPORTS ═══ -->
+  <div class="tab-pane" id="paneReports">
+    <div class="reports-toolbar">
+      <select class="filter-select" id="filterSymbol"><option value="">ALL SYMBOLS</option></select>
+      <select class="filter-select" id="filterLabel">
+        <option value="">ALL LABELS</option>
+        <option value="WINNER">WINNER</option>
+        <option value="RETEST">RETEST</option>
+        <option value="DISCARD">DISCARD</option>
+        <option value="UNLABELED">UNLABELED</option>
+      </select>
+      <input class="search-input" id="searchInput" placeholder="SEARCH...">
+      <div class="view-toggle">
+        <button class="view-toggle-btn active" data-rview="cards" id="btnViewCards">CARDS</button>
+        <button class="view-toggle-btn" data-rview="table" id="btnViewTable">TABLE</button>
+      </div>
+    </div>
+    <div class="reports-content" id="reportsContent">
+      <!-- Card view -->
+      <div class="report-card-grid" id="reportCardGrid"></div>
+      <!-- Table view -->
+      <div class="table-wrap hidden" id="reportTableWrap">
+        <table class="portfolio" id="portfolioTable">
+          <thead>
+            <tr>
+              <th class="cb-cell"><input type="checkbox" id="selectAll"></th>
+              <th data-key="symbol">SYMBOL</th>
+              <th data-key="netProfit">NET P&L</th>
+              <th data-key="profitFactor">PF</th>
+              <th data-key="sharpeRatio">SHARPE</th>
+              <th data-key="maxDDPct">MAX DD%</th>
+              <th data-key="winRate">WIN%</th>
+              <th data-key="totalTrades">TRADES</th>
+              <th data-key="label">LABEL</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="reportsEmpty">
+        <div class="empty-icon">&#x1F4CA;</div>
+        <div class="empty-title">NO REPORTS YET</div>
+        <div class="empty-sub">Sync from Drive or import MT5 reports to browse</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB 3: DETAIL ═══ -->
+  <div class="tab-pane" id="paneDetail">
+    <div class="detail-content" id="detailContent">
+      <div class="empty-state" id="detailEmpty">
+        <div class="empty-icon">&#x1F50D;</div>
+        <div class="empty-title">SELECT A REPORT TO VIEW DETAILS</div>
+        <div class="empty-sub">Click any report card in OVERVIEW or REPORTS tab</div>
+      </div>
+      <div id="detailView" class="hidden">
+        <div class="breadcrumb" id="detailBreadcrumb">
+          <span class="bc-link" onclick="TAB_SYSTEM.switchTab('reports')">REPORTS</span>
+          <span class="bc-sep">&#x25B6;</span>
+          <span class="bc-current" id="bcReportName">—</span>
+        </div>
+
+        <!-- Equity Curve -->
+        <div class="chart-panel">
+          <div class="chart-header">
+            <span class="chart-title" id="chartLabel">EQUITY CURVE</span>
+            <div class="chart-toggles">
+              <button class="chart-toggle active" data-mode="balance" id="togBalance">BALANCE</button>
+              <button class="chart-toggle" data-mode="equity" id="togEquity">EQUITY</button>
+            </div>
+          </div>
+          <div class="chart-canvas-wrap">
+            <canvas id="equityChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Underwater / Drawdown Chart -->
+        <div class="chart-panel" id="underwaterPanel">
+          <div class="chart-header">
+            <span class="chart-title">DRAWDOWN (UNDERWATER PLOT)</span>
+          </div>
+          <div class="chart-canvas-wrap short">
+            <canvas id="underwaterChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Metrics Grid -->
+        <div class="metrics-grid" id="metricsGrid"></div>
+
+        <!-- Trade P&L Distribution -->
+        <div class="chart-panel" id="tradePnlPanel">
+          <div class="chart-header">
+            <span class="chart-title">TRADE P&L DISTRIBUTION</span>
+          </div>
+          <div class="chart-canvas-wrap short">
+            <canvas id="tradePnlChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Long vs Short Performance -->
+        <div class="chart-panel" id="longShortPanel">
+          <div class="chart-header">
+            <span class="chart-title">LONG VS SHORT PERFORMANCE</span>
+          </div>
+          <div class="chart-canvas-wrap short">
+            <canvas id="longShortChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Monthly Returns -->
+        <div class="chart-panel" id="monthlyReturnsPanel">
+          <div class="chart-header">
+            <span class="chart-title">MONTHLY RETURNS</span>
+          </div>
+          <div class="chart-canvas-wrap short">
+            <canvas id="monthlyReturnsChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Win/Loss Streak Analysis -->
+        <div class="chart-panel" id="streakPanel">
+          <div class="chart-header">
+            <span class="chart-title">CONSECUTIVE WIN/LOSS STREAKS</span>
+          </div>
+          <div class="chart-canvas-wrap short">
+            <canvas id="streakChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Input Parameters -->
+        <div id="paramsContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB 4: COMPARE ═══ -->
+  <div class="tab-pane" id="paneCompare">
+    <div style="padding:16px 24px;">
+      <div class="empty-state" id="compareEmpty">
+        <div class="empty-icon">&#x2194;</div>
+        <div class="empty-title">SELECT 2+ REPORTS TO COMPARE</div>
+        <div class="empty-sub">Use checkboxes in the REPORTS tab to select reports</div>
+      </div>
+      <div id="compareView" class="hidden">
+        <!-- Overlay Chart -->
+        <div class="chart-panel">
+          <div class="chart-header">
+            <span class="chart-title">OVERLAY EQUITY CURVES (% RETURN)</span>
+          </div>
+          <div class="chart-canvas-wrap">
+            <canvas id="compareChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Comparison Metrics Table -->
+        <div class="compare-section">
+          <div class="compare-title">METRICS COMPARISON</div>
+          <table class="compare-table" id="compareMetricsTable">
+            <thead id="compareMetricsHead"></thead>
+            <tbody id="compareMetricsBody"></tbody>
+          </table>
+        </div>
+
+        <!-- Parameter Diff -->
+        <div class="compare-section">
+          <div class="compare-title">PARAMETER DIFFERENCES</div>
+          <table class="compare-table" id="paramDiffTable">
+            <thead id="paramDiffHead"></thead>
+            <tbody id="paramDiffBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB 5: PERFORMANCE ═══ -->
+  <div class="tab-pane" id="panePerformance">
+    <div class="empty-state" id="perfEmpty">
+      <div class="empty-icon">&#x26A1;</div>
+      <div class="empty-title">LOAD REPORTS FOR AGGREGATE ANALYTICS</div>
+      <div class="empty-sub">Performance metrics will appear once reports are loaded</div>
+    </div>
+    <div id="perfContent" class="hidden">
+      <!-- Aggregate KPIs for Performance -->
+      <div class="kpi-strip" id="perfKpiStrip">
+        <div class="kpi-card">
+          <div class="kpi-label">STRATEGIES</div>
+          <div class="kpi-value" id="perfKpiCount">0</div>
+          <div class="kpi-sub" id="perfKpiProfitable">0 PROFITABLE</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">TOTAL P&L</div>
+          <div class="kpi-value" id="perfKpiPnl">&mdash;</div>
+          <div class="kpi-sub" id="perfKpiAvgPnl">AVG &mdash;</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">AVG PROFIT FACTOR</div>
+          <div class="kpi-value" id="perfKpiPF">&mdash;</div>
+          <div class="kpi-sub" id="perfKpiMedianPF">MEDIAN &mdash;</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">AVG SHARPE</div>
+          <div class="kpi-value" id="perfKpiSharpe">&mdash;</div>
+          <div class="kpi-sub" id="perfKpiMedianSharpe">MEDIAN &mdash;</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">AVG MAX DD</div>
+          <div class="kpi-value" id="perfKpiDD">&mdash;</div>
+          <div class="kpi-sub" id="perfKpiWorstDD">WORST &mdash;</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">AVG WIN RATE</div>
+          <div class="kpi-value" id="perfKpiWR">&mdash;</div>
+          <div class="kpi-sub" id="perfKpiAvgRecovery">RECOVERY &mdash;</div>
+        </div>
+      </div>
+
+      <div class="perf-grid">
+        <!-- Row 1: Charts -->
+        <div class="chart-panel">
+          <div class="chart-header">
+            <span class="chart-title">RETURN DISTRIBUTION</span>
+          </div>
+          <div class="chart-canvas-wrap short">
+            <canvas id="histogramChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-panel">
+          <div class="chart-header">
+            <span class="chart-title">RISK VS RETURN</span>
+          </div>
+          <div class="chart-canvas-wrap short">
+            <canvas id="riskReturnChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Row 2: Charts -->
+        <div class="chart-panel">
+          <div class="chart-header">
+            <span class="chart-title">METRIC SCATTER</span>
+            <div class="perf-controls">
+              <select id="scatterX">
+                <option value="profitFactor">PF</option>
+                <option value="sharpeRatio">SHARPE</option>
+                <option value="maxDDPct">MAX DD%</option>
+                <option value="winRate">WIN%</option>
+                <option value="netProfit">NET P&L</option>
+                <option value="recoveryFactor">RECOVERY</option>
+              </select>
+              <span style="font-family:var(--mono);font-size:8px;color:var(--t4)">VS</span>
+              <select id="scatterY">
+                <option value="netProfit">NET P&L</option>
+                <option value="sharpeRatio" selected>SHARPE</option>
+                <option value="maxDDPct">MAX DD%</option>
+                <option value="winRate">WIN%</option>
+                <option value="profitFactor">PF</option>
+                <option value="recoveryFactor">RECOVERY</option>
+              </select>
+            </div>
+          </div>
+          <div class="chart-canvas-wrap short">
+            <canvas id="scatterChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-panel">
+          <div class="chart-header">
+            <span class="chart-title">DRAWDOWN COMPARISON</span>
+          </div>
+          <div class="chart-canvas-wrap short">
+            <canvas id="ddCompareChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Row 3: Correlation Matrix (full width) -->
+        <div class="chart-panel perf-full">
+          <div class="chart-header">
+            <span class="chart-title">METRIC CORRELATION MATRIX</span>
+          </div>
+          <div id="corrMatrix" style="overflow-x:auto"></div>
+        </div>
+
+        <!-- Row 4: Rankings side by side -->
+        <div class="chart-panel">
+          <div class="chart-header">
+            <span class="chart-title">TOP PERFORMERS</span>
+          </div>
+          <div class="ranking-list" id="topPerformers"></div>
+        </div>
+
+        <div class="chart-panel">
+          <div class="chart-header">
+            <span class="chart-title">BOTTOM PERFORMERS</span>
+          </div>
+          <div class="ranking-list" id="bottomPerformers"></div>
+        </div>
+
+        <!-- Row 5: AI Analyst (full width) -->
+        <div class="chart-panel perf-full">
+          <div class="chart-header">
+            <span class="chart-title">QUANTLAB ANALYST</span>
+            <button class="chart-toggle active" id="btnRunAI" onclick="runQuantAnalyst()">ANALYZE</button>
+          </div>
+          <div id="aiAnalystOutput" style="font-family:var(--mono);font-size:9px;color:var(--t2);line-height:1.4;max-height:500px;overflow-y:auto">
+            <span style="color:var(--t3)">Click ANALYZE to generate strategy intelligence report</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <div class="status-left">
+      <span><span class="status-dot live" id="statusDot"></span> <span id="statusReports">0 REPORTS</span></span>
+      <span id="statusLabels">0 LABELED</span>
+      <span id="statusSync" style="color:var(--t3)">DRIVE: IDLE</span>
+    </div>
+    <div class="status-right">
+      <span id="statusTime"></span>
+      <span>DIVERSIFY QUANTLAB V2.0</span>
+    </div>
+  </div>
+</div>
+
+<!-- Context Menu -->
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" data-label="WINNER">
+    <span class="ctx-dot" style="background:var(--neon);box-shadow:0 0 4px var(--neon-glow)"></span> WINNER
+  </div>
+  <div class="ctx-item" data-label="RETEST">
+    <span class="ctx-dot" style="background:var(--amber);box-shadow:0 0 4px var(--amber-glow)"></span> RETEST
+  </div>
+  <div class="ctx-item" data-label="DISCARD">
+    <span class="ctx-dot" style="background:var(--crimson);box-shadow:0 0 4px var(--crimson-glow)"></span> DISCARD
+  </div>
+  <div class="ctx-item" data-label="">
+    <span class="ctx-dot" style="background:var(--t3)"></span> CLEAR LABEL
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// DIVERSIFY QUANTLAB V2 — ENGINE
+// ═══════════════════════════════════════════════════════════════
+
+const V = {
+  bg:"#02030a",neon:"#00ff88",neonGlow:"rgba(0,255,136,0.4)",neonBg:"rgba(0,255,136,0.08)",
+  acc:"#ffffff",accBg:"rgba(255,255,255,0.06)",
+  amber:"#ff9500",amberGlow:"rgba(255,149,0,0.4)",amberBg:"rgba(255,149,0,0.1)",
+  crimson:"#ff3b30",crimsonGlow:"rgba(255,59,48,0.4)",crimsonBg:"rgba(255,59,48,0.1)",
+  violet:"#a78bfa",
+  t1:"#ffffff",t2:"#888888",t3:"#555555",t4:"#333333",
+  g400:"#2a2a2a",g600:"#1a1a1a",g700:"#121212",g800:"#0d0d0d"
+};
+
+// ─── STATE ───
+const store = new Map(); // id -> parsed report
+const COMPARE_COLORS = ['#ffffff','#00ff88','#ff9500','#a78bfa','#ff3b30','#00bcd4','#ff6ec7','#76ff03'];
+
+const STATE = {
+  activeTab: 'overview',
+  selectedReportId: null,
+  checkedForCompare: new Set(),
+  reportsViewMode: 'cards', // 'cards' | 'table'
+  filterState: {
+    symbol: '',
+    label: '',
+    search: '',
+    sortKey: 'netProfit',
+    sortDir: -1
+  }
+};
+
+const CHARTS = {
+  equity: null,
+  underwater: null,
+  compare: null,
+  histogram: null,
+  scatter: null,
+  tradePnl: null,
+  longShort: null,
+  monthlyReturns: null,
+  streak: null,
+  riskReturn: null,
+  ddCompare: null
+};
+
+// ─── LABELS (persist in localStorage) ───
+function loadLabels() {
+  try { return JSON.parse(localStorage.getItem('quantlab_labels') || '{}'); } catch { return {}; }
+}
+function saveLabels(labels) {
+  localStorage.setItem('quantlab_labels', JSON.stringify(labels));
+}
+function getLabel(id) { return loadLabels()[id] || ''; }
+function setLabel(id, label) {
+  const labels = loadLabels();
+  if (label) labels[id] = label; else delete labels[id];
+  saveLabels(labels);
+}
+
+// ─── REPORT DATA ACCESSOR ───
+// Normalizes access between file-parsed (r.results.X) and drive-sourced (r.X) reports
+function R(report, key) {
+  if (report.results && report.results[key] !== undefined) return report.results[key];
+  if (report[key] !== undefined) return report[key];
+  return 0;
+}
+function getSymbol(r) { return r.symbol || (r.settings && r.settings.symbol) || r.id; }
+function getBalanceCurve(r) { return r.balanceCurve || []; }
+function getInputs(r) { return r.inputs || {}; }
+function isDriveSource(r) { return r.source === 'drive'; }
+
+// ─── MT5 HTML PARSER ───
+function parseMT5Report(text, filename) {
+  if (text.charCodeAt(0) === 0xFEFF) text = text.substring(1);
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(text, 'text/html');
+  const cells = Array.from(doc.querySelectorAll('td'));
+
+  const report = {
+    id: filename.replace(/\.[^.]+$/, ''),
+    filename: filename,
+    settings: {},
+    inputs: {},
+    results: {},
+    deals: [],
+    balanceCurve: []
+  };
+
+  // Parse Settings & Inputs
+  let inInputs = false;
+  for (let i = 0; i < cells.length; i++) {
+    const t = (cells[i].textContent || '').trim();
+    if (t === 'Expert:' && cells[i+1]) report.settings.expert = cells[i+1].textContent.trim();
+    if (t === 'Symbol:' && cells[i+1]) report.settings.symbol = cells[i+1].textContent.trim();
+    if (t === 'Period:' && cells[i+1]) report.settings.period = cells[i+1].textContent.trim();
+    if (t === 'Currency:' && cells[i+1]) report.settings.currency = cells[i+1].textContent.trim();
+    if (t === 'Initial Deposit:' && cells[i+1]) report.settings.initialDeposit = parseFloat(cells[i+1].textContent.replace(/\s/g,''));
+    if (t === 'Leverage:' && cells[i+1]) report.settings.leverage = cells[i+1].textContent.trim();
+    if (t === 'Inputs:') inInputs = true;
+    if (t === 'Results' || t === 'Company:') inInputs = false;
+    if (inInputs && t.includes('=')) {
+      const eq = t.indexOf('=');
+      const key = t.substring(0, eq).trim();
+      const val = t.substring(eq + 1).trim();
+      if (!key.startsWith('_')) report.inputs[key] = val;
+    }
+  }
+
+  // Parse Results
+  const getVal = (label) => {
+    for (let i = 0; i < cells.length; i++) {
+      if ((cells[i].textContent || '').trim() === label && cells[i+1]) {
+        return cells[i+1].textContent.trim();
+      }
+    }
+    return '';
+  };
+  const num = s => parseFloat((s||'').replace(/\s/g,'').replace(/[()%]/g,'')) || 0;
+  const pctMatch = s => { const m = (s||'').match(/([\d.]+)%/); return m ? parseFloat(m[1]) : 0; };
+
+  report.results = {
+    netProfit: num(getVal('Total Net Profit:')),
+    grossProfit: num(getVal('Gross Profit:')),
+    grossLoss: num(getVal('Gross Loss:')),
+    profitFactor: num(getVal('Profit Factor:')),
+    expectedPayoff: num(getVal('Expected Payoff:')),
+    recoveryFactor: num(getVal('Recovery Factor:')),
+    sharpeRatio: num(getVal('Sharpe Ratio:')),
+    balanceDDAbsolute: num(getVal('Balance Drawdown Absolute:')),
+    balanceDDMaximal: getVal('Balance Drawdown Maximal:'),
+    balanceDDRelative: getVal('Balance Drawdown Relative:'),
+    equityDDAbsolute: num(getVal('Equity Drawdown Absolute:')),
+    equityDDMaximal: getVal('Equity Drawdown Maximal:'),
+    equityDDRelative: getVal('Equity Drawdown Relative:'),
+    marginLevel: num(getVal('Margin Level:')),
+    zScore: getVal('Z-Score:'),
+    ahpr: getVal('AHPR:'),
+    ghpr: getVal('GHPR:'),
+    lrCorrelation: num(getVal('LR Correlation:')),
+    lrStdError: num(getVal('LR Standard Error:')),
+    totalTrades: num(getVal('Total Trades:')),
+    shortTrades: getVal('Short Trades (won %):'),
+    longTrades: getVal('Long Trades (won %):'),
+    profitTrades: getVal('Profit Trades (% of total):'),
+    lossTrades: getVal('Loss Trades (% of total):'),
+    largestProfitTrade: num(getVal('Largest profit trade:')),
+    largestLossTrade: num(getVal('Largest loss trade:')),
+    avgProfitTrade: num(getVal('Average profit trade:')),
+    avgLossTrade: num(getVal('Average loss trade:')),
+    maxConsecWins: getVal('Maximum consecutive wins ($):'),
+    maxConsecLosses: getVal('Maximum consecutive losses ($):'),
+    avgConsecWins: num(getVal('Average consecutive wins:')),
+    avgConsecLosses: num(getVal('Average consecutive losses:')),
+    minHoldTime: getVal('Minimal position holding time:'),
+    maxHoldTime: getVal('Maximal position holding time:'),
+    avgHoldTime: getVal('Average position holding time:'),
+  };
+
+  // Derived metrics
+  const maxDDStr = report.results.equityDDMaximal || report.results.balanceDDMaximal || '';
+  report.results.maxDDPct = pctMatch(maxDDStr);
+  report.results.maxDDValue = num(maxDDStr);
+
+  const ptMatch = (report.results.profitTrades || '').match(/([\d.]+)%/);
+  report.results.winRate = ptMatch ? parseFloat(ptMatch[1]) : 0;
+
+  const shortMatch = (report.results.shortTrades || '').match(/([\d.]+)\s*\(([\d.]+)%\)/);
+  const longMatch = (report.results.longTrades || '').match(/([\d.]+)\s*\(([\d.]+)%\)/);
+  report.results.shortCount = shortMatch ? parseInt(shortMatch[1]) : 0;
+  report.results.shortWinPct = shortMatch ? parseFloat(shortMatch[2]) : 0;
+  report.results.longCount = longMatch ? parseInt(longMatch[1]) : 0;
+  report.results.longWinPct = longMatch ? parseFloat(longMatch[2]) : 0;
+
+  report.symbol = report.settings.symbol || filename;
+
+  // Parse Deals
+  const rows = doc.querySelectorAll('tr');
+  let inDeals = false;
+  for (const row of rows) {
+    const tds = row.querySelectorAll('td');
+    if (tds.length >= 12) {
+      const first = (tds[0].textContent || '').trim();
+      if (first === 'Time' && (tds[1].textContent || '').trim() === 'Deal') {
+        inDeals = true; continue;
+      }
+      if (inDeals) {
+        const time = first;
+        const dealNum = (tds[1].textContent || '').trim();
+        if (time && dealNum) {
+          const deal = {
+            time, deal: dealNum,
+            symbol: (tds[2].textContent || '').trim(),
+            type: (tds[3].textContent || '').trim(),
+            direction: (tds[4].textContent || '').trim(),
+            volume: num((tds[5].textContent || '').trim()),
+            price: num((tds[6].textContent || '').trim()),
+            order: (tds[7].textContent || '').trim(),
+            commission: num((tds[8].textContent || '').trim()),
+            swap: num((tds[9].textContent || '').trim()),
+            profit: num((tds[10].textContent || '').trim()),
+            balance: num((tds[11].textContent || '').trim()),
+            comment: tds[12] ? (tds[12].textContent || '').trim() : ''
+          };
+          report.deals.push(deal);
+        }
+      }
+    }
+  }
+
+  report.balanceCurve = report.deals
+    .filter(d => d.balance > 0)
+    .map(d => ({ time: d.time, balance: d.balance, profit: d.profit }));
+
+  return report;
+}
+
+// ─── FORMATTING HELPERS ───
+function fmt(n, dec=2) {
+  if (n === undefined || n === null || isNaN(n)) return '\u2014';
+  const s = Math.abs(n).toFixed(dec);
+  const parts = s.split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return (n < 0 ? '-' : '') + parts.join('.');
+}
+function fmtPnl(n) {
+  if (isNaN(n)) return '\u2014';
+  const prefix = n >= 0 ? '+$' : '-$';
+  return prefix + fmt(Math.abs(n));
+}
+function fmtPct(n) { return isNaN(n) ? '\u2014' : fmt(n, 2) + '%'; }
+
+// ─── TAB SYSTEM ───
+const TAB_SYSTEM = {
+  switchTab(name) {
+    STATE.activeTab = name;
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === name);
+    });
+    // Show/hide panes
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    const paneMap = { overview:'paneOverview', reports:'paneReports', detail:'paneDetail', compare:'paneCompare', performance:'panePerformance' };
+    const pane = document.getElementById(paneMap[name]);
+    if (pane) pane.classList.add('active');
+    // Render active tab
+    this.renderActiveTab();
+  },
+
+  renderActiveTab() {
+    switch (STATE.activeTab) {
+      case 'overview': renderOverview(); break;
+      case 'reports': renderReports(); break;
+      case 'detail': renderDetail(); break;
+      case 'compare': renderCompare(); break;
+      case 'performance': renderPerformance(); break;
+    }
+  }
+};
+
+// Wire tab button clicks
+document.getElementById('tabBar').addEventListener('click', e => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  TAB_SYSTEM.switchTab(btn.dataset.tab);
+});
+
+// ─── FILTER SYSTEM ───
+const FILTER_SYSTEM = {
+  getFiltered() {
+    let reports = Array.from(store.values());
+    const { symbol, label, search, sortKey, sortDir } = STATE.filterState;
+
+    if (symbol) reports = reports.filter(r => getSymbol(r) === symbol);
+    if (label === 'UNLABELED') reports = reports.filter(r => !getLabel(r.id));
+    else if (label) reports = reports.filter(r => getLabel(r.id) === label);
+    if (search) {
+      const s = search.toUpperCase();
+      reports = reports.filter(r =>
+        getSymbol(r).toUpperCase().includes(s) ||
+        r.id.toUpperCase().includes(s) ||
+        ((r.settings && r.settings.expert) || r.expert || '').toUpperCase().includes(s)
+      );
+    }
+
+    reports.sort((a, b) => {
+      let va, vb;
+      if (sortKey === 'symbol') { va = getSymbol(a); vb = getSymbol(b); return va < vb ? -sortDir : va > vb ? sortDir : 0; }
+      if (sortKey === 'label') { va = getLabel(a.id) || 'zzz'; vb = getLabel(b.id) || 'zzz'; return va < vb ? -sortDir : va > vb ? sortDir : 0; }
+      va = R(a, sortKey); vb = R(b, sortKey);
+      return ((va||0) - (vb||0)) * sortDir;
+    });
+    return reports;
+  },
+
+  getAllSymbols() {
+    return [...new Set(Array.from(store.values()).map(r => getSymbol(r)))].sort();
+  }
+};
+
+// Filter controls
+document.getElementById('filterSymbol').addEventListener('change', e => {
+  STATE.filterState.symbol = e.target.value;
+  renderReports();
+});
+document.getElementById('filterLabel').addEventListener('change', e => {
+  STATE.filterState.label = e.target.value;
+  renderReports();
+});
+document.getElementById('searchInput').addEventListener('input', e => {
+  STATE.filterState.search = e.target.value;
+  renderReports();
+});
+
+// ─── SPARKLINE BUILDER ───
+function buildSparklineSVG(balanceCurve, width, height) {
+  if (!balanceCurve || balanceCurve.length < 2) {
+    return `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+      <text x="${width/2}" y="${height/2+3}" text-anchor="middle" fill="#333" font-family="JetBrains Mono" font-size="8">NO DATA</text>
+    </svg>`;
+  }
+
+  const vals = balanceCurve.map(p => p.balance);
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  const range = max - min || 1;
+  const pad = 2;
+
+  const points = vals.map((v, i) => {
+    const x = pad + (i / (vals.length - 1)) * (width - pad * 2);
+    const y = pad + (1 - (v - min) / range) * (height - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+
+  const last = vals[vals.length - 1];
+  const first = vals[0];
+  const color = last >= first ? V.neon : V.crimson;
+  const fillColor = last >= first ? 'rgba(0,255,136,0.08)' : 'rgba(255,59,48,0.08)';
+
+  // Create fill polygon
+  const fillPoints = points.join(' ') + ` ${width-pad},${height-pad} ${pad},${height-pad}`;
+
+  return `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="${fillPoints}" fill="${fillColor}" />
+    <polyline points="${points.join(' ')}" fill="none" stroke="${color}" stroke-width="1.2" />
+  </svg>`;
+}
+
+// ─── KPI UPDATE ───
+function updateKPIs() {
+  const reports = Array.from(store.values());
+  const n = reports.length;
+  document.getElementById('kpiReports').textContent = n;
+  const symbols = new Set(reports.map(r => getSymbol(r)));
+  document.getElementById('kpiSymbols').textContent = symbols.size + ' SYMBOL' + (symbols.size !== 1 ? 'S' : '');
+
+  if (n === 0) {
+    ['kpiBestPnl','kpiBestPF','kpiBestSharpe','kpiWorstDD','kpiAvgWR'].forEach(id => {
+      document.getElementById(id).textContent = '\u2014';
+    });
+    ['kpiBestPnlSym','kpiBestPFSym','kpiBestSharpeSym','kpiWorstDDSym','kpiAvgWRSub'].forEach(id => {
+      document.getElementById(id).textContent = '\u2014';
+    });
+    return;
+  }
+
+  const best = (key, dir=1) => {
+    let b = reports[0];
+    for (const r of reports) {
+      if (dir > 0 ? R(r, key) > R(b, key) : R(r, key) < R(b, key)) b = r;
+    }
+    return b;
+  };
+
+  const bPnl = best('netProfit');
+  document.getElementById('kpiBestPnl').textContent = fmtPnl(R(bPnl, 'netProfit'));
+  document.getElementById('kpiBestPnl').className = 'kpi-value ' + (R(bPnl, 'netProfit') >= 0 ? 'pnl-pos' : 'pnl-neg');
+  document.getElementById('kpiBestPnlSym').textContent = getSymbol(bPnl);
+
+  const bPF = best('profitFactor');
+  document.getElementById('kpiBestPF').textContent = fmt(R(bPF, 'profitFactor'));
+  document.getElementById('kpiBestPFSym').textContent = getSymbol(bPF);
+
+  const bSh = best('sharpeRatio');
+  document.getElementById('kpiBestSharpe').textContent = fmt(R(bSh, 'sharpeRatio'));
+  document.getElementById('kpiBestSharpeSym').textContent = getSymbol(bSh);
+
+  const wDD = best('maxDDPct');
+  document.getElementById('kpiWorstDD').textContent = fmtPct(R(wDD, 'maxDDPct'));
+  document.getElementById('kpiWorstDD').className = 'kpi-value pnl-neg';
+  document.getElementById('kpiWorstDDSym').textContent = getSymbol(wDD);
+
+  const avgWR = reports.reduce((s, r) => s + R(r, 'winRate'), 0) / n;
+  document.getElementById('kpiAvgWR').textContent = fmtPct(avgWR);
+  document.getElementById('kpiAvgWRSub').textContent = 'ACROSS ' + n + ' REPORTS';
+
+  // Status bar
+  document.getElementById('statusReports').textContent = n + ' REPORT' + (n !== 1 ? 'S' : '');
+  const labeledCount = Object.keys(loadLabels()).filter(k => store.has(k)).length;
+  document.getElementById('statusLabels').textContent = labeledCount + ' LABELED';
+
+  // Update symbol filter
+  const symSelect = document.getElementById('filterSymbol');
+  const currentSym = symSelect.value;
+  const allSymbols = FILTER_SYSTEM.getAllSymbols();
+  symSelect.innerHTML = '<option value="">ALL SYMBOLS</option>' +
+    allSymbols.map(s => `<option value="${s}" ${s===currentSym?'selected':''}>${s}</option>`).join('');
+}
+
+// ─── COMPARE BADGE UPDATE ───
+function updateCompareBadge() {
+  const cnt = STATE.checkedForCompare.size;
+  const badge = document.getElementById('compareBadge');
+  badge.textContent = cnt > 0 ? cnt : '';
+  if (cnt > 0) badge.classList.add('has-items');
+  else badge.classList.remove('has-items');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TAB RENDERERS
+// ═══════════════════════════════════════════════════════════════
+
+// ─── OVERVIEW TAB ───
+function renderOverview() {
+  updateKPIs();
+  const grid = document.getElementById('overviewGrid');
+  const empty = document.getElementById('overviewEmpty');
+
+  if (store.size === 0) {
+    grid.classList.add('hidden');
+    empty.classList.remove('hidden');
+    return;
+  }
+  grid.classList.remove('hidden');
+  empty.classList.add('hidden');
+
+  const reports = Array.from(store.values())
+    .sort((a, b) => R(b, 'netProfit') - R(a, 'netProfit'));
+
+  grid.innerHTML = reports.map(r => {
+    const pnl = R(r, 'netProfit');
+    const pnlClass = pnl >= 0 ? 'pnl-pos' : 'pnl-neg';
+    const label = getLabel(r.id);
+    const badgeHtml = label ? `<span class="badge badge-${label.toLowerCase()}">${label}</span>` : '';
+    const curve = getBalanceCurve(r);
+    const sparkSvg = buildSparklineSVG(curve, 260, 50);
+
+    return `<div class="mini-card" data-id="${r.id}" onclick="selectReportForDetail('${r.id}')">
+      <div class="mc-spark">${sparkSvg}</div>
+      <div class="mc-body">
+        <div class="mc-symbol">
+          <span>${getSymbol(r)}</span>
+          ${badgeHtml}
+        </div>
+        <div class="mc-metrics">
+          <div class="mc-metric"><span class="mc-k">P&amp;L</span><span class="mc-v ${pnlClass}">${fmtPnl(pnl)}</span></div>
+          <div class="mc-metric"><span class="mc-k">PF</span><span class="mc-v">${fmt(R(r,'profitFactor'))}</span></div>
+          <div class="mc-metric"><span class="mc-k">SHARPE</span><span class="mc-v">${fmt(R(r,'sharpeRatio'))}</span></div>
+          <div class="mc-metric"><span class="mc-k">DD%</span><span class="mc-v">${fmtPct(R(r,'maxDDPct'))}</span></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectReportForDetail(id) {
+  STATE.selectedReportId = id;
+  TAB_SYSTEM.switchTab('detail');
+}
+
+// ─── REPORTS TAB ───
+function renderReports() {
+  const reports = FILTER_SYSTEM.getFiltered();
+  const empty = document.getElementById('reportsEmpty');
+  const cardGrid = document.getElementById('reportCardGrid');
+  const tableWrap = document.getElementById('reportTableWrap');
+
+  if (store.size === 0) {
+    cardGrid.classList.add('hidden');
+    tableWrap.classList.add('hidden');
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  if (STATE.reportsViewMode === 'cards') {
+    cardGrid.classList.remove('hidden');
+    tableWrap.classList.add('hidden');
+    renderReportsCardGrid(reports);
+  } else {
+    cardGrid.classList.add('hidden');
+    tableWrap.classList.remove('hidden');
+    renderReportsTable(reports);
+  }
+  updateCompareBadge();
+}
+
+function renderReportsCardGrid(reports) {
+  const grid = document.getElementById('reportCardGrid');
+  grid.innerHTML = reports.map(r => {
+    const pnl = R(r, 'netProfit');
+    const pnlClass = pnl >= 0 ? 'pnl-pos' : 'pnl-neg';
+    const label = getLabel(r.id);
+    const badgeHtml = label ? `<span class="badge badge-${label.toLowerCase()}">${label}</span>` : '';
+    const curve = getBalanceCurve(r);
+    const sparkSvg = buildSparklineSVG(curve, 280, 44);
+    const checked = STATE.checkedForCompare.has(r.id) ? 'checked' : '';
+
+    return `<div class="report-card" data-id="${r.id}">
+      <div class="rc-top">
+        <div class="rc-cb"><input type="checkbox" ${checked} data-id="${r.id}" onclick="event.stopPropagation();toggleCompare('${r.id}',this.checked)"></div>
+        <div class="rc-symbol">${getSymbol(r)}</div>
+        ${badgeHtml}
+      </div>
+      <div class="rc-spark" onclick="selectReportForDetail('${r.id}')">${sparkSvg}</div>
+      <div class="rc-metrics" onclick="selectReportForDetail('${r.id}')">
+        <div class="rc-m"><div class="rc-mk">P&amp;L</div><div class="rc-mv ${pnlClass}">${fmtPnl(pnl)}</div></div>
+        <div class="rc-m"><div class="rc-mk">PF</div><div class="rc-mv">${fmt(R(r,'profitFactor'))}</div></div>
+        <div class="rc-m"><div class="rc-mk">SHARPE</div><div class="rc-mv">${fmt(R(r,'sharpeRatio'))}</div></div>
+        <div class="rc-m"><div class="rc-mk">DD%</div><div class="rc-mv">${fmtPct(R(r,'maxDDPct'))}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderReportsTable(reports) {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+
+  for (const r of reports) {
+    const label = getLabel(r.id);
+    const tr = document.createElement('tr');
+    if (r.id === STATE.selectedReportId) tr.classList.add('selected');
+    tr.dataset.id = r.id;
+
+    const pnlClass = R(r, 'netProfit') >= 0 ? 'pnl-pos' : 'pnl-neg';
+    const badgeHtml = label === 'WINNER' ? '<span class="badge badge-winner">WINNER</span>'
+      : label === 'RETEST' ? '<span class="badge badge-retest">RETEST</span>'
+      : label === 'DISCARD' ? '<span class="badge badge-discard">DISCARD</span>'
+      : '';
+
+    tr.innerHTML = `
+      <td class="cb-cell"><input type="checkbox" ${STATE.checkedForCompare.has(r.id)?'checked':''} data-id="${r.id}"></td>
+      <td style="color:var(--t1)">${getSymbol(r)}</td>
+      <td class="${pnlClass}">${fmtPnl(R(r,'netProfit'))}</td>
+      <td>${fmt(R(r,'profitFactor'))}</td>
+      <td>${fmt(R(r,'sharpeRatio'))}</td>
+      <td>${fmtPct(R(r,'maxDDPct'))}</td>
+      <td>${fmtPct(R(r,'winRate'))}</td>
+      <td>${R(r,'totalTrades')}</td>
+      <td>${badgeHtml}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  // Update header sort arrows
+  document.querySelectorAll('table.portfolio th[data-key]').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.key === STATE.filterState.sortKey);
+    const arrow = th.querySelector('.sort-arrow');
+    if (arrow) arrow.remove();
+    if (th.dataset.key === STATE.filterState.sortKey) {
+      th.insertAdjacentHTML('beforeend', `<span class="sort-arrow">${STATE.filterState.sortDir > 0 ? '\u25B2' : '\u25BC'}</span>`);
+    }
+  });
+}
+
+function toggleCompare(id, checked) {
+  if (checked) STATE.checkedForCompare.add(id);
+  else STATE.checkedForCompare.delete(id);
+  updateCompareBadge();
+}
+
+// View toggle
+document.getElementById('btnViewCards').addEventListener('click', () => {
+  STATE.reportsViewMode = 'cards';
+  document.getElementById('btnViewCards').classList.add('active');
+  document.getElementById('btnViewTable').classList.remove('active');
+  renderReports();
+});
+document.getElementById('btnViewTable').addEventListener('click', () => {
+  STATE.reportsViewMode = 'table';
+  document.getElementById('btnViewTable').classList.add('active');
+  document.getElementById('btnViewCards').classList.remove('active');
+  renderReports();
+});
+
+// Table events
+document.getElementById('tableBody').addEventListener('click', e => {
+  const tr = e.target.closest('tr');
+  if (!tr) return;
+  const id = tr.dataset.id;
+
+  if (e.target.type === 'checkbox') {
+    toggleCompare(id, e.target.checked);
+    return;
+  }
+  selectReportForDetail(id);
+});
+
+document.getElementById('selectAll').addEventListener('change', e => {
+  const reports = FILTER_SYSTEM.getFiltered();
+  if (e.target.checked) reports.forEach(r => STATE.checkedForCompare.add(r.id));
+  else STATE.checkedForCompare.clear();
+  renderReports();
+});
+
+// Sort
+document.querySelectorAll('table.portfolio th[data-key]').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    if (STATE.filterState.sortKey === key) STATE.filterState.sortDir *= -1;
+    else { STATE.filterState.sortKey = key; STATE.filterState.sortDir = key === 'symbol' || key === 'label' ? 1 : -1; }
+    renderReports();
+  });
+});
+
+// Right-click label context menu (works on both table rows and cards)
+document.addEventListener('contextmenu', e => {
+  // Find closest card or table row with data-id
+  const target = e.target.closest('.report-card[data-id], tr[data-id], .mini-card[data-id]');
+  if (!target) return;
+  e.preventDefault();
+  const id = target.dataset.id;
+  const menu = document.getElementById('ctxMenu');
+  menu.style.left = e.clientX + 'px';
+  menu.style.top = e.clientY + 'px';
+  menu.classList.add('show');
+  menu.dataset.targetId = id;
+});
+
+document.getElementById('ctxMenu').addEventListener('click', e => {
+  const item = e.target.closest('.ctx-item');
+  if (!item) return;
+  const menu = document.getElementById('ctxMenu');
+  const id = menu.dataset.targetId;
+  const label = item.dataset.label;
+  setLabel(id, label);
+  menu.classList.remove('show');
+  TAB_SYSTEM.renderActiveTab();
+  updateKPIs();
+});
+
+document.addEventListener('click', () => document.getElementById('ctxMenu').classList.remove('show'));
+
+// ─── DETAIL TAB ───
+function renderDetail() {
+  const id = STATE.selectedReportId;
+  const r = id ? store.get(id) : null;
+  const empty = document.getElementById('detailEmpty');
+  const view = document.getElementById('detailView');
+
+  if (!r) {
+    empty.classList.remove('hidden');
+    view.classList.add('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  view.classList.remove('hidden');
+
+  // Breadcrumb
+  document.getElementById('bcReportName').textContent = getSymbol(r) + ' \u2014 ' + r.id;
+  document.getElementById('chartLabel').textContent = getSymbol(r) + ' \u2014 EQUITY CURVE';
+
+  // Reset toggle to BALANCE mode
+  document.getElementById('togBalance').classList.add('active');
+  document.getElementById('togEquity').classList.remove('active');
+
+  // Equity chart + detail charts
+  const curve = getBalanceCurve(r);
+  const hasDeals = (r.deals || []).length > 2;
+
+  if (curve.length > 0) {
+    buildEquityChart(r, 'balance');
+    buildUnderwaterChart(r);
+    document.getElementById('underwaterPanel').classList.remove('hidden');
+  } else if (isDriveSource(r)) {
+    if (CHARTS.equity) { CHARTS.equity.destroy(); CHARTS.equity = null; }
+    if (CHARTS.underwater) { CHARTS.underwater.destroy(); CHARTS.underwater = null; }
+    document.getElementById('underwaterPanel').classList.add('hidden');
+    const chartWrap = document.getElementById('equityChart').parentElement;
+    chartWrap.innerHTML = '<div class="drive-notice">EQUITY CHART NOT AVAILABLE FOR DRIVE-SYNCED REPORTS<br><span style="font-size:8px;color:var(--t4);margin-top:4px">Import the original MT5 HTML file for full chart data</span></div><canvas id="equityChart" style="display:none"></canvas>';
+  }
+
+  // Additional detail charts (require deal-level data)
+  if (hasDeals) {
+    buildTradePnlChart(r);
+    buildLongShortChart(r);
+    buildStreakChart(r);
+  } else {
+    ['tradePnlPanel','longShortPanel','streakPanel'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  }
+
+  // Monthly returns (requires balance curve with timestamps)
+  if (curve.length > 5) {
+    buildMonthlyReturnsChart(r);
+  } else {
+    document.getElementById('monthlyReturnsPanel').classList.add('hidden');
+  }
+
+  // Metrics grid
+  const metricsData = [
+    { label: 'NET PROFIT', value: fmtPnl(R(r,'netProfit')), color: R(r,'netProfit') >= 0 },
+    { label: 'PROFIT FACTOR', value: fmt(R(r,'profitFactor')) },
+    { label: 'SHARPE RATIO', value: fmt(R(r,'sharpeRatio')) },
+    { label: 'RECOVERY FACTOR', value: fmt(R(r,'recoveryFactor')) },
+    { label: 'MAX DRAWDOWN', value: fmtPct(R(r,'maxDDPct')), neg: true },
+    { label: 'WIN RATE', value: fmtPct(R(r,'winRate')) },
+    { label: 'TOTAL TRADES', value: R(r,'totalTrades') },
+    { label: 'EXPECTED PAYOFF', value: fmt(R(r,'expectedPayoff')) },
+    { label: 'LONG WIN%', value: fmtPct(R(r,'longWinPct')) },
+    { label: 'SHORT WIN%', value: fmtPct(R(r,'shortWinPct')) },
+    { label: 'AVG PROFIT TRADE', value: '$' + fmt(R(r,'avgProfitTrade')), color: true },
+    { label: 'AVG LOSS TRADE', value: '$' + fmt(Math.abs(R(r,'avgLossTrade'))), neg: true },
+    { label: 'LR CORRELATION', value: fmt(R(r,'lrCorrelation'), 4) },
+    { label: 'GROSS PROFIT', value: '$' + fmt(R(r,'grossProfit')), color: true },
+    { label: 'GROSS LOSS', value: '$' + fmt(Math.abs(R(r,'grossLoss'))), neg: true },
+    { label: 'AVG HOLD TIME', value: R(r,'avgHoldTime') || '\u2014' },
+  ];
+
+  document.getElementById('metricsGrid').innerHTML = metricsData.map(m => {
+    const valClass = m.color ? 'pnl-pos' : m.neg ? 'pnl-neg' : '';
+    return `<div class="metric-card">
+      <div class="metric-label">${m.label}</div>
+      <div class="metric-value ${valClass}">${m.value}</div>
+    </div>`;
+  }).join('');
+
+  // Input parameters
+  const inputs = getInputs(r);
+  const paramGroups = {};
+  let currentGroup = 'GENERAL';
+  for (const [k, v] of Object.entries(inputs)) {
+    if (k.match(/^_\d/) || (v && v.includes && v.includes('======'))) {
+      currentGroup = (v || '').replace(/[=_\s]/g, ' ').trim() || k;
+      continue;
+    }
+    if (!paramGroups[currentGroup]) paramGroups[currentGroup] = [];
+    paramGroups[currentGroup].push({ key: k, val: v });
+  }
+
+  const container = document.getElementById('paramsContainer');
+  if (Object.keys(paramGroups).length > 0) {
+    container.innerHTML = Object.entries(paramGroups).map(([group, params]) => `
+      <div class="params-section">
+        <div class="params-header" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+          <span>${group}</span>
+          <span class="arrow">\u25B6</span>
+        </div>
+        <div class="params-body">
+          ${params.map(p => `<div class="param-row"><span class="param-key">${p.key}</span><span class="param-val">${p.val}</span></div>`).join('')}
+        </div>
+      </div>
+    `).join('');
+  } else {
+    container.innerHTML = '';
+  }
+}
+
+// ─── EQUITY CHART ───
+function buildEquityChart(r, mode) {
+  if (!mode) mode = 'balance';
+  if (CHARTS.equity) CHARTS.equity.destroy();
+  const canvas = document.getElementById('equityChart');
+  canvas.style.display = '';
+  if (!canvas.parentElement.classList.contains('chart-canvas-wrap')) return;
+  const ctx = canvas.getContext('2d');
+  const curve = getBalanceCurve(r);
+  if (!curve.length) return;
+
+  const labels = curve.map(p => p.time.split(' ')[0]);
+  const balData = curve.map(p => p.balance);
+  const initial = balData[0] || 1;
+
+  // BALANCE mode = absolute $, EQUITY mode = % return from initial deposit
+  const isEquityMode = mode === 'equity';
+  const chartData = isEquityMode
+    ? balData.map(b => ((b - initial) / initial) * 100)
+    : balData;
+
+  const lineColor = isEquityMode ? V.neon : V.acc;
+  const fillColor = isEquityMode ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.03)';
+  const dataLabel = isEquityMode ? '% Return' : 'Balance';
+
+  CHARTS.equity = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: dataLabel,
+        data: chartData,
+        borderColor: lineColor,
+        backgroundColor: fillColor,
+        borderWidth: 1.5,
+        fill: true,
+        pointRadius: 0,
+        pointHoverRadius: 3,
+        pointHoverBackgroundColor: lineColor,
+        tension: 0.1,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 200 },
+      scales: {
+        x: {
+          display: true,
+          grid: { color: 'rgba(42,42,42,0.5)', lineWidth: 0.5 },
+          ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, maxTicksLimit: 10, maxRotation: 0 }
+        },
+        y: {
+          display: true,
+          grid: { color: 'rgba(42,42,42,0.5)', lineWidth: 0.5 },
+          ticks: {
+            font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3,
+            callback: isEquityMode
+              ? v => v.toFixed(1) + '%'
+              : v => '$' + v.toLocaleString()
+          }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: V.g700 + 'ee',
+          titleFont: { family: "'JetBrains Mono'", size: 9 },
+          bodyFont: { family: "'JetBrains Mono'", size: 10 },
+          titleColor: V.t3, bodyColor: V.t1,
+          borderColor: V.g400, borderWidth: 1,
+          displayColors: false,
+          callbacks: {
+            label: isEquityMode
+              ? ctx => 'Return: ' + ctx.parsed.y.toFixed(2) + '%'
+              : ctx => 'Balance: $' + ctx.parsed.y.toLocaleString(undefined, {minimumFractionDigits:2})
+          }
+        },
+        zoom: {
+          pan: { enabled: true, mode: 'x' },
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+        }
+      },
+      interaction: { mode: 'index', intersect: false }
+    }
+  });
+}
+
+// ─── EQUITY TOGGLE: BALANCE vs % RETURN ───
+document.getElementById('togBalance').addEventListener('click', () => {
+  document.getElementById('togBalance').classList.add('active');
+  document.getElementById('togEquity').classList.remove('active');
+  const id = STATE.selectedReportId;
+  if (id && store.has(id)) buildEquityChart(store.get(id), 'balance');
+});
+document.getElementById('togEquity').addEventListener('click', () => {
+  document.getElementById('togEquity').classList.add('active');
+  document.getElementById('togBalance').classList.remove('active');
+  const id = STATE.selectedReportId;
+  if (id && store.has(id)) buildEquityChart(store.get(id), 'equity');
+});
+
+// ─── UNDERWATER (DRAWDOWN) CHART ───
+function buildUnderwaterChart(r) {
+  if (CHARTS.underwater) CHARTS.underwater.destroy();
+  const ctx = document.getElementById('underwaterChart').getContext('2d');
+  const curve = getBalanceCurve(r);
+  if (!curve.length) return;
+
+  const balances = curve.map(p => p.balance);
+  const labels = curve.map(p => p.time.split(' ')[0]);
+
+  // Calculate drawdown from running maximum
+  let runningMax = balances[0];
+  const drawdowns = balances.map(b => {
+    if (b > runningMax) runningMax = b;
+    return ((b - runningMax) / runningMax) * 100; // negative %
+  });
+
+  CHARTS.underwater = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Drawdown',
+        data: drawdowns,
+        borderColor: V.crimson,
+        backgroundColor: V.crimsonBg,
+        borderWidth: 1,
+        fill: true,
+        pointRadius: 0,
+        pointHoverRadius: 3,
+        pointHoverBackgroundColor: V.crimson,
+        tension: 0.1,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 200 },
+      scales: {
+        x: {
+          display: true,
+          grid: { color: 'rgba(42,42,42,0.3)', lineWidth: 0.5 },
+          ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, maxTicksLimit: 10, maxRotation: 0 }
+        },
+        y: {
+          display: true,
+          max: 0,
+          grid: { color: 'rgba(42,42,42,0.3)', lineWidth: 0.5 },
+          ticks: {
+            font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3,
+            callback: v => v.toFixed(1) + '%'
+          }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: V.g700 + 'ee',
+          titleFont: { family: "'JetBrains Mono'", size: 9 },
+          bodyFont: { family: "'JetBrains Mono'", size: 10 },
+          titleColor: V.t3, bodyColor: V.crimson,
+          borderColor: V.g400, borderWidth: 1,
+          displayColors: false,
+          callbacks: {
+            label: ctx => 'Drawdown: ' + ctx.parsed.y.toFixed(2) + '%'
+          }
+        }
+      },
+      interaction: { mode: 'index', intersect: false }
+    }
+  });
+}
+
+// ─── TRADE P&L DISTRIBUTION ───
+function buildTradePnlChart(r) {
+  if (CHARTS.tradePnl) CHARTS.tradePnl.destroy();
+  const panel = document.getElementById('tradePnlPanel');
+  const deals = r.deals || [];
+  // Filter to closed trades (have profit != 0 and direction == 'out' or balance change)
+  const profits = deals.filter(d => d.profit !== 0 && d.balance > 0).map(d => d.profit);
+  if (profits.length < 2) { panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+
+  const ctx = document.getElementById('tradePnlChart').getContext('2d');
+
+  // Build histogram bins
+  const minP = Math.min(...profits);
+  const maxP = Math.max(...profits);
+  const range = maxP - minP || 1;
+  const binCount = Math.min(Math.max(Math.ceil(Math.sqrt(profits.length)), 8), 30); // Sturges-like
+  const binWidth = range / binCount;
+
+  const bins = new Array(binCount).fill(0);
+  const binLabels = [];
+  for (let i = 0; i < binCount; i++) {
+    const lo = minP + i * binWidth;
+    const hi = lo + binWidth;
+    binLabels.push('$' + Math.round(lo));
+    profits.forEach(p => {
+      if (p >= lo && (i === binCount - 1 ? p <= hi : p < hi)) bins[i]++;
+    });
+  }
+
+  const colors = binLabels.map((_, i) => {
+    const mid = minP + i * binWidth + binWidth / 2;
+    return mid >= 0 ? V.neon : V.crimson;
+  });
+
+  CHARTS.tradePnl = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: binLabels,
+      datasets: [{
+        label: 'Trades',
+        data: bins,
+        backgroundColor: colors.map(c => c + '55'),
+        borderColor: colors,
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 200 },
+      scales: {
+        x: { grid: { color: 'rgba(42,42,42,0.3)' }, ticks: { font: { family: "'JetBrains Mono'", size: 7 }, color: V.t3, maxRotation: 45, maxTicksLimit: 12 } },
+        y: { grid: { color: 'rgba(42,42,42,0.3)' }, ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, stepSize: 1 }, title: { display: true, text: 'COUNT', font: { family: "'JetBrains Mono'", size: 8 }, color: V.t4 } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: V.g700 + 'ee',
+          titleFont: { family: "'JetBrains Mono'", size: 9 },
+          bodyFont: { family: "'JetBrains Mono'", size: 10 },
+          titleColor: V.t3, bodyColor: V.t1,
+          borderColor: V.g400, borderWidth: 1,
+        }
+      }
+    }
+  });
+}
+
+// ─── LONG VS SHORT PERFORMANCE ───
+function buildLongShortChart(r) {
+  if (CHARTS.longShort) CHARTS.longShort.destroy();
+  const panel = document.getElementById('longShortPanel');
+  const deals = r.deals || [];
+  if (deals.length < 2) { panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+
+  const ctx = document.getElementById('longShortChart').getContext('2d');
+
+  // Categorize trades by direction
+  let longProfit = 0, longLoss = 0, longCount = 0, longWins = 0;
+  let shortProfit = 0, shortLoss = 0, shortCount = 0, shortWins = 0;
+
+  // Track entries to know direction of each position close
+  const openPositions = {};
+  for (const d of deals) {
+    if (d.direction === 'in') {
+      openPositions[d.symbol + d.order] = d.type; // 'buy' or 'sell'
+    } else if (d.balance > 0 && d.profit !== 0) {
+      // Determine direction from entry
+      const entryType = openPositions[d.symbol + d.order] || d.type;
+      const isLong = entryType === 'buy';
+      if (isLong) {
+        longCount++;
+        if (d.profit > 0) { longProfit += d.profit; longWins++; }
+        else { longLoss += Math.abs(d.profit); }
+      } else {
+        shortCount++;
+        if (d.profit > 0) { shortProfit += d.profit; shortWins++; }
+        else { shortLoss += Math.abs(d.profit); }
+      }
+    }
+  }
+
+  // Fallback to parsed results if no deal-level breakdown
+  if (longCount === 0 && shortCount === 0) {
+    longCount = R(r, 'longCount') || 0;
+    shortCount = R(r, 'shortCount') || 0;
+    longWins = Math.round(longCount * (R(r, 'longWinPct') || 0) / 100);
+    shortWins = Math.round(shortCount * (R(r, 'shortWinPct') || 0) / 100);
+    panel.classList.remove('hidden');
+  }
+
+  const longWinRate = longCount > 0 ? (longWins / longCount * 100) : 0;
+  const shortWinRate = shortCount > 0 ? (shortWins / shortCount * 100) : 0;
+
+  CHARTS.longShort = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['LONG', 'SHORT'],
+      datasets: [
+        {
+          label: 'Gross Profit',
+          data: [longProfit, shortProfit],
+          backgroundColor: V.neon + '66',
+          borderColor: V.neon,
+          borderWidth: 1,
+        },
+        {
+          label: 'Gross Loss',
+          data: [-longLoss, -shortLoss],
+          backgroundColor: V.crimson + '66',
+          borderColor: V.crimson,
+          borderWidth: 1,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 200 },
+      indexAxis: 'y',
+      scales: {
+        x: {
+          grid: { color: 'rgba(42,42,42,0.3)' },
+          ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, callback: v => '$' + Math.abs(v).toLocaleString() }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { font: { family: "'JetBrains Mono'", size: 10 }, color: V.t1 }
+        }
+      },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t2, boxWidth: 10 } },
+        tooltip: {
+          backgroundColor: V.g700 + 'ee',
+          titleFont: { family: "'JetBrains Mono'", size: 9 },
+          bodyFont: { family: "'JetBrains Mono'", size: 10 },
+          titleColor: V.t3, bodyColor: V.t1,
+          borderColor: V.g400, borderWidth: 1,
+          callbacks: {
+            afterLabel: (ctx) => {
+              const idx = ctx.dataIndex;
+              const count = idx === 0 ? longCount : shortCount;
+              const wr = idx === 0 ? longWinRate : shortWinRate;
+              return `Trades: ${count} | Win Rate: ${wr.toFixed(1)}%`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// ─── MONTHLY RETURNS ───
+function buildMonthlyReturnsChart(r) {
+  if (CHARTS.monthlyReturns) CHARTS.monthlyReturns.destroy();
+  const panel = document.getElementById('monthlyReturnsPanel');
+  const curve = getBalanceCurve(r);
+  if (curve.length < 2) { panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+
+  const ctx = document.getElementById('monthlyReturnsChart').getContext('2d');
+
+  // Group balance by month
+  const monthlyData = {};
+  for (const p of curve) {
+    const month = p.time.substring(0, 7); // YYYY.MM
+    if (!monthlyData[month]) monthlyData[month] = { first: p.balance, last: p.balance };
+    monthlyData[month].last = p.balance;
+  }
+
+  // Also capture the previous month's end as start for next
+  const months = Object.keys(monthlyData).sort();
+  const monthReturns = [];
+  const monthLabels = [];
+  for (let i = 0; i < months.length; i++) {
+    const m = months[i];
+    const monthStart = monthlyData[m].first;
+    const monthEnd = monthlyData[m].last;
+    const ret = ((monthEnd - monthStart) / monthStart) * 100;
+    monthReturns.push(ret);
+    monthLabels.push(m.replace('.', '-'));
+  }
+
+  const colors = monthReturns.map(r => r >= 0 ? V.neon : V.crimson);
+
+  CHARTS.monthlyReturns = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: monthLabels,
+      datasets: [{
+        label: 'Monthly Return %',
+        data: monthReturns,
+        backgroundColor: colors.map(c => c + '55'),
+        borderColor: colors,
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 200 },
+      scales: {
+        x: {
+          grid: { color: 'rgba(42,42,42,0.3)' },
+          ticks: { font: { family: "'JetBrains Mono'", size: 7 }, color: V.t3, maxRotation: 45, maxTicksLimit: 18 }
+        },
+        y: {
+          grid: { color: 'rgba(42,42,42,0.3)' },
+          ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, callback: v => v.toFixed(1) + '%' }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: V.g700 + 'ee',
+          titleFont: { family: "'JetBrains Mono'", size: 9 },
+          bodyFont: { family: "'JetBrains Mono'", size: 10 },
+          titleColor: V.t3, bodyColor: V.t1,
+          borderColor: V.g400, borderWidth: 1,
+          callbacks: { label: ctx => 'Return: ' + ctx.parsed.y.toFixed(2) + '%' }
+        }
+      }
+    }
+  });
+}
+
+// ─── WIN/LOSS STREAK CHART ───
+function buildStreakChart(r) {
+  if (CHARTS.streak) CHARTS.streak.destroy();
+  const panel = document.getElementById('streakPanel');
+  const deals = r.deals || [];
+  const closedTrades = deals.filter(d => d.profit !== 0 && d.balance > 0);
+  if (closedTrades.length < 5) { panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+
+  const ctx = document.getElementById('streakChart').getContext('2d');
+
+  // Build streak data: consecutive wins and losses
+  const streaks = [];
+  let currentStreak = 0;
+  let currentType = null;
+
+  for (const t of closedTrades) {
+    const isWin = t.profit > 0;
+    if (currentType === null || isWin !== currentType) {
+      if (currentType !== null) {
+        streaks.push({ count: currentStreak, isWin: currentType });
+      }
+      currentType = isWin;
+      currentStreak = 1;
+    } else {
+      currentStreak++;
+    }
+  }
+  if (currentType !== null) streaks.push({ count: currentStreak, isWin: currentType });
+
+  const streakLabels = streaks.map((_, i) => '#' + (i + 1));
+  const streakData = streaks.map(s => s.isWin ? s.count : -s.count);
+  const streakColors = streaks.map(s => s.isWin ? V.neon : V.crimson);
+
+  CHARTS.streak = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: streakLabels,
+      datasets: [{
+        label: 'Streak',
+        data: streakData,
+        backgroundColor: streakColors.map(c => c + '55'),
+        borderColor: streakColors,
+        borderWidth: 1,
+        barPercentage: 1.0,
+        categoryPercentage: 0.95,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 200 },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { family: "'JetBrains Mono'", size: 7 }, color: V.t4, maxTicksLimit: 30 }
+        },
+        y: {
+          grid: { color: 'rgba(42,42,42,0.3)' },
+          ticks: {
+            font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3,
+            callback: v => (v >= 0 ? '+' : '') + v + (v >= 0 ? 'W' : 'L')
+          }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: V.g700 + 'ee',
+          titleFont: { family: "'JetBrains Mono'", size: 9 },
+          bodyFont: { family: "'JetBrains Mono'", size: 10 },
+          titleColor: V.t3, bodyColor: V.t1,
+          borderColor: V.g400, borderWidth: 1,
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              return v >= 0 ? v + ' consecutive WINS' : Math.abs(v) + ' consecutive LOSSES';
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// ─── COMPARE TAB ───
+function renderCompare() {
+  const empty = document.getElementById('compareEmpty');
+  const view = document.getElementById('compareView');
+
+  if (STATE.checkedForCompare.size < 2) {
+    empty.classList.remove('hidden');
+    view.classList.add('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  view.classList.remove('hidden');
+
+  const selected = [...STATE.checkedForCompare].map(id => store.get(id)).filter(Boolean);
+
+  // Overlay chart
+  if (CHARTS.compare) CHARTS.compare.destroy();
+  const ctx = document.getElementById('compareChart').getContext('2d');
+
+  const datasets = selected.map((r, i) => {
+    const curve = getBalanceCurve(r);
+    const initial = curve.length ? curve[0].balance : 1;
+    return {
+      label: getSymbol(r) + ' (' + r.id.slice(-8) + ')',
+      data: curve.map(p => ((p.balance - initial) / initial) * 100),
+      borderColor: COMPARE_COLORS[i % COMPARE_COLORS.length],
+      borderWidth: 1.5,
+      fill: false,
+      pointRadius: 0,
+      tension: 0.1,
+    };
+  });
+
+  const longest = selected.reduce((a, b) => getBalanceCurve(a).length > getBalanceCurve(b).length ? a : b);
+  const labels = getBalanceCurve(longest).map(p => p.time.split(' ')[0]);
+
+  CHARTS.compare = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 200 },
+      scales: {
+        x: {
+          grid: { color: 'rgba(42,42,42,0.5)', lineWidth: 0.5 },
+          ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, maxTicksLimit: 10, maxRotation: 0 }
+        },
+        y: {
+          grid: { color: 'rgba(42,42,42,0.5)', lineWidth: 0.5 },
+          ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, callback: v => v.toFixed(1) + '%' }
+        }
+      },
+      plugins: {
+        legend: {
+          display: true, position: 'top',
+          labels: { font: { family: "'JetBrains Mono'", size: 9 }, color: V.t2, boxWidth: 12, padding: 8 }
+        },
+        tooltip: {
+          backgroundColor: V.g700 + 'ee',
+          titleFont: { family: "'JetBrains Mono'", size: 9 },
+          bodyFont: { family: "'JetBrains Mono'", size: 10 },
+          titleColor: V.t3, bodyColor: V.t1,
+          borderColor: V.g400, borderWidth: 1,
+          callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(2) + '%' }
+        },
+        zoom: {
+          pan: { enabled: true, mode: 'x' },
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+        }
+      },
+      interaction: { mode: 'index', intersect: false }
+    }
+  });
+
+  // Metrics comparison table
+  const metricsKeys = [
+    ['NET PROFIT', 'netProfit', v => fmtPnl(v), 1],
+    ['PROFIT FACTOR', 'profitFactor', v => fmt(v), 1],
+    ['SHARPE RATIO', 'sharpeRatio', v => fmt(v), 1],
+    ['RECOVERY FACTOR', 'recoveryFactor', v => fmt(v), 1],
+    ['MAX DD%', 'maxDDPct', v => fmtPct(v), -1],
+    ['WIN RATE', 'winRate', v => fmtPct(v), 1],
+    ['TOTAL TRADES', 'totalTrades', v => v, 0],
+    ['EXPECTED PAYOFF', 'expectedPayoff', v => fmt(v), 1],
+    ['AVG PROFIT TRADE', 'avgProfitTrade', v => '$'+fmt(v), 1],
+    ['AVG LOSS TRADE', 'avgLossTrade', v => '$'+fmt(Math.abs(v)), -1],
+    ['LR CORRELATION', 'lrCorrelation', v => fmt(v,4), 1],
+  ];
+
+  const thead = document.getElementById('compareMetricsHead');
+  const tbody = document.getElementById('compareMetricsBody');
+  thead.innerHTML = '<tr><th>METRIC</th>' + selected.map(r => `<th>${getSymbol(r)}<br><span style="font-size:7px;color:var(--t4)">${r.id.slice(-12)}</span></th>`).join('') + '</tr>';
+
+  tbody.innerHTML = metricsKeys.map(([label, key, formatter, dir]) => {
+    const vals = selected.map(r => R(r, key) || 0);
+    const bestIdx = dir !== 0 ? vals.indexOf(dir > 0 ? Math.max(...vals) : Math.min(...vals)) : -1;
+    const worstIdx = dir !== 0 ? vals.indexOf(dir > 0 ? Math.min(...vals) : Math.max(...vals)) : -1;
+    return `<tr><td>${label}</td>${vals.map((v, i) => {
+      let cls = '';
+      if (i === bestIdx && selected.length > 1) cls = 'best';
+      else if (i === worstIdx && selected.length > 1) cls = 'worst';
+      return `<td class="${cls}">${formatter(v)}</td>`;
+    }).join('')}</tr>`;
+  }).join('');
+
+  // Parameter diff
+  const allInputKeys = new Set();
+  selected.forEach(r => Object.keys(getInputs(r)).forEach(k => allInputKeys.add(k)));
+  const diffKeys = [...allInputKeys].filter(k => {
+    const vals = selected.map(r => (getInputs(r))[k] || '\u2014');
+    return new Set(vals).size > 1;
+  });
+
+  const pdHead = document.getElementById('paramDiffHead');
+  const pdBody = document.getElementById('paramDiffBody');
+  pdHead.innerHTML = '<tr><th>PARAMETER</th>' + selected.map(r => `<th>${getSymbol(r)}<br><span style="font-size:7px;color:var(--t4)">${r.id.slice(-12)}</span></th>`).join('') + '</tr>';
+
+  if (diffKeys.length === 0) {
+    pdBody.innerHTML = '<tr><td colspan="' + (selected.length + 1) + '" style="text-align:center;color:var(--t3)">NO PARAMETER DIFFERENCES</td></tr>';
+  } else {
+    pdBody.innerHTML = diffKeys.map(k => {
+      return `<tr><td>${k}</td>${selected.map(r => `<td>${(getInputs(r))[k] || '\u2014'}</td>`).join('')}</tr>`;
+    }).join('');
+  }
+}
+
+// ─── PERFORMANCE TAB ───
+function renderPerformance() {
+  const empty = document.getElementById('perfEmpty');
+  const content = document.getElementById('perfContent');
+
+  if (store.size === 0) {
+    empty.classList.remove('hidden');
+    content.classList.add('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  content.classList.remove('hidden');
+
+  // Populate Perf KPI strip
+  const reports = Array.from(store.values());
+  const n = reports.length;
+  const pnls = reports.map(r => R(r,'netProfit')||0);
+  const pfs = reports.map(r => R(r,'profitFactor')||0);
+  const sharpes = reports.map(r => R(r,'sharpeRatio')||0);
+  const dds = reports.map(r => Math.abs(R(r,'maxDDPct')||0));
+  const wrs = reports.map(r => R(r,'winRate')||0);
+  const recs = reports.map(r => R(r,'recoveryFactor')||0);
+  const median = arr => { const s=[...arr].sort((a,b)=>a-b); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; };
+  const sum = arr => arr.reduce((a,b)=>a+b,0);
+  const avg = arr => sum(arr)/arr.length;
+  const profCount = pnls.filter(p=>p>0).length;
+
+  document.getElementById('perfKpiCount').textContent = n;
+  document.getElementById('perfKpiProfitable').textContent = profCount + '/' + n + ' PROFITABLE';
+  const tp = sum(pnls);
+  document.getElementById('perfKpiPnl').textContent = '$' + Math.abs(tp).toLocaleString(undefined,{maximumFractionDigits:0});
+  document.getElementById('perfKpiPnl').className = 'kpi-value ' + (tp>=0?'pnl-pos':'pnl-neg');
+  document.getElementById('perfKpiAvgPnl').textContent = 'AVG $' + Math.abs(avg(pnls)).toLocaleString(undefined,{maximumFractionDigits:0});
+  document.getElementById('perfKpiPF').textContent = avg(pfs).toFixed(2);
+  document.getElementById('perfKpiMedianPF').textContent = 'MEDIAN ' + median(pfs).toFixed(2);
+  document.getElementById('perfKpiSharpe').textContent = avg(sharpes).toFixed(2);
+  document.getElementById('perfKpiMedianSharpe').textContent = 'MEDIAN ' + median(sharpes).toFixed(2);
+  document.getElementById('perfKpiDD').textContent = avg(dds).toFixed(1) + '%';
+  document.getElementById('perfKpiWorstDD').textContent = 'WORST ' + Math.max(...dds).toFixed(1) + '%';
+  document.getElementById('perfKpiWR').textContent = avg(wrs).toFixed(1) + '%';
+  document.getElementById('perfKpiAvgRecovery').textContent = 'RECOVERY ' + avg(recs).toFixed(2);
+
+  buildHistogramChart();
+  buildScatterChart();
+  buildRankings();
+  buildCorrelationMatrix();
+  buildRiskReturnChart();
+  buildDDCompareChart();
+}
+
+function buildHistogramChart() {
+  if (CHARTS.histogram) CHARTS.histogram.destroy();
+  const ctx = document.getElementById('histogramChart').getContext('2d');
+  const reports = Array.from(store.values());
+
+  // Calculate % return for each report
+  const returns = reports.map(r => {
+    const dep = (r.settings && r.settings.initialDeposit) || r.initialDeposit || 100000;
+    return (R(r, 'netProfit') / dep) * 100;
+  });
+
+  // Build histogram bins (5% intervals)
+  const minR = Math.floor(Math.min(...returns) / 5) * 5;
+  const maxR = Math.ceil(Math.max(...returns) / 5) * 5;
+  const bins = [];
+  const binLabels = [];
+  for (let i = minR; i < maxR; i += 5) {
+    bins.push(0);
+    binLabels.push(`${i}% to ${i+5}%`);
+  }
+  returns.forEach(r => {
+    const idx = Math.floor((r - minR) / 5);
+    if (idx >= 0 && idx < bins.length) bins[idx]++;
+  });
+
+  const colors = binLabels.map((_, i) => {
+    const mid = minR + i * 5 + 2.5;
+    return mid >= 0 ? V.neon : V.crimson;
+  });
+
+  CHARTS.histogram = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: binLabels,
+      datasets: [{
+        label: 'Count',
+        data: bins,
+        backgroundColor: colors.map(c => c + '44'),
+        borderColor: colors,
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 200 },
+      scales: {
+        x: {
+          grid: { color: 'rgba(42,42,42,0.3)' },
+          ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, maxRotation: 45 }
+        },
+        y: {
+          grid: { color: 'rgba(42,42,42,0.3)' },
+          ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, stepSize: 1 }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: V.g700 + 'ee',
+          titleFont: { family: "'JetBrains Mono'", size: 9 },
+          bodyFont: { family: "'JetBrains Mono'", size: 10 },
+          titleColor: V.t3, bodyColor: V.t1,
+          borderColor: V.g400, borderWidth: 1,
+        }
+      }
+    }
+  });
+}
+
+function buildScatterChart() {
+  if (CHARTS.scatter) CHARTS.scatter.destroy();
+  const ctx = document.getElementById('scatterChart').getContext('2d');
+  const reports = Array.from(store.values());
+
+  const xKey = document.getElementById('scatterX').value;
+  const yKey = document.getElementById('scatterY').value;
+
+  const metricNames = {
+    profitFactor:'PF', sharpeRatio:'Sharpe', maxDDPct:'Max DD%',
+    winRate:'Win%', netProfit:'Net P&L', totalTrades:'Trades', recoveryFactor:'Recovery'
+  };
+
+  const data = reports.map(r => ({
+    x: R(r, xKey),
+    y: R(r, yKey),
+    label: getSymbol(r)
+  }));
+
+  CHARTS.scatter = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: `${metricNames[xKey]} vs ${metricNames[yKey]}`,
+        data: data,
+        backgroundColor: V.neon + '66',
+        borderColor: V.neon,
+        borderWidth: 1,
+        pointRadius: 5,
+        pointHoverRadius: 8,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 200 },
+      scales: {
+        x: {
+          title: { display: true, text: metricNames[xKey] || xKey, font: { family: "'JetBrains Mono'", size: 9 }, color: V.t3 },
+          grid: { color: 'rgba(42,42,42,0.3)' },
+          ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3 }
+        },
+        y: {
+          title: { display: true, text: metricNames[yKey] || yKey, font: { family: "'JetBrains Mono'", size: 9 }, color: V.t3 },
+          grid: { color: 'rgba(42,42,42,0.3)' },
+          ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3 }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: V.g700 + 'ee',
+          titleFont: { family: "'JetBrains Mono'", size: 9 },
+          bodyFont: { family: "'JetBrains Mono'", size: 10 },
+          titleColor: V.t3, bodyColor: V.t1,
+          borderColor: V.g400, borderWidth: 1,
+          callbacks: {
+            label: ctx => {
+              const d = ctx.raw;
+              return `${d.label}: ${metricNames[xKey]}=${fmt(d.x)}, ${metricNames[yKey]}=${fmt(d.y)}`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function buildRankings() {
+  const reports = Array.from(store.values());
+  const sorted = [...reports].sort((a, b) => R(b, 'netProfit') - R(a, 'netProfit'));
+
+  const top5 = sorted.slice(0, 5);
+  const bottom5 = sorted.slice(-5).reverse();
+
+  document.getElementById('topPerformers').innerHTML = top5.map((r, i) => {
+    const pnl = R(r, 'netProfit');
+    return `<div class="ranking-item" onclick="selectReportForDetail('${r.id}')">
+      <span class="ranking-rank">#${i+1}</span>
+      <span class="ranking-name">${getSymbol(r)}</span>
+      <span class="ranking-value ${pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtPnl(pnl)}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('bottomPerformers').innerHTML = bottom5.map((r, i) => {
+    const pnl = R(r, 'netProfit');
+    return `<div class="ranking-item" onclick="selectReportForDetail('${r.id}')">
+      <span class="ranking-rank">#${reports.length - i}</span>
+      <span class="ranking-name">${getSymbol(r)}</span>
+      <span class="ranking-value ${pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtPnl(pnl)}</span>
+    </div>`;
+  }).join('');
+}
+
+// Scatter axis selectors
+document.getElementById('scatterX').addEventListener('change', () => { if (STATE.activeTab === 'performance') buildScatterChart(); });
+document.getElementById('scatterY').addEventListener('change', () => { if (STATE.activeTab === 'performance') buildScatterChart(); });
+
+// ─── CORRELATION MATRIX ───
+function buildCorrelationMatrix() {
+  const reports = Array.from(store.values());
+  if (reports.length < 3) {
+    document.getElementById('corrMatrix').innerHTML = '<div style="padding:16px;color:var(--t3);font-family:var(--mono);font-size:9px;text-align:center">NEED 3+ REPORTS FOR CORRELATION</div>';
+    return;
+  }
+  const metrics = ['netProfit','profitFactor','sharpeRatio','maxDDPct','winRate','recoveryFactor','totalTrades'];
+  const labels = ['Net P&L','PF','Sharpe','Max DD%','Win%','Recovery','Trades'];
+  const vectors = metrics.map(m => reports.map(r => R(r, m) || 0));
+
+  function pearson(a, b) {
+    const n = a.length;
+    if (n < 2) return 0;
+    const ma = a.reduce((s,v)=>s+v,0)/n, mb = b.reduce((s,v)=>s+v,0)/n;
+    let num=0, da=0, db=0;
+    for (let i=0;i<n;i++) { num+=(a[i]-ma)*(b[i]-mb); da+=(a[i]-ma)**2; db+=(b[i]-mb)**2; }
+    return (da===0||db===0) ? 0 : num/Math.sqrt(da*db);
+  }
+
+  let html = '<table class="corr-table"><tr><th></th>' + labels.map(l=>`<th>${l}</th>`).join('') + '</tr>';
+  for (let i=0;i<metrics.length;i++) {
+    html += `<tr><th>${labels[i]}</th>`;
+    for (let j=0;j<metrics.length;j++) {
+      const corr = i===j ? 1 : pearson(vectors[i], vectors[j]);
+      const abs = Math.abs(corr);
+      const hue = corr >= 0 ? 145 : 0;
+      const sat = Math.round(abs * 80);
+      const light = Math.round(10 + (1-abs) * 5);
+      const bg = `hsl(${hue},${sat}%,${light}%)`;
+      const tc = abs > 0.3 ? (corr>=0 ? '#00ff88' : '#ff3b30') : '#555';
+      html += `<td style="background:${bg};color:${tc}">${corr.toFixed(2)}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</table>';
+  document.getElementById('corrMatrix').innerHTML = html;
+}
+
+// ─── RISK-ADJUSTED RETURNS CHART ───
+function buildRiskReturnChart() {
+  if (CHARTS.riskReturn) CHARTS.riskReturn.destroy();
+  const ctx = document.getElementById('riskReturnChart').getContext('2d');
+  const reports = Array.from(store.values());
+
+  const data = reports.map(r => ({
+    x: Math.abs(R(r,'maxDDPct') || 0),
+    y: R(r,'netProfit') || 0,
+    label: getSymbol(r),
+    pf: R(r,'profitFactor') || 0
+  }));
+
+  CHARTS.riskReturn = new Chart(ctx, {
+    type: 'bubble',
+    data: {
+      datasets: [{
+        label: 'Risk vs Return',
+        data: data.map(d => ({ x: d.x, y: d.y, r: Math.max(3, Math.min(20, d.pf * 4)) })),
+        backgroundColor: data.map(d => d.y >= 0 ? V.neon + '44' : V.crimson + '44'),
+        borderColor: data.map(d => d.y >= 0 ? V.neon : V.crimson),
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 200 },
+      scales: {
+        x: { title: { display:true, text:'MAX DRAWDOWN %', font:{family:"'JetBrains Mono'",size:8}, color:V.t3 },
+             grid:{color:'rgba(42,42,42,0.3)'}, ticks:{font:{family:"'JetBrains Mono'",size:8},color:V.t3} },
+        y: { title: { display:true, text:'NET P&L ($)', font:{family:"'JetBrains Mono'",size:8}, color:V.t3 },
+             grid:{color:'rgba(42,42,42,0.3)'}, ticks:{font:{family:"'JetBrains Mono'",size:8},color:V.t3,
+             callback: v => '$'+v.toLocaleString()} }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor:V.g700+'ee', titleFont:{family:"'JetBrains Mono'",size:9},
+          bodyFont:{family:"'JetBrains Mono'",size:10}, titleColor:V.t3, bodyColor:V.t1,
+          borderColor:V.g400, borderWidth:1,
+          callbacks: { label: ctx => { const d = data[ctx.dataIndex]; return `${d.label}: DD=${d.x.toFixed(1)}%, P&L=$${d.y.toLocaleString()}, PF=${d.pf.toFixed(2)}`; } }
+        }
+      }
+    }
+  });
+}
+
+// ─── DRAWDOWN COMPARISON ───
+function buildDDCompareChart() {
+  if (CHARTS.ddCompare) CHARTS.ddCompare.destroy();
+  const ctx = document.getElementById('ddCompareChart').getContext('2d');
+  const reports = Array.from(store.values());
+
+  const sorted = [...reports].sort((a,b) => Math.abs(R(b,'maxDDPct')||0) - Math.abs(R(a,'maxDDPct')||0));
+  const top10 = sorted.slice(0, 10);
+
+  CHARTS.ddCompare = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: top10.map(r => getSymbol(r)),
+      datasets: [{
+        label: 'Max Drawdown %',
+        data: top10.map(r => -Math.abs(R(r,'maxDDPct')||0)),
+        backgroundColor: top10.map(r => {
+          const dd = Math.abs(R(r,'maxDDPct')||0);
+          return dd > 30 ? V.crimson+'88' : dd > 15 ? V.amber+'88' : V.neon+'88';
+        }),
+        borderColor: top10.map(r => {
+          const dd = Math.abs(R(r,'maxDDPct')||0);
+          return dd > 30 ? V.crimson : dd > 15 ? V.amber : V.neon;
+        }),
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+      animation: { duration: 200 },
+      scales: {
+        x: { grid:{color:'rgba(42,42,42,0.3)'}, ticks:{font:{family:"'JetBrains Mono'",size:8},color:V.t3,
+             callback: v => Math.abs(v).toFixed(1)+'%'} },
+        y: { grid:{display:false}, ticks:{font:{family:"'JetBrains Mono'",size:9},color:V.t1} }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor:V.g700+'ee', titleFont:{family:"'JetBrains Mono'",size:9},
+          bodyFont:{family:"'JetBrains Mono'",size:10}, titleColor:V.t3, bodyColor:V.t1,
+          borderColor:V.g400, borderWidth:1,
+          callbacks: { label: ctx => `Max DD: ${Math.abs(ctx.raw).toFixed(2)}%` }
+        }
+      }
+    }
+  });
+}
+
+// ─── QUANTLAB ANALYST ENGINE (Advanced Algorithm) ───
+function runQuantAnalyst() {
+  const reports = Array.from(store.values());
+  const output = document.getElementById('aiAnalystOutput');
+
+  if (reports.length === 0) {
+    output.innerHTML = '<span style="color:var(--crimson)">NO REPORTS LOADED</span>';
+    return;
+  }
+
+  const N = reports.length;
+  const m = reports.map(r => ({
+    sym: getSymbol(r), id: r.id,
+    pnl: R(r,'netProfit')||0, pf: R(r,'profitFactor')||0,
+    sharpe: R(r,'sharpeRatio')||0, dd: Math.abs(R(r,'maxDDPct')||0),
+    wr: R(r,'winRate')||0, trades: R(r,'totalTrades')||0,
+    recovery: R(r,'recoveryFactor')||0,
+    dep: (r.settings&&r.settings.initialDeposit)||r.initialDeposit||100000
+  }));
+
+  // ─── SCORING ENGINE ───
+  function norm(arr, higher) {
+    const mn=Math.min(...arr), mx=Math.max(...arr);
+    if(mx===mn) return arr.map(()=>50);
+    return arr.map(v=>higher?((v-mn)/(mx-mn))*100:((mx-v)/(mx-mn))*100);
+  }
+  const scores = {
+    pnl: norm(m.map(x=>x.pnl),true), pf: norm(m.map(x=>x.pf),true),
+    sharpe: norm(m.map(x=>x.sharpe),true), dd: norm(m.map(x=>x.dd),false),
+    wr: norm(m.map(x=>x.wr),true), recovery: norm(m.map(x=>x.recovery),true)
+  };
+  const W = {pnl:.18,pf:.18,sharpe:.22,dd:.22,wr:.10,recovery:.10};
+  const ranked = m.map((s,i) => {
+    const composite = W.pnl*scores.pnl[i]+W.pf*scores.pf[i]+W.sharpe*scores.sharpe[i]+W.dd*scores.dd[i]+W.wr*scores.wr[i]+W.recovery*scores.recovery[i];
+    return {...s, composite, sub:{pnl:scores.pnl[i],pf:scores.pf[i],sharpe:scores.sharpe[i],dd:scores.dd[i],wr:scores.wr[i],recovery:scores.recovery[i]}};
+  }).sort((a,b)=>b.composite-a.composite);
+
+  // ─── PORTFOLIO STATS ───
+  const avg = arr=>arr.reduce((a,b)=>a+b,0)/arr.length;
+  const med = arr=>{const s=[...arr].sort((a,b)=>a-b);const h=Math.floor(s.length/2);return s.length%2?s[h]:(s[h-1]+s[h])/2;};
+  const std = arr=>{const u=avg(arr);return Math.sqrt(arr.reduce((s,v)=>s+(v-u)**2,0)/arr.length);};
+  const totalPnl=m.reduce((s,x)=>s+x.pnl,0);
+  const profN=m.filter(x=>x.pnl>0).length;
+  const profRate=profN/N*100;
+  const avgPF=avg(m.map(x=>x.pf)), medPF=med(m.map(x=>x.pf));
+  const avgSharpe=avg(m.map(x=>x.sharpe)), medSharpe=med(m.map(x=>x.sharpe));
+  const avgDD=avg(m.map(x=>x.dd)), worstDD=Math.max(...m.map(x=>x.dd));
+  const avgWR=avg(m.map(x=>x.wr));
+  const avgRec=avg(m.map(x=>x.recovery));
+  const pnlStd=std(m.map(x=>x.pnl));
+  const sharpeStd=std(m.map(x=>x.sharpe));
+
+  // ─── ADVANCED HEURISTICS ───
+  // Curve-fit detection: high Sharpe + low trade count = suspicious
+  const curveFitSuspects = ranked.filter(s => s.sharpe > 2.0 && s.trades < 100);
+  // Tail risk: high win rate but huge DD suggests fat tail events
+  const tailRisk = ranked.filter(s => s.wr > 70 && s.dd > 20);
+  // Robustness: strategies where PF, Sharpe, and Recovery all score above 60
+  const robust = ranked.filter(s => s.sub.pf>60 && s.sub.sharpe>60 && s.sub.recovery>60);
+  // Fragile: any single sub-score below 20
+  const fragile = ranked.filter(s => Math.min(s.sub.pnl,s.sub.pf,s.sub.sharpe,s.sub.dd,s.sub.wr,s.sub.recovery)<20);
+  // Consistency: low standard deviation in returns across strategies
+  const returnSpread = pnlStd / (Math.abs(avg(m.map(x=>x.pnl)))+1);
+  // Classify
+  const deploy = ranked.filter(s=>s.composite>=65);
+  const optimize = ranked.filter(s=>s.composite>=40&&s.composite<65);
+  const discard = ranked.filter(s=>s.composite<40);
+
+  // ─── GRADE ───
+  function grd(s){
+    if(s>=80) return '<span class="ai-grade a">A</span>';
+    if(s>=65) return '<span class="ai-grade a">B+</span>';
+    if(s>=50) return '<span class="ai-grade b">B</span>';
+    if(s>=35) return '<span class="ai-grade b">C+</span>';
+    return '<span class="ai-grade c">C</span>';
+  }
+  function bar(s){
+    const c=s>=65?V.neon:s>=40?V.amber:V.crimson;
+    return `<div class="ai-score-bar"><div class="ai-score-fill" style="width:${s}%;background:${c}"></div></div>`;
+  }
+
+  // ─── BUILD REPORT ───
+  let h = '';
+
+  // Section: Verdict
+  const portfolioGrade = avg(ranked.map(r=>r.composite));
+  h += `<div class="ai-section"><div class="ai-section-title">PORTFOLIO VERDICT</div>`;
+  h += `<div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">`;
+  h += grd(portfolioGrade);
+  h += `<span style="font-size:11px;color:var(--t1)">${portfolioGrade.toFixed(1)}/100</span>`;
+  h += `<span style="font-size:8px;color:var(--t3)">COMPOSITE PORTFOLIO SCORE</span>`;
+  h += `</div>`;
+  h += bar(portfolioGrade);
+  h += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px">`;
+  h += `<div class="ai-row" style="flex-direction:column"><span class="ai-label">DEPLOY</span><span class="ai-value" style="color:var(--neon)">${deploy.length}</span></div>`;
+  h += `<div class="ai-row" style="flex-direction:column"><span class="ai-label">OPTIMIZE</span><span class="ai-value" style="color:var(--amber)">${optimize.length}</span></div>`;
+  h += `<div class="ai-row" style="flex-direction:column"><span class="ai-label">DISCARD</span><span class="ai-value" style="color:var(--crimson)">${discard.length}</span></div>`;
+  h += `<div class="ai-row" style="flex-direction:column"><span class="ai-label">ROBUST</span><span class="ai-value">${robust.length}</span></div>`;
+  h += `</div></div>`;
+
+  // Section: Risk Flags
+  h += `<div class="ai-section"><div class="ai-section-title">RISK FLAGS</div>`;
+  if (curveFitSuspects.length > 0) {
+    h += `<div class="ai-insight" style="color:var(--crimson)">CURVE-FIT WARNING: ${curveFitSuspects.length} strateg${curveFitSuspects.length>1?'ies':'y'} show high Sharpe (>2.0) with low trade count (<100). Likely overfitted: ${curveFitSuspects.map(s=>s.sym).join(', ')}. Recommendation: extend backtest period or run walk-forward analysis.</div>`;
+  }
+  if (tailRisk.length > 0) {
+    h += `<div class="ai-insight" style="color:var(--amber)">TAIL RISK: ${tailRisk.length} strateg${tailRisk.length>1?'ies':'y'} with high win rate (>70%) but drawdown >20%. Indicates vulnerability to fat-tail events: ${tailRisk.map(s=>s.sym).join(', ')}. Recommendation: stress-test with 2x spread and slippage.</div>`;
+  }
+  if (fragile.length > 0) {
+    h += `<div class="ai-insight" style="color:var(--amber)">FRAGILE: ${fragile.length} strateg${fragile.length>1?'ies':'y'} with at least one critically weak metric (sub-score <20). These have a single point of failure: ${fragile.slice(0,5).map(s=>s.sym).join(', ')}${fragile.length>5?'...':''}.</div>`;
+  }
+  if (returnSpread > 3) {
+    h += `<div class="ai-insight" style="color:var(--amber)">HIGH VARIANCE: P&L standard deviation ($${pnlStd.toLocaleString(undefined,{maximumFractionDigits:0})}) is ${returnSpread.toFixed(1)}x the mean. Portfolio outcomes are inconsistent — consider tighter parameter windows.</div>`;
+  }
+  if (curveFitSuspects.length===0 && tailRisk.length===0 && fragile.length===0 && returnSpread<=3) {
+    h += `<div class="ai-insight" style="color:var(--neon)">NO CRITICAL FLAGS. Portfolio risk profile is within acceptable bounds.</div>`;
+  }
+  h += `</div>`;
+
+  // Section: Key Findings
+  h += `<div class="ai-section"><div class="ai-section-title">KEY FINDINGS</div>`;
+  // Profit Factor analysis
+  if (avgPF>2.0) h+=`<div class="ai-insight">Avg PF ${avgPF.toFixed(2)} (median ${medPF.toFixed(2)}) — strong systematic edge. ${avgPF-medPF>0.5?'Mean pulled up by outliers; median is more representative.':''}</div>`;
+  else if (avgPF>1.3) h+=`<div class="ai-insight">Avg PF ${avgPF.toFixed(2)} (median ${medPF.toFixed(2)}) — moderate edge. Filter strategies below PF 1.3 to improve portfolio quality.</div>`;
+  else h+=`<div class="ai-insight" style="color:var(--crimson)">Avg PF ${avgPF.toFixed(2)} — below institutional threshold (1.5). Most strategies lack sufficient edge for live deployment.</div>`;
+  // Sharpe analysis
+  if (avgSharpe>1.5) h+=`<div class="ai-insight">Avg Sharpe ${avgSharpe.toFixed(2)} — institutional quality risk-adjusted returns. ${sharpeStd>0.8?'High dispersion ('+sharpeStd.toFixed(2)+') — quality varies significantly.':''}</div>`;
+  else if (avgSharpe>0.8) h+=`<div class="ai-insight">Avg Sharpe ${avgSharpe.toFixed(2)} — acceptable but below top-tier (>1.5). Focus optimization on risk reduction over return enhancement.</div>`;
+  else h+=`<div class="ai-insight" style="color:var(--crimson)">Avg Sharpe ${avgSharpe.toFixed(2)} — strategies are generating returns disproportionate to risk taken.</div>`;
+  // Drawdown analysis
+  if (worstDD>40) h+=`<div class="ai-insight" style="color:var(--crimson)">Worst drawdown ${worstDD.toFixed(1)}% is catastrophic. Any strategy exceeding 30% DD should be flagged for position sizing review.</div>`;
+  else if (worstDD>20) h+=`<div class="ai-insight">Worst DD ${worstDD.toFixed(1)}%, avg ${avgDD.toFixed(1)}%. Within tolerance for systematic strategies. Monitor correlation between DD events across strategies.</div>`;
+  else h+=`<div class="ai-insight" style="color:var(--neon)">Max DD contained at ${worstDD.toFixed(1)}%. Conservative risk profile suitable for allocated capital.</div>`;
+  // Profitability
+  h+=`<div class="ai-insight">${profRate.toFixed(0)}% hit rate (${profN}/${N} profitable). ${profRate>75?'Strong pipeline — most configurations generate alpha.':profRate>50?'Moderate — review losing configs for shared failure patterns.':'Low — parameter search may be too broad. Narrow the optimization space.'}</div>`;
+  h += `</div>`;
+
+  // Section: Strategy Rankings
+  h += `<div class="ai-section"><div class="ai-section-title">STRATEGY RANKINGS</div>`;
+  ranked.forEach((c, i) => {
+    const strengths=[], weaknesses=[];
+    if(c.sub.pf>70) strengths.push('Strong PF');
+    if(c.sub.sharpe>70) strengths.push('High Sharpe');
+    if(c.sub.dd>70) strengths.push('Low DD');
+    if(c.sub.wr>70) strengths.push('High Win%');
+    if(c.sub.recovery>70) strengths.push('Good Recovery');
+    if(c.sub.pf<30) weaknesses.push('Weak PF');
+    if(c.sub.sharpe<30) weaknesses.push('Low Sharpe');
+    if(c.sub.dd<30) weaknesses.push('High DD Risk');
+    if(c.sub.wr<30) weaknesses.push('Low Win%');
+    if(c.sub.recovery<30) weaknesses.push('Poor Recovery');
+    if(c.sharpe>2&&c.trades<100) weaknesses.push('Curve-Fit Risk');
+
+    const tier = c.composite>=65?'neon':c.composite>=40?'amber':'crimson';
+    const tierLabel = c.composite>=65?'DEPLOY':c.composite>=40?'OPTIMIZE':'DISCARD';
+
+    h+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--g600);cursor:pointer" onclick="selectReportForDetail('${c.id}')">`;
+    h+=`<span style="width:20px;color:var(--t3);font-size:8px;text-align:right">#${i+1}</span>`;
+    h+=`<span style="flex:1;font-size:9px;color:var(--t1)">${c.sym}</span>`;
+    h+=`<span style="font-size:7px;color:var(--${tier});border:1px solid var(--${tier});padding:1px 4px;letter-spacing:0.05em">${tierLabel}</span>`;
+    h+=`${grd(c.composite)}`;
+    h+=`<span style="width:40px;text-align:right;font-size:8px;color:var(--t2)">${c.composite.toFixed(0)}</span>`;
+    h+=`</div>`;
+    // Detail row
+    h+=`<div style="display:flex;gap:6px;padding:2px 0 4px 28px;font-size:7px;flex-wrap:wrap">`;
+    h+=`<span style="color:var(--t3)">P&L:<span style="color:${c.pnl>=0?V.neon:V.crimson}">$${c.pnl.toLocaleString(undefined,{maximumFractionDigits:0})}</span></span>`;
+    h+=`<span style="color:var(--t3)">PF:${c.pf.toFixed(2)}</span>`;
+    h+=`<span style="color:var(--t3)">Sharpe:${c.sharpe.toFixed(2)}</span>`;
+    h+=`<span style="color:var(--t3)">DD:${c.dd.toFixed(1)}%</span>`;
+    h+=`<span style="color:var(--t3)">Win:${c.wr.toFixed(0)}%</span>`;
+    if(strengths.length) h+=`<span style="color:var(--neon)">${strengths.join(', ')}</span>`;
+    if(weaknesses.length) h+=`<span style="color:var(--crimson)">${weaknesses.join(', ')}</span>`;
+    h+=`</div>`;
+  });
+  h += `</div>`;
+
+  // Section: Recommendations
+  h += `<div class="ai-section"><div class="ai-section-title">ACTIONABLE RECOMMENDATIONS</div>`;
+  if(deploy.length>0) h+=`<div class="ai-insight" style="color:var(--neon)">DEPLOY ${deploy.length} strateg${deploy.length>1?'ies':'y'} for live forward-testing: ${deploy.map(s=>s.sym).join(', ')}. These show balanced metrics across all dimensions.</div>`;
+  if(optimize.length>0) h+=`<div class="ai-insight" style="color:var(--amber)">OPTIMIZE ${optimize.length}: ${optimize.slice(0,5).map(s=>s.sym).join(', ')}${optimize.length>5?'...':''}. Focus on their weakest sub-score to unlock potential.</div>`;
+  if(discard.length>0) h+=`<div class="ai-insight" style="color:var(--crimson)">DISCARD ${discard.length}: ${discard.slice(0,5).map(s=>s.sym).join(', ')}${discard.length>5?'...':''}. These do not meet minimum viability thresholds.</div>`;
+  // Concentration risk
+  const symbols = [...new Set(m.map(x=>x.sym))];
+  if(symbols.length<N) h+=`<div class="ai-insight">DIVERSIFICATION: ${symbols.length} unique symbols across ${N} configs. ${symbols.length===1?'Single-instrument risk — add cross-asset strategies.':symbols.length<3?'Low diversification. Consider expanding to 5+ instruments.':'Reasonable symbol diversity.'}</div>`;
+  h += `</div>`;
+
+  output.innerHTML = h;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FILE IMPORT
+// ═══════════════════════════════════════════════════════════════
+
+function handleFiles(files) {
+  const promises = Array.from(files).map(file => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const buffer = e.target.result;
+          const bytes = new Uint8Array(buffer);
+          let text;
+          if ((bytes[0] === 0xFF && bytes[1] === 0xFE) || (bytes.length > 3 && bytes[1] === 0x00 && bytes[3] === 0x00)) {
+            text = new TextDecoder('utf-16le').decode(buffer);
+          } else if (bytes[0] === 0xFE && bytes[1] === 0xFF) {
+            text = new TextDecoder('utf-16be').decode(buffer);
+          } else {
+            text = new TextDecoder('utf-8').decode(buffer);
+          }
+          const report = parseMT5Report(text, file.name);
+          store.set(report.id, report);
+        } catch (err) {
+          console.error('Failed to parse:', file.name, err);
+        }
+        resolve();
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  });
+
+  Promise.all(promises).then(() => {
+    updateKPIs();
+    TAB_SYSTEM.renderActiveTab();
+  });
+}
+
+document.getElementById('btnImport').addEventListener('click', () => document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', e => handleFiles(e.target.files));
+
+// Global drag/drop
+document.body.addEventListener('dragover', e => { e.preventDefault(); });
+document.body.addEventListener('drop', e => {
+  e.preventDefault();
+  if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORTS
+// ═══════════════════════════════════════════════════════════════
+
+document.getElementById('btnExportJSON').addEventListener('click', () => {
+  const data = {
+    version: '2.0',
+    exported: new Date().toISOString(),
+    labels: loadLabels(),
+    reports: Array.from(store.values()).map(r => ({
+      id: r.id, filename: r.filename, symbol: getSymbol(r),
+      settings: r.settings || {}, inputs: getInputs(r), results: r.results || {},
+      balanceCurve: getBalanceCurve(r)
+    }))
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'quantlab-data-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+});
+
+document.getElementById('btnExportCSV').addEventListener('click', () => {
+  const reports = FILTER_SYSTEM.getFiltered();
+  const headers = ['Symbol','Filename','Net Profit','Profit Factor','Sharpe Ratio','Recovery Factor',
+    'Max DD%','Win Rate%','Total Trades','Expected Payoff','Long Win%','Short Win%',
+    'Avg Profit Trade','Avg Loss Trade','LR Correlation','Gross Profit','Gross Loss',
+    'Largest Profit','Largest Loss','Avg Consec Wins','Avg Consec Losses','Label'];
+  const rows = reports.map(r => [
+    getSymbol(r), r.filename, R(r,'netProfit'), R(r,'profitFactor'), R(r,'sharpeRatio'),
+    R(r,'recoveryFactor'), R(r,'maxDDPct'), R(r,'winRate'), R(r,'totalTrades'),
+    R(r,'expectedPayoff'), R(r,'longWinPct'), R(r,'shortWinPct'),
+    R(r,'avgProfitTrade'), R(r,'avgLossTrade'), R(r,'lrCorrelation'),
+    R(r,'grossProfit'), R(r,'grossLoss'),
+    R(r,'largestProfitTrade'), R(r,'largestLossTrade'),
+    R(r,'avgConsecWins'), R(r,'avgConsecLosses'), getLabel(r.id)
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'quantlab-summary-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+});
+
+// Load JSON session
+document.getElementById('btnLoadJSON').addEventListener('click', () => document.getElementById('jsonInput').click());
+document.getElementById('jsonInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (data.labels) saveLabels({ ...loadLabels(), ...data.labels });
+      if (data.reports) {
+        data.reports.forEach(r => {
+          if (!store.has(r.id)) store.set(r.id, r);
+        });
+      }
+      updateKPIs();
+      TAB_SYSTEM.renderActiveTab();
+    } catch (err) { console.error('Failed to load JSON:', err); }
+  };
+  reader.readAsText(file);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// GOOGLE DRIVE AUTO-SYNC
+// ═══════════════════════════════════════════════════════════════
+
+const DRIVE_SYNC = {
+  WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbwAiE3AmgigY3dcdoHcHnmUWYS7uGW1rsxr8_11C0TK8OBoJYgjL1wbHbD-POYXSAZ4/exec',
+  INTERVAL_MS: 30 * 1000, // 30s — Apps Script processes files on drop, we poll the sheet
+  lastSync: null,
+  timer: null,
+  syncing: false
+};
+
+function setDriveStatus(text, color) {
+  const el = document.getElementById('statusSync');
+  el.textContent = 'DRIVE: ' + text;
+  el.style.color = color || 'var(--t3)';
+}
+
+async function syncFromDrive() {
+  if (DRIVE_SYNC.syncing) return;
+  DRIVE_SYNC.syncing = true;
+  setDriveStatus('SYNCING...', 'var(--amber)');
+  const btn = document.getElementById('btnSyncDrive');
+  btn.textContent = 'SYNCING...';
+  btn.style.opacity = '0.5';
+
+  try {
+    const resp = await fetch(DRIVE_SYNC.WEB_APP_URL);
+    const json = await resp.json();
+
+    if (json.error) {
+      setDriveStatus('NO SHEET YET', 'var(--t3)');
+      return;
+    }
+
+    const rows = json.data || [];
+    if (rows.length === 0) {
+      setDriveStatus('0 REPORTS \u00B7 ' + new Date().toTimeString().slice(0,5), 'var(--t3)');
+      return;
+    }
+
+    let newCount = 0;
+    rows.forEach(row => {
+      const id = (row['Symbol'] || 'UNK') + '_' + (row['Filename'] || row['File ID'] || Math.random().toString(36).slice(2));
+      if (store.has(id)) return;
+
+      const report = {
+        id: id,
+        filename: row['Filename'] || '',
+        symbol: row['Symbol'] || '',
+        expert: row['Expert'] || '',
+        period: row['Period'] || '',
+        settings: {
+          symbol: row['Symbol'] || '',
+          expert: row['Expert'] || '',
+          period: row['Period'] || '',
+          initialDeposit: parseFloat(row['Initial Deposit']) || 100000,
+          leverage: row['Leverage'] || ''
+        },
+        results: {
+          netProfit: parseFloat(row['Net Profit']) || 0,
+          grossProfit: parseFloat(row['Gross Profit']) || 0,
+          grossLoss: parseFloat(row['Gross Loss']) || 0,
+          profitFactor: parseFloat(row['Profit Factor']) || 0,
+          expectedPayoff: parseFloat(row['Expected Payoff']) || 0,
+          recoveryFactor: parseFloat(row['Recovery Factor']) || 0,
+          sharpeRatio: parseFloat(row['Sharpe Ratio']) || 0,
+          totalTrades: parseInt(row['Total Trades']) || 0,
+          maxDDPct: parseFloat(row['Max DD%']) || 0,
+          winRate: parseFloat(row['Win Rate%']) || 0,
+          avgProfitTrade: parseFloat(row['Avg Profit Trade']) || 0,
+          avgLossTrade: parseFloat(row['Avg Loss Trade']) || 0,
+          lrCorrelation: parseFloat(row['LR Correlation']) || 0,
+          avgHoldTime: row['Avg Hold Time'] || '',
+          shortTrades: row['Short Trades'] || '',
+          longTrades: row['Long Trades'] || '',
+          shortWinPct: 0,
+          longWinPct: 0,
+          grossProfit: parseFloat(row['Gross Profit']) || 0,
+          grossLoss: parseFloat(row['Gross Loss']) || 0,
+        },
+        inputs: {},
+        deals: [],
+        balanceCurve: [],
+        source: 'drive',
+        sourceFolder: row['Source Folder'] || '',
+        driveFileId: row['File ID'] || ''
+      };
+
+      try {
+        if (row['Inputs JSON']) report.inputs = JSON.parse(row['Inputs JSON']);
+      } catch(e) {}
+
+      store.set(id, report);
+      newCount++;
+    });
+
+    DRIVE_SYNC.lastSync = new Date();
+    const timeStr = DRIVE_SYNC.lastSync.toTimeString().slice(0,5);
+    if (newCount > 0) {
+      setDriveStatus(rows.length + ' REPORTS \u00B7 +' + newCount + ' NEW \u00B7 ' + timeStr, 'var(--t2)');
+      updateKPIs();
+      TAB_SYSTEM.renderActiveTab();
+    } else {
+      setDriveStatus(rows.length + ' REPORTS \u00B7 ' + timeStr, 'var(--t3)');
+    }
+
+  } catch (err) {
+    console.error('Drive sync failed:', err);
+    setDriveStatus('ERROR \u00B7 ' + err.message.slice(0, 30), 'var(--crimson)');
+  } finally {
+    DRIVE_SYNC.syncing = false;
+    btn.textContent = 'SYNC DRIVE';
+    btn.style.opacity = '1';
+  }
+}
+
+document.getElementById('btnSyncDrive').addEventListener('click', syncFromDrive);
+
+// Auto-sync on load + every 5 minutes
+syncFromDrive();
+DRIVE_SYNC.timer = setInterval(syncFromDrive, DRIVE_SYNC.INTERVAL_MS);
+
+// ═══════════════════════════════════════════════════════════════
+// DRAG & DROP IMPORT (drop anywhere on the page)
+// ═══════════════════════════════════════════════════════════════
+
+document.body.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); });
+document.body.addEventListener('drop', e => {
+  e.preventDefault(); e.stopPropagation();
+  const files = [...e.dataTransfer.files].filter(f => /\.html?$/i.test(f.name));
+  if (files.length > 0) handleFiles(files);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// STATUS BAR TIME
+// ═══════════════════════════════════════════════════════════════
+
+function updateTime() {
+  const now = new Date();
+  document.getElementById('statusTime').textContent =
+    now.toISOString().slice(0,10) + ' ' + now.toTimeString().slice(0,8);
+}
+updateTime();
+setInterval(updateTime, 1000);
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+
+updateKPIs();
+renderOverview();
+
+</script>
+</body>
+</html>
