@@ -709,10 +709,10 @@ table.portfolio tr.selected td { color: var(--t1); }
 
   /* Compare tab */
   .compare-row { flex-direction: column; gap: 8px; }
-  .compare-section { padding: 10px; overflow-x: auto; }
-  .compare-table { font-size: 8px; min-width: 400px; }
-  .compare-table th { font-size: 7px; padding: 4px 5px; }
-  .compare-table td { font-size: 8px; padding: 4px 5px; }
+  .compare-section { padding: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: calc(100vw - 20px); width: 100%; box-sizing: border-box; }
+  .compare-table { font-size: 8px; min-width: 0; width: max-content; }
+  .compare-table th { font-size: 7px; padding: 4px 5px; white-space: nowrap; }
+  .compare-table td { font-size: 8px; padding: 4px 5px; white-space: nowrap; }
 
   /* Performance tab */
   .perf-grid { padding: 8px 10px; gap: 6px; grid-template-columns: 1fr; }
@@ -727,11 +727,13 @@ table.portfolio tr.selected td { color: var(--t1); }
   .status-bar { padding: 0 8px; font-size: 8px; height: 26px; }
   .status-left, .status-right { gap: 6px; }
 
-  /* AI analyst output */
-  #aiAnalystOutput { font-size: 8px; }
+  /* AI analyst output — full width on mobile, no height clipping */
+  #aiAnalystOutput { font-size: 8px; max-height: none !important; overflow-y: visible !important; }
   .ai-section-title { font-size: 8px; }
   .ai-row { font-size: 8px; }
   .ai-insight { font-size: 7px; }
+  /* QUANTLAB ANALYST panel — override inline width for mobile */
+  .perf-grid > .chart-panel:last-child { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }
 
 }
 
