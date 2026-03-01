@@ -425,10 +425,10 @@ table.portfolio tr.selected td { color: var(--t1); }
 .params-body.open { display: block; }
 .param-row {
   display: flex; justify-content: space-between; padding: 2px 0;
-  font-family: var(--mono); font-size: 9px;
+  font-family: var(--mono); font-size: 9px; max-width: 420px;
 }
 .param-key { color: var(--t3); }
-.param-val { color: var(--t1); font-variant-numeric: tabular-nums; }
+.param-val { color: var(--t1); font-variant-numeric: tabular-nums; padding-left: 24px; }
 
 /* Drive-source notice */
 .drive-notice {
@@ -440,9 +440,10 @@ table.portfolio tr.selected td { color: var(--t1); }
 
 /* ─── COMPARE TAB ─── */
 .compare-row {
-  display: flex; gap: 12px; margin-bottom: 12px;
+  display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;
 }
 .compare-row > .compare-section {
+  flex: 0 1 auto; min-width: 0;
   margin-bottom: 16px; background: var(--g800); border: 1px solid var(--g400);
   padding: 14px; position: relative; overflow-x: auto;
 }
@@ -458,7 +459,7 @@ table.portfolio tr.selected td { color: var(--t1); }
   font-family: var(--mono); font-size: 10px; color: var(--t2);
   text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; font-weight: 500;
 }
-.compare-table { width: 100%; border-collapse: collapse; table-layout: auto; }
+.compare-table { width: auto; border-collapse: collapse; table-layout: auto; }
 .compare-table th {
   font-family: var(--mono); font-size: 9px; color: var(--t3);
   text-transform: uppercase; letter-spacing: 0.08em;
@@ -501,7 +502,7 @@ table.portfolio tr.selected td { color: var(--t1); }
   border: 1px solid var(--g400); cursor: pointer; appearance: none;
 }
 
-.ranking-list { padding: 0; }
+.ranking-list { padding: 0; max-width: 420px; }
 .ranking-item {
   display: flex; justify-content: space-between; align-items: center;
   padding: 8px 12px; border-bottom: 1px solid var(--g600);
@@ -1191,7 +1192,7 @@ table.portfolio tr.selected td { color: var(--t1); }
             <span class="chart-title">QUANTLAB ANALYST</span>
             <button class="chart-toggle active" id="btnRunAI" onclick="runQuantAnalyst()">ANALYZE</button>
           </div>
-          <div id="aiAnalystOutput" style="font-family:var(--mono);font-size:10px;color:var(--t2);line-height:1.6;max-height:400px;overflow-y:auto;padding:4px 0">
+          <div id="aiAnalystOutput" style="font-family:var(--mono);font-size:10px;color:var(--t2);line-height:1.6;max-height:400px;overflow-y:auto;padding:4px 0;max-width:600px">
             <span style="color:var(--t3)">Click ANALYZE to generate strategy intelligence report</span>
           </div>
         </div>
