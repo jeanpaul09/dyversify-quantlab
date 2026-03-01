@@ -304,10 +304,10 @@ table.portfolio tr.selected td { color: var(--t1); }
   letter-spacing: 0.06em; text-transform: uppercase; display: inline-block;
   margin-right: 3px; vertical-align: middle;
 }
-/* Session tags */
-.tag-session { color: var(--violet); background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.25); }
-/* Trading style tags */
-.tag-style { color: #00bcd4; background: rgba(0,188,212,0.08); border: 1px solid rgba(0,188,212,0.25); }
+/* Session tags — neutral monochrome */
+.tag-session { color: var(--t2); background: var(--g700); border: 1px solid var(--g400); }
+/* Trading style tags — neutral monochrome */
+.tag-style { color: var(--t2); background: var(--g700); border: 1px solid var(--g400); }
 
 /* Tag row in cards */
 .rc-tags, .mc-tags { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; margin-top: 3px; }
@@ -439,6 +439,12 @@ table.portfolio tr.selected td { color: var(--t1); }
 }
 
 /* ─── COMPARE TAB ─── */
+.compare-row {
+  display: flex; gap: 12px; margin-bottom: 12px;
+}
+.compare-row > .compare-section {
+  flex: 1; min-width: 0; margin-bottom: 0;
+}
 .compare-section {
   margin-bottom: 12px; background: var(--g800); border: 1px solid var(--g400);
   padding: 16px; position: relative; overflow: hidden;
@@ -577,10 +583,10 @@ table.portfolio tr.selected td { color: var(--t1); }
 .period-pill:last-child { border-radius: 0 3px 3px 0; border-right: 1px solid var(--g400); }
 .period-pill:hover { color: var(--t2); background: var(--g600); }
 .period-pill.active {
-  color: var(--neon); background: var(--neon-bg);
-  border-color: rgba(0,255,136,0.25);
+  color: var(--bg); background: var(--acc);
+  border-color: var(--acc);
 }
-.period-pill.active + .period-pill { border-left-color: rgba(0,255,136,0.25); }
+.period-pill.active + .period-pill { border-left-color: var(--acc); }
 .period-sep {
   width: 1px; height: 16px; background: var(--g400); margin: 0 4px; flex-shrink: 0;
 }
@@ -626,8 +632,8 @@ table.portfolio tr.selected td { color: var(--t1); }
 .period-q-pill:first-child { border-radius: 2px 0 0 2px; }
 .period-q-pill:last-child { border-radius: 0 2px 2px 0; border-right: 1px solid var(--g400); }
 .period-q-pill:hover { color: var(--t2); }
-.period-q-pill.active { color: var(--amber); background: var(--amber-bg); border-color: rgba(255,149,0,0.25); }
-.period-q-pill.active + .period-q-pill { border-left-color: rgba(255,149,0,0.25); }
+.period-q-pill.active { color: var(--bg); background: var(--acc-dim); border-color: var(--acc-dim); }
+.period-q-pill.active + .period-q-pill { border-left-color: var(--acc-dim); }
 
 /* ─── TABLET ─── */
 @media (max-width: 900px) {
@@ -635,6 +641,7 @@ table.portfolio tr.selected td { color: var(--t1); }
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
   .perf-grid { grid-template-columns: 1fr; }
   .report-card-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .compare-row { flex-direction: column; }
 }
 
 /* ─── MOBILE ─── */
@@ -696,6 +703,7 @@ table.portfolio tr.selected td { color: var(--t1); }
   .metric-value { font-size: 11px; }
 
   /* Compare tab */
+  .compare-row { flex-direction: column; gap: 8px; }
   .compare-section { padding: 10px; overflow-x: auto; }
   .compare-table { font-size: 8px; min-width: 400px; }
   .compare-table th { font-size: 7px; padding: 4px 5px; }
@@ -1023,22 +1031,22 @@ table.portfolio tr.selected td { color: var(--t1); }
           </div>
         </div>
 
-        <!-- Comparison Metrics Table -->
-        <div class="compare-section">
-          <div class="compare-title">METRICS COMPARISON</div>
-          <table class="compare-table" id="compareMetricsTable">
-            <thead id="compareMetricsHead"></thead>
-            <tbody id="compareMetricsBody"></tbody>
-          </table>
-        </div>
-
-        <!-- Parameter Diff -->
-        <div class="compare-section">
-          <div class="compare-title">PARAMETER DIFFERENCES</div>
-          <table class="compare-table" id="paramDiffTable">
-            <thead id="paramDiffHead"></thead>
-            <tbody id="paramDiffBody"></tbody>
-          </table>
+        <!-- Comparison Tables — Side by Side -->
+        <div class="compare-row">
+          <div class="compare-section">
+            <div class="compare-title">METRICS COMPARISON</div>
+            <table class="compare-table" id="compareMetricsTable">
+              <thead id="compareMetricsHead"></thead>
+              <tbody id="compareMetricsBody"></tbody>
+            </table>
+          </div>
+          <div class="compare-section">
+            <div class="compare-title">PARAMETER DIFFERENCES</div>
+            <table class="compare-table" id="paramDiffTable">
+              <thead id="paramDiffHead"></thead>
+              <tbody id="paramDiffBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -1167,13 +1175,13 @@ table.portfolio tr.selected td { color: var(--t1); }
           <div class="ranking-list" id="bottomPerformers"></div>
         </div>
 
-        <!-- Row 5: AI Analyst (full width) -->
-        <div class="chart-panel perf-full">
+        <!-- Row 5: AI Analyst (full width, auto-shrink) -->
+        <div class="chart-panel perf-full" style="align-self:start">
           <div class="chart-header">
             <span class="chart-title">QUANTLAB ANALYST</span>
             <button class="chart-toggle active" id="btnRunAI" onclick="runQuantAnalyst()">ANALYZE</button>
           </div>
-          <div id="aiAnalystOutput" style="font-family:var(--mono);font-size:9px;color:var(--t2);line-height:1.4;overflow-y:auto">
+          <div id="aiAnalystOutput" style="font-family:var(--mono);font-size:9px;color:var(--t2);line-height:1.4;max-height:600px;overflow-y:auto">
             <span style="color:var(--t3)">Click ANALYZE to generate strategy intelligence report</span>
           </div>
         </div>
