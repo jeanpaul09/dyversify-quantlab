@@ -443,7 +443,8 @@ table.portfolio tr.selected td { color: var(--t1); }
   display: flex; gap: 12px; margin-bottom: 12px;
 }
 .compare-row > .compare-section {
-  flex: 1; min-width: 0; margin-bottom: 0;
+  margin-bottom: 16px; background: var(--g800); border: 1px solid var(--g400);
+  padding: 14px; position: relative; overflow-x: auto;
 }
 .compare-section {
   margin-bottom: 12px; background: var(--g800); border: 1px solid var(--g400);
@@ -454,20 +455,20 @@ table.portfolio tr.selected td { color: var(--t1); }
   background: linear-gradient(90deg, transparent 0%, var(--g400) 20%, var(--g400) 80%, transparent 100%);
 }
 .compare-title {
-  font-family: var(--mono); font-size: 10px; color: var(--t3);
-  text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px;
+  font-family: var(--mono); font-size: 10px; color: var(--t2);
+  text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; font-weight: 500;
 }
 .compare-table { width: 100%; border-collapse: collapse; table-layout: auto; }
 .compare-table th {
-  font-family: var(--mono); font-size: 8px; color: var(--t3);
-  text-transform: uppercase; letter-spacing: 0.1em;
-  padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--g400);
+  font-family: var(--mono); font-size: 9px; color: var(--t3);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--g400);
   background: var(--g800); white-space: nowrap;
 }
 .compare-table th:first-child { text-align: left; }
 .compare-table td {
   font-family: var(--mono); font-size: 10px; color: var(--t2);
-  padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--g600);
+  padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--g600);
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .compare-table td:first-child { text-align: left; color: var(--t1); }
@@ -476,11 +477,19 @@ table.portfolio tr.selected td { color: var(--t1); }
 
 /* ─── PERFORMANCE TAB ─── */
 .perf-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-  padding: 8px 24px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  padding: 12px 24px;
 }
 .perf-grid .chart-panel { margin-bottom: 0; }
 .perf-full { grid-column: 1 / -1; }
+
+.perf-grid .ranking-list { max-height: 260px; overflow-y: auto; }
+
+#aiAnalystOutput {
+  max-height: 400px !important; overflow-y: auto;
+  font-size: 10px !important; line-height: 1.6 !important;
+  padding: 4px 0;
+}
 
 .perf-controls {
   display: flex; gap: 8px; align-items: center;
@@ -495,16 +504,14 @@ table.portfolio tr.selected td { color: var(--t1); }
 .ranking-list { padding: 0; }
 .ranking-item {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 6px 12px; border-bottom: 1px solid var(--g600);
-  font-family: var(--mono); font-size: 10px; cursor: pointer;
-  transition: background 0.05s;
+  padding: 8px 12px; border-bottom: 1px solid var(--g600);
+  font-family: var(--mono); font-size: 11px; cursor: pointer;
+  transition: background 0.05s; gap: 8px;
 }
 .ranking-item:hover { background: var(--g700); }
-.ranking-rank {
-  width: 24px; font-size: 9px; color: var(--t3);
-}
-.ranking-name { flex: 1; color: var(--t1); }
-.ranking-value { font-variant-numeric: tabular-nums; color: var(--t2); }
+.ranking-rank { width: 28px; font-size: 10px; color: var(--t3); flex-shrink: 0; }
+.ranking-name { flex: 1; color: var(--t1); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ranking-value { font-variant-numeric: tabular-nums; color: var(--t2); flex-shrink: 0; font-size: 11px; }
 
 /* ─── EMPTY STATES ─── */
 .empty-state {
@@ -645,9 +652,7 @@ table.portfolio tr.selected td { color: var(--t1); }
 }
 
 /* ─── MOBILE ─── */
-@media (max-width: 600px) {
-  /* Top nav */
-  .top-nav { padding: 0 10px; height: 40px; }
+
   .nav-title { font-size: 9px; letter-spacing: 0.08em; }
   .nav-right { gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
   .nav-btn { font-size: 7px; padding: 3px 6px; letter-spacing: 0.06em; }
@@ -757,6 +762,11 @@ table.portfolio tr.selected td { color: var(--t1); }
 .ai-grade.c { color: var(--crimson); background: var(--crimson-bg); border: 1px solid rgba(255,59,48,0.2); }
 .ai-score-bar { height: 2px; background: var(--g600); margin: 2px 0; position: relative; }
 .ai-score-fill { height: 100%; position: absolute; left: 0; top: 0; }
+
+/* MOBILE */
+@media (max-width:900px){.kpi-strip{grid-template-columns:repeat(3,1fr);gap:8px;padding:8px 12px}.mini-card-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;padding:12px}.report-card-grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;padding:12px}.metrics-grid{grid-template-columns:repeat(2,1fr)}.perf-grid{grid-template-columns:1fr;padding:8px 12px}}
+@media (max-width:640px){.top-nav{padding:0 10px;height:38px}.nav-title{font-size:10px}.nav-btn{padding:3px 8px;font-size:8px}.tab-bar{padding:0 8px;overflow-x:auto}.tab-btn{padding:8px 12px;font-size:9px}.kpi-strip{grid-template-columns:repeat(2,1fr);gap:6px;padding:6px 10px}.kpi-card{padding:8px 10px}.kpi-value{font-size:14px}.kpi-label{font-size:8px}.mini-card-grid{grid-template-columns:1fr 1fr;gap:6px;padding:8px 10px}.mini-card .mc-symbol{font-size:10px}.mini-card .mc-spark{height:40px}.report-card-grid{grid-template-columns:1fr;padding:8px 10px}.detail-content{padding:10px}.chart-canvas-wrap{height:240px}.chart-canvas-wrap.short{height:140px}.metrics-grid{grid-template-columns:repeat(2,1fr);gap:6px}.metric-value{font-size:12px}.perf-grid{grid-template-columns:1fr;gap:8px;padding:8px 10px}.compare-section{padding:10px}.compare-table th{padding:6px 8px;font-size:8px}.compare-table td{padding:5px 8px;font-size:9px}.ranking-item{padding:6px 10px;font-size:10px}#aiAnalystOutput{max-height:300px!important;font-size:9px!important}.status-bar{padding:0 10px;font-size:8px}}
+@media (max-width:400px){.kpi-strip{grid-template-columns:1fr 1fr}.mini-card-grid{grid-template-columns:1fr}.tab-btn{padding:6px 8px;font-size:8px}.chart-canvas-wrap{height:200px}}
 </style>
 </head>
 <body>
@@ -1181,7 +1191,7 @@ table.portfolio tr.selected td { color: var(--t1); }
             <span class="chart-title">QUANTLAB ANALYST</span>
             <button class="chart-toggle active" id="btnRunAI" onclick="runQuantAnalyst()">ANALYZE</button>
           </div>
-          <div id="aiAnalystOutput" style="font-family:var(--mono);font-size:9px;color:var(--t2);line-height:1.4;max-height:600px;overflow-y:auto">
+          <div id="aiAnalystOutput" style="font-family:var(--mono);font-size:10px;color:var(--t2);line-height:1.6;max-height:400px;overflow-y:auto;padding:4px 0">
             <span style="color:var(--t3)">Click ANALYZE to generate strategy intelligence report</span>
           </div>
         </div>
