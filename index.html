@@ -1918,6 +1918,9 @@ function buildEquityChart(r, mode) {
   if (CHARTS.equity) CHARTS.equity.destroy();
   const canvas = document.getElementById('equityChart');
   canvas.style.display = '';
+  // Remove leftover "not available" notice from previous render
+  const driveNotice = canvas.parentElement.querySelector('.drive-notice');
+  if (driveNotice) driveNotice.remove();
   if (!canvas.parentElement.classList.contains('chart-canvas-wrap')) return;
   const ctx = canvas.getContext('2d');
   const curve = getBalanceCurve(r);
@@ -1991,12 +1994,20 @@ function buildEquityChart(r, mode) {
         },
         zoom: {
           pan: { enabled: true, mode: 'x' },
-          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+          zoom: {
+            wheel: { enabled: false },
+            pinch: { enabled: true },
+            drag: { enabled: true, backgroundColor: 'rgba(0,255,136,0.08)', borderColor: 'rgba(0,255,136,0.3)', borderWidth: 1 },
+            mode: 'x'
+          }
         }
       },
       interaction: { mode: 'index', intersect: false }
     }
   });
+
+  // Double-click to reset zoom
+  canvas.ondblclick = () => { if (CHARTS.equity) CHARTS.equity.resetZoom(); };
 }
 
 // ─── EQUITY TOGGLE: BALANCE vs % RETURN ───
@@ -2481,7 +2492,12 @@ function renderCompare() {
         },
         zoom: {
           pan: { enabled: true, mode: 'x' },
-          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+          zoom: {
+            wheel: { enabled: false },
+            pinch: { enabled: true },
+            drag: { enabled: true, backgroundColor: 'rgba(0,255,136,0.08)', borderColor: 'rgba(0,255,136,0.3)', borderWidth: 1 },
+            mode: 'x'
+          }
         }
       },
       interaction: { mode: 'index', intersect: false }
