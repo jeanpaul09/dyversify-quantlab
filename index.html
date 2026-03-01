@@ -298,6 +298,31 @@ table.portfolio tr.selected td { color: var(--t1); }
 .badge-retest { color: var(--amber); background: var(--amber-bg); border: 1px solid rgba(255,149,0,0.25); }
 .badge-discard { color: var(--crimson); background: var(--crimson-bg); border: 1px solid rgba(255,59,48,0.25); }
 
+/* ─── TAG PILLS ─── */
+.tag-pill {
+  font-family: var(--mono); font-size: 7px; padding: 1px 5px;
+  letter-spacing: 0.06em; text-transform: uppercase; display: inline-block;
+  margin-right: 3px; vertical-align: middle;
+}
+/* Session tags */
+.tag-session { color: var(--violet); background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.25); }
+/* Trading style tags */
+.tag-style { color: #00bcd4; background: rgba(0,188,212,0.08); border: 1px solid rgba(0,188,212,0.25); }
+
+/* Tag row in cards */
+.rc-tags, .mc-tags { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; margin-top: 3px; }
+.mc-tags { margin-top: 4px; }
+
+/* Context menu section headers */
+.ctx-section {
+  font-family: var(--mono); font-size: 8px; text-transform: uppercase;
+  letter-spacing: 0.1em; padding: 6px 12px 2px; color: var(--t4);
+  border-top: 1px solid var(--g400); margin-top: 2px;
+}
+.ctx-section:first-child { border-top: none; margin-top: 0; }
+.ctx-item.active { color: var(--neon); }
+.ctx-item.active::after { content: ' ✓'; font-size: 8px; margin-left: auto; }
+
 .cb-cell { width: 28px; text-align: center !important; }
 .cb-cell input[type="checkbox"],
 .rc-cb input[type="checkbox"] {
@@ -647,6 +672,18 @@ table.portfolio tr.selected td { color: var(--t1); }
         <option value="DISCARD">DISCARD</option>
         <option value="UNLABELED">UNLABELED</option>
       </select>
+      <select class="filter-select" id="filterSession">
+        <option value="">ALL SESSIONS</option>
+        <option value="ASIA">ASIA</option>
+        <option value="LONDON">LONDON</option>
+        <option value="NY">NY</option>
+      </select>
+      <select class="filter-select" id="filterStyle">
+        <option value="">ALL STYLES</option>
+        <option value="MICRO-IMPULSE">MICRO-IMPULSE</option>
+        <option value="MICRO-TREND">MICRO-TREND</option>
+        <option value="MICRO-DRIFT">MICRO-DRIFT</option>
+      </select>
       <input class="search-input" id="searchInput" placeholder="SEARCH...">
       <div class="view-toggle">
         <button class="view-toggle-btn active" data-rview="cards" id="btnViewCards">CARDS</button>
@@ -669,6 +706,8 @@ table.portfolio tr.selected td { color: var(--t1); }
               <th data-key="maxDDPct">MAX DD%</th>
               <th data-key="winRate">WIN%</th>
               <th data-key="totalTrades">TRADES</th>
+              <th data-key="session">SESSION</th>
+              <th data-key="style">STYLE</th>
               <th data-key="label">LABEL</th>
             </tr>
           </thead>
@@ -964,6 +1003,7 @@ table.portfolio tr.selected td { color: var(--t1); }
 
 <!-- Context Menu -->
 <div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-section">LABEL</div>
   <div class="ctx-item" data-label="WINNER">
     <span class="ctx-dot" style="background:var(--neon);box-shadow:0 0 4px var(--neon-glow)"></span> WINNER
   </div>
@@ -975,6 +1015,32 @@ table.portfolio tr.selected td { color: var(--t1); }
   </div>
   <div class="ctx-item" data-label="">
     <span class="ctx-dot" style="background:var(--t3)"></span> CLEAR LABEL
+  </div>
+  <div class="ctx-section">SESSION</div>
+  <div class="ctx-item" data-session="ASIA">
+    <span class="ctx-dot" style="background:var(--violet)"></span> ASIA
+  </div>
+  <div class="ctx-item" data-session="LONDON">
+    <span class="ctx-dot" style="background:var(--violet)"></span> LONDON
+  </div>
+  <div class="ctx-item" data-session="NY">
+    <span class="ctx-dot" style="background:var(--violet)"></span> NY
+  </div>
+  <div class="ctx-item" data-session="">
+    <span class="ctx-dot" style="background:var(--t3)"></span> CLEAR SESSION
+  </div>
+  <div class="ctx-section">TRADING STYLE</div>
+  <div class="ctx-item" data-style="MICRO-IMPULSE">
+    <span class="ctx-dot" style="background:#00bcd4"></span> MICRO-IMPULSE
+  </div>
+  <div class="ctx-item" data-style="MICRO-TREND">
+    <span class="ctx-dot" style="background:#00bcd4"></span> MICRO-TREND
+  </div>
+  <div class="ctx-item" data-style="MICRO-DRIFT">
+    <span class="ctx-dot" style="background:#00bcd4"></span> MICRO-DRIFT
+  </div>
+  <div class="ctx-item" data-style="">
+    <span class="ctx-dot" style="background:var(--t3)"></span> CLEAR STYLE
   </div>
 </div>
 
@@ -1005,6 +1071,8 @@ const STATE = {
   filterState: {
     symbol: '',
     label: '',
+    session: '',
+    style: '',
     search: '',
     sortKey: 'netProfit',
     sortDir: -1
@@ -1037,6 +1105,69 @@ function setLabel(id, label) {
   const labels = loadLabels();
   if (label) labels[id] = label; else delete labels[id];
   saveLabels(labels);
+}
+
+// ─── TAGS: SESSION & STYLE (persist in localStorage) ───
+// Extensible tag system — stored as { id: { session: "LONDON", style: "MICRO-DRIFT", ... } }
+function loadTags() {
+  try { return JSON.parse(localStorage.getItem('quantlab_tags') || '{}'); } catch { return {}; }
+}
+function saveTags(tags) {
+  localStorage.setItem('quantlab_tags', JSON.stringify(tags));
+}
+function getTag(id, category) {
+  const tags = loadTags();
+  return (tags[id] && tags[id][category]) || '';
+}
+function setTag(id, category, value) {
+  const tags = loadTags();
+  if (!tags[id]) tags[id] = {};
+  if (value) tags[id][category] = value;
+  else delete tags[id][category];
+  if (Object.keys(tags[id]).length === 0) delete tags[id];
+  saveTags(tags);
+}
+function getSession(id) { return getTag(id, 'session'); }
+function setSession(id, val) { setTag(id, 'session', val); }
+function getStyle(id) { return getTag(id, 'style'); }
+function setStyle(id, val) { setTag(id, 'style', val); }
+
+// Auto-detect session & style from filename/id
+function autoDetectTags(r) {
+  const name = ((r.filename || r.id) + ' ' + ((r.settings && r.settings.expert) || '')).toUpperCase();
+  const tags = loadTags();
+  const id = r.id;
+  if (!tags[id]) tags[id] = {};
+  let changed = false;
+
+  // Auto-detect session (only if not already set)
+  if (!tags[id].session) {
+    if (name.includes('LONDON')) { tags[id].session = 'LONDON'; changed = true; }
+    else if (name.includes('ASIA')) { tags[id].session = 'ASIA'; changed = true; }
+    else if (name.includes(' NY') || name.includes('_NY') || name.includes('-NY') || name.endsWith('NY')) { tags[id].session = 'NY'; changed = true; }
+  }
+
+  // Auto-detect trading style (only if not already set)
+  if (!tags[id].style) {
+    if (name.includes('MICRO-IMPULSE') || name.includes('MICRO_IMPULSE') || name.includes('MICROIMPULSE')) { tags[id].style = 'MICRO-IMPULSE'; changed = true; }
+    else if (name.includes('MICRO-TREND') || name.includes('MICRO_TREND') || name.includes('MICROTREND')) { tags[id].style = 'MICRO-TREND'; changed = true; }
+    else if (name.includes('MICRO-DRIFT') || name.includes('MICRO_DRIFT') || name.includes('MICRODRIFT')) { tags[id].style = 'MICRO-DRIFT'; changed = true; }
+  }
+
+  if (changed) {
+    if (Object.keys(tags[id]).length === 0) delete tags[id];
+    saveTags(tags);
+  }
+}
+
+// Build tag pills HTML for a report id
+function buildTagPills(id) {
+  const session = getSession(id);
+  const style = getStyle(id);
+  let html = '';
+  if (session) html += `<span class="tag-pill tag-session">${session}</span>`;
+  if (style) html += `<span class="tag-pill tag-style">${style}</span>`;
+  return html;
 }
 
 // ─── REPORT DATA ACCESSOR ───
@@ -1251,17 +1382,21 @@ document.getElementById('tabBar').addEventListener('click', e => {
 const FILTER_SYSTEM = {
   getFiltered() {
     let reports = Array.from(store.values());
-    const { symbol, label, search, sortKey, sortDir } = STATE.filterState;
+    const { symbol, label, session, style, search, sortKey, sortDir } = STATE.filterState;
 
     if (symbol) reports = reports.filter(r => getSymbol(r) === symbol);
     if (label === 'UNLABELED') reports = reports.filter(r => !getLabel(r.id));
     else if (label) reports = reports.filter(r => getLabel(r.id) === label);
+    if (session) reports = reports.filter(r => getSession(r.id) === session);
+    if (style) reports = reports.filter(r => getStyle(r.id) === style);
     if (search) {
       const s = search.toUpperCase();
       reports = reports.filter(r =>
         getSymbol(r).toUpperCase().includes(s) ||
         r.id.toUpperCase().includes(s) ||
-        ((r.settings && r.settings.expert) || r.expert || '').toUpperCase().includes(s)
+        ((r.settings && r.settings.expert) || r.expert || '').toUpperCase().includes(s) ||
+        getSession(r.id).toUpperCase().includes(s) ||
+        getStyle(r.id).toUpperCase().includes(s)
       );
     }
 
@@ -1269,6 +1404,8 @@ const FILTER_SYSTEM = {
       let va, vb;
       if (sortKey === 'symbol') { va = getSymbol(a); vb = getSymbol(b); return va < vb ? -sortDir : va > vb ? sortDir : 0; }
       if (sortKey === 'label') { va = getLabel(a.id) || 'zzz'; vb = getLabel(b.id) || 'zzz'; return va < vb ? -sortDir : va > vb ? sortDir : 0; }
+      if (sortKey === 'session') { va = getSession(a.id) || 'zzz'; vb = getSession(b.id) || 'zzz'; return va < vb ? -sortDir : va > vb ? sortDir : 0; }
+      if (sortKey === 'style') { va = getStyle(a.id) || 'zzz'; vb = getStyle(b.id) || 'zzz'; return va < vb ? -sortDir : va > vb ? sortDir : 0; }
       va = R(a, sortKey); vb = R(b, sortKey);
       return ((va||0) - (vb||0)) * sortDir;
     });
@@ -1287,6 +1424,14 @@ document.getElementById('filterSymbol').addEventListener('change', e => {
 });
 document.getElementById('filterLabel').addEventListener('change', e => {
   STATE.filterState.label = e.target.value;
+  renderReports();
+});
+document.getElementById('filterSession').addEventListener('change', e => {
+  STATE.filterState.session = e.target.value;
+  renderReports();
+});
+document.getElementById('filterStyle').addEventListener('change', e => {
+  STATE.filterState.style = e.target.value;
   renderReports();
 });
 document.getElementById('searchInput').addEventListener('input', e => {
@@ -1427,6 +1572,7 @@ function renderOverview() {
     const curve = getBalanceCurve(r);
     const sparkSvg = buildSparklineSVG(curve, 260, 50);
 
+    const tagPillsMini = buildTagPills(r.id);
     return `<div class="mini-card" data-id="${r.id}" onclick="selectReportForDetail('${r.id}')">
       <div class="mc-spark">${sparkSvg}</div>
       <div class="mc-body">
@@ -1434,6 +1580,7 @@ function renderOverview() {
           <span>${getSymbol(r)}</span>
           ${badgeHtml}
         </div>
+        ${tagPillsMini ? `<div class="mc-tags">${tagPillsMini}</div>` : ''}
         <div class="mc-metrics">
           <div class="mc-metric"><span class="mc-k">P&amp;L</span><span class="mc-v ${pnlClass}">${fmtPnl(pnl)}</span></div>
           <div class="mc-metric"><span class="mc-k">PF</span><span class="mc-v">${fmt(R(r,'profitFactor'))}</span></div>
@@ -1488,12 +1635,14 @@ function renderReportsCardGrid(reports) {
     const sparkSvg = buildSparklineSVG(curve, 280, 44);
     const checked = STATE.checkedForCompare.has(r.id) ? 'checked' : '';
 
+    const tagPills = buildTagPills(r.id);
     return `<div class="report-card" data-id="${r.id}">
       <div class="rc-top">
         <div class="rc-cb"><input type="checkbox" ${checked} data-id="${r.id}" onclick="event.stopPropagation();toggleCompare('${r.id}',this.checked)"></div>
         <div class="rc-symbol">${getSymbol(r)}</div>
         ${badgeHtml}
       </div>
+      ${tagPills ? `<div class="rc-tags" style="padding:0 12px">${tagPills}</div>` : ''}
       <div class="rc-spark" onclick="selectReportForDetail('${r.id}')">${sparkSvg}</div>
       <div class="rc-metrics" onclick="selectReportForDetail('${r.id}')">
         <div class="rc-m"><div class="rc-mk">P&amp;L</div><div class="rc-mv ${pnlClass}">${fmtPnl(pnl)}</div></div>
@@ -1521,6 +1670,11 @@ function renderReportsTable(reports) {
       : label === 'DISCARD' ? '<span class="badge badge-discard">DISCARD</span>'
       : '';
 
+    const sessionTag = getSession(r.id);
+    const styleTag = getStyle(r.id);
+    const sessionHtml = sessionTag ? `<span class="tag-pill tag-session">${sessionTag}</span>` : '';
+    const styleHtml = styleTag ? `<span class="tag-pill tag-style">${styleTag}</span>` : '';
+
     tr.innerHTML = `
       <td class="cb-cell"><input type="checkbox" ${STATE.checkedForCompare.has(r.id)?'checked':''} data-id="${r.id}"></td>
       <td style="color:var(--t1)">${getSymbol(r)}</td>
@@ -1530,6 +1684,8 @@ function renderReportsTable(reports) {
       <td>${fmtPct(R(r,'maxDDPct'))}</td>
       <td>${fmtPct(R(r,'winRate'))}</td>
       <td>${R(r,'totalTrades')}</td>
+      <td>${sessionHtml}</td>
+      <td>${styleHtml}</td>
       <td>${badgeHtml}</td>
     `;
     tbody.appendChild(tr);
@@ -1608,6 +1764,17 @@ document.addEventListener('contextmenu', e => {
   menu.style.top = e.clientY + 'px';
   menu.classList.add('show');
   menu.dataset.targetId = id;
+
+  // Highlight active label, session, style
+  const currentLabel = getLabel(id);
+  const currentSession = getSession(id);
+  const currentStyle = getStyle(id);
+  menu.querySelectorAll('.ctx-item').forEach(item => {
+    item.classList.remove('active');
+    if (item.dataset.label !== undefined && item.dataset.label && item.dataset.label === currentLabel) item.classList.add('active');
+    if (item.dataset.session !== undefined && item.dataset.session && item.dataset.session === currentSession) item.classList.add('active');
+    if (item.dataset.style !== undefined && item.dataset.style && item.dataset.style === currentStyle) item.classList.add('active');
+  });
 });
 
 document.getElementById('ctxMenu').addEventListener('click', e => {
@@ -1615,8 +1782,15 @@ document.getElementById('ctxMenu').addEventListener('click', e => {
   if (!item) return;
   const menu = document.getElementById('ctxMenu');
   const id = menu.dataset.targetId;
-  const label = item.dataset.label;
-  setLabel(id, label);
+
+  if (item.dataset.label !== undefined) {
+    setLabel(id, item.dataset.label);
+  } else if (item.dataset.session !== undefined) {
+    setSession(id, item.dataset.session);
+  } else if (item.dataset.style !== undefined) {
+    setStyle(id, item.dataset.style);
+  }
+
   menu.classList.remove('show');
   TAB_SYSTEM.renderActiveTab();
   updateKPIs();
@@ -2927,6 +3101,7 @@ function handleFiles(files) {
           }
           const report = parseMT5Report(text, file.name);
           store.set(report.id, report);
+          autoDetectTags(report);
         } catch (err) {
           console.error('Failed to parse:', file.name, err);
         }
@@ -2958,9 +3133,10 @@ document.body.addEventListener('drop', e => {
 
 document.getElementById('btnExportJSON').addEventListener('click', () => {
   const data = {
-    version: '2.0',
+    version: '2.1',
     exported: new Date().toISOString(),
     labels: loadLabels(),
+    tags: loadTags(),
     reports: Array.from(store.values()).map(r => ({
       id: r.id, filename: r.filename, symbol: getSymbol(r),
       settings: r.settings || {}, inputs: getInputs(r), results: r.results || {},
@@ -2979,7 +3155,7 @@ document.getElementById('btnExportCSV').addEventListener('click', () => {
   const headers = ['Symbol','Filename','Net Profit','Profit Factor','Sharpe Ratio','Recovery Factor',
     'Max DD%','Win Rate%','Total Trades','Expected Payoff','Long Win%','Short Win%',
     'Avg Profit Trade','Avg Loss Trade','LR Correlation','Gross Profit','Gross Loss',
-    'Largest Profit','Largest Loss','Avg Consec Wins','Avg Consec Losses','Label'];
+    'Largest Profit','Largest Loss','Avg Consec Wins','Avg Consec Losses','Session','Style','Label'];
   const rows = reports.map(r => [
     getSymbol(r), r.filename, R(r,'netProfit'), R(r,'profitFactor'), R(r,'sharpeRatio'),
     R(r,'recoveryFactor'), R(r,'maxDDPct'), R(r,'winRate'), R(r,'totalTrades'),
@@ -2987,7 +3163,7 @@ document.getElementById('btnExportCSV').addEventListener('click', () => {
     R(r,'avgProfitTrade'), R(r,'avgLossTrade'), R(r,'lrCorrelation'),
     R(r,'grossProfit'), R(r,'grossLoss'),
     R(r,'largestProfitTrade'), R(r,'largestLossTrade'),
-    R(r,'avgConsecWins'), R(r,'avgConsecLosses'), getLabel(r.id)
+    R(r,'avgConsecWins'), R(r,'avgConsecLosses'), getSession(r.id), getStyle(r.id), getLabel(r.id)
   ]);
   const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
@@ -3007,9 +3183,15 @@ document.getElementById('jsonInput').addEventListener('change', e => {
     try {
       const data = JSON.parse(ev.target.result);
       if (data.labels) saveLabels({ ...loadLabels(), ...data.labels });
+      if (data.tags) {
+        const existingTags = loadTags();
+        Object.assign(existingTags, data.tags);
+        saveTags(existingTags);
+      }
       if (data.reports) {
         data.reports.forEach(r => {
           if (!store.has(r.id)) store.set(r.id, r);
+          autoDetectTags(r);
         });
       }
       updateKPIs();
@@ -3112,18 +3294,37 @@ async function syncFromDrive() {
         if (row['Inputs JSON']) report.inputs = JSON.parse(row['Inputs JSON']);
       } catch(e) {}
 
+      // Parse balance curve from Drive data (V3 format: [[time, balance, profit], ...])
+      try {
+        const curveRaw = row['Balance Curve'];
+        if (curveRaw && typeof curveRaw === 'string' && curveRaw.length > 2) {
+          const curveArr = JSON.parse(curveRaw);
+          if (Array.isArray(curveArr) && curveArr.length > 0) {
+            report.balanceCurve = curveArr.map(p => ({
+              time: Array.isArray(p) ? p[0] : (p.time || ''),
+              balance: Array.isArray(p) ? p[1] : (p.balance || 0),
+              profit: Array.isArray(p) ? p[2] : (p.profit || 0)
+            }));
+          }
+        }
+      } catch(e) { console.warn('Balance curve parse error:', e); }
+
       store.set(id, report);
+      autoDetectTags(report);
       newCount++;
     });
 
     DRIVE_SYNC.lastSync = new Date();
     const timeStr = DRIVE_SYNC.lastSync.toTimeString().slice(0,5);
     if (newCount > 0) {
-      setDriveStatus(rows.length + ' REPORTS \u00B7 +' + newCount + ' NEW \u00B7 ' + timeStr, 'var(--t2)');
+      setDriveStatus(rows.length + ' REPORTS · +' + newCount + ' NEW · ' + timeStr, 'var(--t2)');
       updateKPIs();
       TAB_SYSTEM.renderActiveTab();
+
+      // For reports missing balance curves, fetch the original HTML from Drive and parse client-side
+      fetchDriveBalanceCurves();
     } else {
-      setDriveStatus(rows.length + ' REPORTS \u00B7 ' + timeStr, 'var(--t3)');
+      setDriveStatus(rows.length + ' REPORTS · ' + timeStr, 'var(--t3)');
     }
 
   } catch (err) {
@@ -3137,6 +3338,62 @@ async function syncFromDrive() {
 }
 
 document.getElementById('btnSyncDrive').addEventListener('click', syncFromDrive);
+
+// ─── DRIVE BALANCE CURVE FETCHER ───
+// For Drive-synced reports missing balance curves, fetch original
+// MT5 HTML via Apps Script proxy and parse client-side (same DOM parser as local imports).
+async function fetchDriveBalanceCurves() {
+  const missing = [];
+  for (const [id, r] of store) {
+    if (r.source === 'drive' && r.driveFileId && (!r.balanceCurve || r.balanceCurve.length === 0)) {
+      missing.push(r);
+    }
+  }
+  if (missing.length === 0) return;
+
+  console.log('Fetching balance curves for ' + missing.length + ' Drive reports...');
+  setDriveStatus('LOADING CURVES (0/' + missing.length + ')...', 'var(--amber)');
+
+  let loaded = 0;
+  for (const report of missing) {
+    try {
+      // Use Apps Script as proxy to avoid CORS issues with file:// origin
+      var proxyUrl = DRIVE_SYNC.WEB_APP_URL + '?action=getHtml&fileId=' + encodeURIComponent(report.driveFileId);
+      const resp = await fetch(proxyUrl);
+      if (!resp.ok) {
+        console.warn('Failed to fetch ' + report.filename + ': ' + resp.status);
+        continue;
+      }
+
+      const json = await resp.json();
+      if (json.error || !json.html) {
+        console.warn('No HTML returned for ' + report.filename + ': ' + (json.error || 'empty'));
+        continue;
+      }
+
+      // Parse using same DOM parser as local imports
+      const parsed = parseMT5Report(json.html, report.filename);
+      if (parsed && parsed.balanceCurve && parsed.balanceCurve.length > 0) {
+        report.balanceCurve = parsed.balanceCurve;
+        report.deals = parsed.deals || report.deals;
+        loaded++;
+        console.log('Loaded ' + parsed.balanceCurve.length + ' curve points for ' + report.filename);
+      }
+
+      setDriveStatus('LOADING CURVES (' + loaded + '/' + missing.length + ')...', 'var(--amber)');
+    } catch (e) {
+      console.warn('Balance curve fetch error for ' + report.filename + ':', e);
+    }
+  }
+
+  if (loaded > 0) {
+    var timeStr = new Date().toTimeString().slice(0, 5);
+    setDriveStatus(store.size + ' REPORTS \u00B7 ' + loaded + ' CURVES \u00B7 ' + timeStr, 'var(--t2)');
+    updateKPIs();
+    TAB_SYSTEM.renderActiveTab();
+  }
+  console.log('Done: loaded ' + loaded + '/' + missing.length + ' balance curves from Drive');
+}
 
 // Auto-sync on load + every 5 minutes
 syncFromDrive();
