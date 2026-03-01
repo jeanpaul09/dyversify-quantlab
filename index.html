@@ -353,6 +353,12 @@ table.portfolio tr.selected td { color: var(--t1); }
 .breadcrumb .bc-link:hover { color: var(--t1); }
 .breadcrumb .bc-sep { color: var(--t4); }
 .breadcrumb .bc-current { color: var(--t1); }
+.breadcrumb .bc-period {
+  font-family: var(--mono); font-size: 8px; color: var(--t2);
+  background: var(--g700); border: 1px solid var(--g400);
+  padding: 2px 8px; border-radius: 3px; letter-spacing: 0.06em;
+  white-space: nowrap; margin-left: 4px;
+}
 
 /* Chart container */
 .chart-panel {
@@ -949,6 +955,7 @@ table.portfolio tr.selected td { color: var(--t1); }
           <span class="bc-link" onclick="TAB_SYSTEM.switchTab('reports')">REPORTS</span>
           <span class="bc-sep">&#x25B6;</span>
           <span class="bc-current" id="bcReportName">—</span>
+          <span class="bc-period" id="bcPeriod" style="display:none"></span>
         </div>
 
         <!-- Equity Curve -->
@@ -1560,6 +1567,51 @@ function fmtPnl(n) {
   return prefix + fmt(Math.abs(n));
 }
 function fmtPct(n) { return isNaN(n) ? '\u2014' : fmt(n, 2) + '%'; }
+function fmtHoldTime(val) {
+  if (!val) return '\u2014';
+  // Handle ISO date from Google Sheets epoch (1899-12-30T06:10:14.000Z)
+  if (typeof val === 'string' && val.includes('1899')) {
+    const m = val.match(/T(\d{2}):(\d{2}):(\d{2})/);
+    if (m) {
+      const h = parseInt(m[1]), mn = parseInt(m[2]), s = parseInt(m[3]);
+      // Check if date part has days offset from 1899-12-30
+      const dm = val.match(/1899-12-(\d{2})/);
+      const days = dm ? parseInt(dm[1]) - 30 : 0;
+      const parts = [];
+      if (days > 0) parts.push(days + 'd');
+      if (h > 0 || days > 0) parts.push(h + 'h');
+      parts.push(mn + 'm');
+      if (parts.length < 2) parts.push(s + 's');
+      return parts.join(' ');
+    }
+  }
+  // Handle raw MT5 format: "d:hh:mm:ss" or "hh:mm:ss"
+  if (typeof val === 'string' && val.match(/^\d+:\d{2}(:\d{2}(:\d{2})?)?$/)) {
+    const p = val.split(':').map(Number);
+    if (p.length === 4) { // d:h:m:s
+      const parts = [];
+      if (p[0] > 0) parts.push(p[0] + 'd');
+      if (p[1] > 0 || p[0] > 0) parts.push(p[1] + 'h');
+      parts.push(p[2] + 'm');
+      return parts.join(' ');
+    }
+    if (p.length === 3) return (p[0] > 0 ? p[0] + 'h ' : '') + p[1] + 'm';
+    if (p.length === 2) return p[0] + 'm ' + p[1] + 's';
+  }
+  // Handle numeric (fractional days from Sheets)
+  if (!isNaN(parseFloat(val)) && parseFloat(val) < 100) {
+    const totalSec = Math.round(parseFloat(val) * 86400);
+    const d = Math.floor(totalSec / 86400);
+    const h = Math.floor((totalSec % 86400) / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const parts = [];
+    if (d > 0) parts.push(d + 'd');
+    if (h > 0 || d > 0) parts.push(h + 'h');
+    parts.push(m + 'm');
+    return parts.join(' ');
+  }
+  return String(val);
+}
 
 // ─── TAB SYSTEM ───
 const TAB_SYSTEM = {
@@ -2308,6 +2360,14 @@ function renderDetail() {
 
   // Breadcrumb
   document.getElementById('bcReportName').textContent = getSymbol(r) + ' \u2014 ' + r.id;
+  const periodEl = document.getElementById('bcPeriod');
+  const periodStr = (r.settings && r.settings.period) || '';
+  if (periodStr) {
+    periodEl.textContent = periodStr;
+    periodEl.style.display = '';
+  } else {
+    periodEl.style.display = 'none';
+  }
   document.getElementById('chartLabel').textContent = getSymbol(r) + ' \u2014 EQUITY CURVE';
 
   // Reset toggle to BALANCE mode
@@ -2364,7 +2424,7 @@ function renderDetail() {
     { label: 'LR CORRELATION', value: fmt(R(r,'lrCorrelation'), 4) },
     { label: 'GROSS PROFIT', value: '$' + fmt(R(r,'grossProfit')), color: true },
     { label: 'GROSS LOSS', value: '$' + fmt(Math.abs(R(r,'grossLoss'))), neg: true },
-    { label: 'AVG HOLD TIME', value: R(r,'avgHoldTime') || '\u2014' },
+    { label: 'AVG HOLD TIME', value: fmtHoldTime(R(r,'avgHoldTime')) },
   ];
 
   document.getElementById('metricsGrid').innerHTML = metricsData.map(m => {
