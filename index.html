@@ -415,21 +415,24 @@ table.portfolio tr.selected td { color: var(--t1); }
 .mc-empty { text-align: center; padding: 24px; }
 
 /* Portfolio */
-.pf-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
-.pf-selector { display: flex; gap: 4px; overflow-x: auto; flex: 1; }
-.pf-pill { font-family: var(--mono); font-size: 9px; color: var(--t2); background: var(--g700); border: 1px solid var(--g400); padding: 4px 14px; cursor: pointer; white-space: nowrap; letter-spacing: 0.06em; }
-.pf-pill.active { background: var(--acc); color: var(--bg); font-weight: 700; }
-.pf-pill:hover { border-color: var(--t3); }
 .pf-empty { text-align: center; padding: 48px 24px; }
+.pf-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.pf-card { background: var(--g800); border: 1px solid var(--g400); padding: 16px; cursor: pointer; transition: border-color 0.15s; }
+.pf-card:hover { border-color: var(--t3); }
+.pf-card-name { font-family: var(--mono); font-size: 11px; color: var(--acc); font-weight: 700; letter-spacing: 0.06em; margin-bottom: 8px; text-transform: uppercase; }
+.pf-card-count { font-family: var(--mono); font-size: 8px; color: var(--t3); margin-bottom: 10px; letter-spacing: 0.08em; }
+.pf-card-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pf-card-metric { }
+.pf-card-k { font-family: var(--mono); font-size: 7px; color: var(--t3); letter-spacing: 0.08em; }
+.pf-card-v { font-family: var(--mono); font-size: 12px; color: var(--t1); }
 .pf-kpi-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px; }
 .pf-kpi { background: var(--g800); border: 1px solid var(--g400); padding: 10px 12px; }
 .pf-kpi-label { font-family: var(--mono); font-size: 7px; color: var(--t3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 3px; }
 .pf-kpi-value { font-family: var(--mono); font-size: 16px; color: var(--acc); font-weight: 600; }
 .pf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 .pf-strategy-list { max-height: 300px; overflow-y: auto; }
-.pf-strat-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-bottom: 1px solid var(--g600); font-family: var(--mono); font-size: 10px; color: var(--t2); cursor: pointer; }
+.pf-strat-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--g600); font-family: var(--mono); font-size: 10px; color: var(--t2); cursor: pointer; }
 .pf-strat-row:hover { background: var(--g700); }
-.pf-strat-row input[type=checkbox] { accent-color: var(--neon); }
 .pf-strat-name { flex: 1; }
 .pf-strat-pnl { min-width: 80px; text-align: right; }
 .pf-corr-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 8px; }
@@ -441,6 +444,13 @@ table.portfolio tr.selected td { color: var(--t1); }
 .pf-algo-title { font-family: var(--mono); font-size: 10px; color: var(--neon); font-weight: 700; letter-spacing: 0.06em; margin-bottom: 4px; }
 .pf-algo-detail { font-family: var(--mono); font-size: 9px; color: var(--t2); line-height: 1.5; }
 .pf-algo-score { font-family: var(--mono); font-size: 8px; color: var(--t3); margin-top: 2px; }
+.pf-param-toggles { display: flex; gap: 4px; flex-wrap: wrap; }
+.pf-param-toggle { font-family: var(--mono); font-size: 7px; padding: 2px 8px; background: var(--g700); border: 1px solid var(--g400); color: var(--t3); cursor: pointer; letter-spacing: 0.06em; }
+.pf-param-toggle.active { background: var(--g500); color: var(--acc); border-color: var(--t3); }
+.pf-param-htable { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 9px; }
+.pf-param-htable th { padding: 6px 10px; text-align: left; color: var(--t3); font-weight: 400; font-size: 8px; letter-spacing: 0.06em; border-bottom: 1px solid var(--g400); white-space: nowrap; background: var(--g800); position: sticky; top: 0; }
+.pf-param-htable td { padding: 5px 10px; color: var(--t2); border-bottom: 1px solid var(--g600); white-space: nowrap; }
+.pf-param-htable tr:hover td { background: var(--g700); }
 
 /* Metrics grid */
 .metrics-grid {
@@ -532,6 +542,20 @@ table.portfolio tr.selected td { color: var(--t1); }
 .compare-table td:first-child { text-align: left; color: var(--t1); }
 .compare-table td.best { color: var(--neon); text-shadow: 0 0 4px var(--neon-glow); }
 .compare-table td.worst { color: var(--crimson); text-shadow: 0 0 4px var(--crimson-glow); }
+
+/* Compare mode bar */
+.cmp-mode-bar {
+  display: flex; gap: 0; margin-bottom: 16px; border: 1px solid var(--g400); width: fit-content;
+}
+.cmp-mode-btn {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; font-weight: 500;
+  padding: 6px 16px; border: none; background: transparent; color: var(--t3);
+  cursor: pointer; transition: all 0.15s;
+}
+.cmp-mode-btn.active {
+  background: var(--g500); color: var(--acc);
+}
+.cmp-mode-btn:hover:not(.active) { background: var(--g600); color: var(--t2); }
 
 /* ─── PERFORMANCE TAB ─── */
 .perf-grid {
@@ -798,10 +822,13 @@ table.portfolio tr.selected td { color: var(--t1); }
   .mc-controls { gap: 6px; }
 
   /* Portfolio mobile */
+  .pf-cards-grid { grid-template-columns: 1fr; }
   .pf-kpi-strip { grid-template-columns: repeat(2, 1fr); }
   .pf-grid { grid-template-columns: 1fr; }
   .pf-corr-table { font-size: 7px; }
   .pf-corr-table th, .pf-corr-table td { padding: 3px 4px; }
+  .pf-param-htable { font-size: 8px; }
+  .pf-param-htable th, .pf-param-htable td { padding: 4px 6px; }
 }
 
 /* Correlation Matrix */
@@ -931,7 +958,6 @@ table.portfolio tr.selected td { color: var(--t1); }
         <div class="kpi-sub" id="kpiAvgWRSub">&mdash;</div>
       </div>
     </div>
-    <div id="overviewPortfolioBanner" style="display:none;margin-bottom:12px;cursor:pointer" onclick="TAB_SYSTEM.switchTab('portfolio')"></div>
     <div class="mini-card-grid" id="overviewGrid"></div>
     <div class="empty-state" id="overviewEmpty">
       <div class="empty-icon">&#x26A1;</div>
@@ -966,6 +992,7 @@ table.portfolio tr.selected td { color: var(--t1); }
         <option value="MICRO-IMPULSE">MICRO-IMPULSE</option>
         <option value="MICRO-TREND">MICRO-TREND</option>
         <option value="MICRO-DRIFT">MICRO-DRIFT</option>
+        <option value="MICRO-ABSORPTION">MICRO-ABSORPTION</option>
       </select>
       <input class="search-input" id="searchInput" placeholder="SEARCH...">
       <div class="view-toggle">
@@ -1145,6 +1172,12 @@ table.portfolio tr.selected td { color: var(--t1); }
   <!-- ═══ TAB 4: COMPARE ═══ -->
   <div class="tab-pane" id="paneCompare">
     <div style="padding:16px 24px;">
+      <!-- Compare mode toggle -->
+      <div class="cmp-mode-bar" id="cmpModeBar">
+        <button class="cmp-mode-btn active" data-cmode="pairs" onclick="COMPARE_SYSTEM.setMode('pairs')">COMPARE PAIRS</button>
+        <button class="cmp-mode-btn" data-cmode="portfolios" onclick="COMPARE_SYSTEM.setMode('portfolios')">COMPARE PORTFOLIOS</button>
+      </div>
+
       <div class="empty-state" id="compareEmpty">
         <div class="empty-icon">&#x2194;</div>
         <div class="empty-title">SELECT 2+ REPORTS TO COMPARE</div>
@@ -1154,27 +1187,34 @@ table.portfolio tr.selected td { color: var(--t1); }
         <!-- Overlay Chart -->
         <div class="chart-panel">
           <div class="chart-header">
-            <span class="chart-title">OVERLAY EQUITY CURVES (% RETURN)</span>
+            <span class="chart-title" id="cmpChartTitle">OVERLAY EQUITY CURVES (% RETURN)</span>
           </div>
           <div class="chart-canvas-wrap">
             <canvas id="compareChart"></canvas>
           </div>
         </div>
 
-        <!-- Comparison Tables — Side by Side -->
-        <div class="compare-row">
-          <div class="compare-section">
-            <div class="compare-title">METRICS COMPARISON</div>
+        <!-- Metrics Comparison -->
+        <div class="compare-section" style="margin-bottom:12px">
+          <div class="compare-title">METRICS COMPARISON</div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
             <table class="compare-table" id="compareMetricsTable">
               <thead id="compareMetricsHead"></thead>
               <tbody id="compareMetricsBody"></tbody>
             </table>
           </div>
-          <div class="compare-section">
-            <div class="compare-title">PARAMETER DIFFERENCES</div>
-            <table class="compare-table" id="paramDiffTable">
-              <thead id="paramDiffHead"></thead>
-              <tbody id="paramDiffBody"></tbody>
+        </div>
+
+        <!-- Parameter Differences (horizontal with toggles) -->
+        <div class="compare-section" id="cmpParamSection">
+          <div class="compare-title" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            PARAMETER DIFFERENCES
+            <div class="pf-param-toggles" id="cmpParamToggles"></div>
+          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;max-height:500px;overflow-y:auto">
+            <table class="pf-param-htable" id="cmpParamHTable">
+              <thead id="cmpParamHHead"></thead>
+              <tbody id="cmpParamHBody"></tbody>
             </table>
           </div>
         </div>
@@ -1322,29 +1362,33 @@ table.portfolio tr.selected td { color: var(--t1); }
   <!-- ═══ TAB 6: PORTFOLIO ═══ -->
   <div class="tab-pane" id="panePortfolio">
     <div style="padding:16px 24px;">
-      <div class="pf-toolbar">
-        <button class="action-btn" id="pfNewBtn" style="font-size:9px;padding:4px 14px">+ NEW PORTFOLIO</button>
-        <button class="action-btn" id="pfDeleteBtn" style="font-size:9px;padding:4px 10px;background:var(--g600)">DELETE</button>
-        <div class="pf-selector" id="pfSelector"></div>
-      </div>
-
       <div class="pf-empty" id="pfEmpty">
         <div class="empty-icon">&#x1F4CA;</div>
-        <div class="empty-title">CREATE YOUR FIRST PORTFOLIO</div>
-        <div class="empty-sub">Combine strategies to see combined performance and optimal allocations</div>
+        <div class="empty-title">NO PORTFOLIOS DETECTED</div>
+        <div class="empty-sub">Portfolios are auto-grouped by trading regime (Micro-Impulse, Micro-Trend, etc.)<br>Tag your reports with a style to see them grouped here</div>
       </div>
 
-      <div id="pfContent" style="display:none">
+      <!-- Portfolio cards grid (auto-grouped by regime) -->
+      <div id="pfCardsGrid" class="pf-cards-grid"></div>
+
+      <!-- Expanded portfolio detail (shows when clicking a portfolio) -->
+      <div id="pfDetail" style="display:none">
+        <div class="breadcrumb" style="margin-bottom:12px">
+          <span class="bc-link" onclick="PORTFOLIO_SYSTEM.closeDetail()">PORTFOLIOS</span>
+          <span class="bc-sep">/</span>
+          <span class="bc-current" id="pfDetailName">—</span>
+        </div>
+
+        <!-- Portfolio KPIs -->
+        <div class="pf-kpi-strip" id="pfKPIs"></div>
+
         <!-- Combined Equity -->
         <div class="chart-panel">
           <div class="chart-header"><span class="chart-title">COMBINED EQUITY CURVE</span></div>
           <div class="chart-canvas-wrap"><canvas id="pfEquityChart"></canvas></div>
         </div>
 
-        <!-- Portfolio KPIs -->
-        <div class="pf-kpi-strip" id="pfKPIs"></div>
-
-        <!-- Grid: Allocation + Correlation -->
+        <!-- Grid: Pairs within portfolio + Correlation -->
         <div class="pf-grid">
           <div class="chart-panel">
             <div class="chart-header"><span class="chart-title">STRATEGY ALLOCATION</span></div>
@@ -1352,25 +1396,34 @@ table.portfolio tr.selected td { color: var(--t1); }
           </div>
           <div class="chart-panel">
             <div class="chart-header"><span class="chart-title">CORRELATION MATRIX</span></div>
-            <div id="pfCorrelation"></div>
+            <div id="pfCorrelation" style="overflow-x:auto"></div>
           </div>
         </div>
 
-        <!-- Strategy List (add/remove) -->
+        <!-- Pairs list (click to go to detail) -->
         <div class="chart-panel">
-          <div class="chart-header"><span class="chart-title">STRATEGIES</span></div>
-          <div id="pfStrategyList" class="pf-strategy-list"></div>
+          <div class="chart-header"><span class="chart-title">PAIRS IN PORTFOLIO</span></div>
+          <div id="pfPairsList" class="pf-strategy-list"></div>
+        </div>
+
+        <!-- Parameter comparison (horizontal) -->
+        <div class="chart-panel" id="pfParamPanel" style="display:none">
+          <div class="chart-header">
+            <span class="chart-title">PARAMETER COMPARISON</span>
+            <div class="pf-param-toggles" id="pfParamToggles"></div>
+          </div>
+          <div id="pfParamTable" style="overflow-x:auto"></div>
         </div>
       </div>
 
-      <!-- Algo Recommendations (always visible when reports exist) -->
+      <!-- Algo Recommendations -->
       <div class="chart-panel" id="pfAlgoPanel" style="display:none;margin-top:12px">
         <div class="chart-header">
-          <span class="chart-title">OPTIMAL PORTFOLIO RECOMMENDATIONS</span>
-          <button class="chart-toggle active" id="pfAlgoRunBtn" onclick="PORTFOLIO_SYSTEM.runAlgo()">COMPUTE</button>
+          <span class="chart-title">OPTIMAL COMBINATIONS</span>
+          <button class="chart-toggle active" onclick="PORTFOLIO_SYSTEM.runAlgo()">COMPUTE</button>
         </div>
         <div id="pfAlgoResults" style="font-family:var(--mono);font-size:10px;color:var(--t2);line-height:1.6;padding:4px 0">
-          <span style="color:var(--t3)">Click COMPUTE to find optimal strategy combinations</span>
+          <span style="color:var(--t3)">Click COMPUTE to find optimal cross-regime combinations</span>
         </div>
       </div>
     </div>
@@ -1427,6 +1480,9 @@ table.portfolio tr.selected td { color: var(--t1); }
   </div>
   <div class="ctx-item" data-style="MICRO-DRIFT">
     <span class="ctx-dot" style="background:#00bcd4"></span> MICRO-DRIFT
+  </div>
+  <div class="ctx-item" data-style="MICRO-ABSORPTION">
+    <span class="ctx-dot" style="background:#00bcd4"></span> MICRO-ABSORPTION
   </div>
   <div class="ctx-item" data-style="">
     <span class="ctx-dot" style="background:var(--t3)"></span> CLEAR STYLE
@@ -1541,6 +1597,7 @@ function autoDetectTags(r) {
     if (name.includes('MICRO-IMPULSE') || name.includes('MICRO_IMPULSE') || name.includes('MICROIMPULSE')) { tags[id].style = 'MICRO-IMPULSE'; changed = true; }
     else if (name.includes('MICRO-TREND') || name.includes('MICRO_TREND') || name.includes('MICROTREND')) { tags[id].style = 'MICRO-TREND'; changed = true; }
     else if (name.includes('MICRO-DRIFT') || name.includes('MICRO_DRIFT') || name.includes('MICRODRIFT')) { tags[id].style = 'MICRO-DRIFT'; changed = true; }
+    else if (name.includes('MICRO-ABSORPTION') || name.includes('MICRO_ABSORPTION') || name.includes('MICROABSORPTION')) { tags[id].style = 'MICRO-ABSORPTION'; changed = true; }
   }
 
   if (changed) {
@@ -2264,31 +2321,6 @@ function renderOverview() {
   const grid = document.getElementById('overviewGrid');
   const empty = document.getElementById('overviewEmpty');
 
-  // Portfolio banner in overview
-  const pfBanner = document.getElementById('overviewPortfolioBanner');
-  if (PORTFOLIO_SYSTEM.portfolios.size > 0) {
-    let bestPf = null, bestPnl = -Infinity;
-    for (const [id, pf] of PORTFOLIO_SYSTEM.portfolios) {
-      if (pf.reportIds.length >= 2) {
-        const m = PORTFOLIO_SYSTEM.computePortfolioMetrics(pf.reportIds);
-        if (m && m.netProfit > bestPnl) { bestPnl = m.netProfit; bestPf = { pf, m }; }
-      }
-    }
-    if (bestPf) {
-      const m = bestPf.m;
-      pfBanner.style.display = '';
-      pfBanner.innerHTML = '<div class="chart-panel" style="margin:0;padding:12px 16px;border-color:var(--neon);border-width:1px">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">' +
-        '<div><span style="font-family:var(--mono);font-size:9px;color:var(--neon);font-weight:700;letter-spacing:0.08em">BEST PORTFOLIO: ' + bestPf.pf.name.toUpperCase() + '</span>' +
-        '<span style="font-family:var(--mono);font-size:8px;color:var(--t3);margin-left:8px">' + bestPf.pf.reportIds.length + ' strategies</span></div>' +
-        '<div style="display:flex;gap:16px">' +
-        '<span style="font-family:var(--mono);font-size:10px;color:' + (m.netProfit >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">P&L: $' + Math.round(m.netProfit).toLocaleString() + '</span>' +
-        '<span style="font-family:var(--mono);font-size:10px;color:var(--crimson)">DD: ' + m.maxDD.toFixed(1) + '%</span>' +
-        '<span style="font-family:var(--mono);font-size:10px;color:var(--t2)">DIV: ' + (m.divRatio * 100).toFixed(0) + '%</span>' +
-        '</div></div></div>';
-    } else { pfBanner.style.display = 'none'; }
-  } else { pfBanner.style.display = 'none'; }
-
   if (store.size === 0) {
     grid.classList.add('hidden');
     empty.classList.remove('hidden');
@@ -2297,36 +2329,69 @@ function renderOverview() {
   grid.classList.remove('hidden');
   empty.classList.add('hidden');
 
+  // Check if we have regime-tagged portfolios
+  const regimes = PORTFOLIO_SYSTEM.getRegimePortfolios();
+  const regimeNames = Object.keys(regimes);
+  const hasPortfolios = regimeNames.length > 0;
+
+  let html = '';
+
+  // Portfolio cards (if any regimes exist)
+  if (hasPortfolios) {
+    // Sort regimes by combined P&L
+    const regimeSorted = regimeNames.map(rg => {
+      const m = PORTFOLIO_SYSTEM.computePortfolioMetrics(regimes[rg]);
+      return { regime: rg, ids: regimes[rg], m };
+    }).filter(p => p.m).sort((a, b) => b.m.netProfit - a.m.netProfit);
+
+    html += regimeSorted.map(pf => {
+      const m = pf.m;
+      const pnlColor = m.netProfit >= 0 ? 'pnl-pos' : 'pnl-neg';
+      // Build combined sparkline
+      const { combined } = PORTFOLIO_SYSTEM.computeCombined(pf.ids);
+      const sparkSvg = combined.length > 2 ? buildSparklineSVG(combined, 260, 50) : '';
+
+      return '<div class="mini-card" onclick="TAB_SYSTEM.switchTab(\'portfolio\');PORTFOLIO_SYSTEM.openDetail(\'' + pf.regime + '\')">' +
+        '<div class="mc-spark">' + sparkSvg + '</div>' +
+        '<div class="mc-body">' +
+        '<div class="mc-symbol"><span>' + pf.regime + '</span><span class="badge" style="background:rgba(0,188,212,0.15);color:#00bcd4;border:1px solid rgba(0,188,212,0.3);font-size:7px;padding:1px 5px;margin-left:4px">' + pf.ids.length + ' PAIRS</span></div>' +
+        '<div class="mc-metrics">' +
+        '<div class="mc-metric"><span class="mc-k">P&amp;L</span><span class="mc-v ' + pnlColor + '">' + fmtPnl(m.netProfit) + '</span></div>' +
+        '<div class="mc-metric"><span class="mc-k">PF</span><span class="mc-v">' + fmt(m.profitFactor) + '</span></div>' +
+        '<div class="mc-metric"><span class="mc-k">SHARPE</span><span class="mc-v">' + fmt(m.avgSharpe) + '</span></div>' +
+        '<div class="mc-metric"><span class="mc-k">DD%</span><span class="mc-v">' + fmtPct(m.maxDD) + '</span></div>' +
+        '</div></div></div>';
+    }).join('');
+  }
+
+  // Individual reports that have NO regime tag
   const rawReports = Array.from(store.values());
   const reports = DATE_FILTER.isActive() ? rawReports.map(r => DATE_FILTER.getView(r)).filter(Boolean) : rawReports;
-  reports.sort((a, b) => R(b, 'netProfit') - R(a, 'netProfit'));
+  const untaggedReports = reports.filter(r => !getStyle(r.id));
+  untaggedReports.sort((a, b) => R(b, 'netProfit') - R(a, 'netProfit'));
 
-  grid.innerHTML = reports.map(rv => {
+  html += untaggedReports.map(rv => {
     const pnl = R(rv, 'netProfit');
     const pnlClass = pnl >= 0 ? 'pnl-pos' : 'pnl-neg';
     const label = getLabel(rv.id);
-    const badgeHtml = label ? `<span class="badge badge-${label.toLowerCase()}">${label}</span>` : '';
+    const badgeHtml = label ? '<span class="badge badge-' + label.toLowerCase() + '">' + label + '</span>' : '';
     const curve = getBalanceCurve(rv);
     const sparkSvg = buildSparklineSVG(curve, 260, 50);
 
     const tagPillsMini = buildTagPills(rv.id);
-    return `<div class="mini-card" data-id="${rv.id}" onclick="selectReportForDetail('${rv.id}')">
-      <div class="mc-spark">${sparkSvg}</div>
-      <div class="mc-body">
-        <div class="mc-symbol">
-          <span>${getSymbol(rv)}</span>
-          ${tagPillsMini || ''}
-          ${badgeHtml}
-        </div>
-        <div class="mc-metrics">
-          <div class="mc-metric"><span class="mc-k">P&amp;L</span><span class="mc-v ${pnlClass}">${fmtPnl(pnl)}</span></div>
-          <div class="mc-metric"><span class="mc-k">PF</span><span class="mc-v">${fmt(R(rv,'profitFactor'))}</span></div>
-          <div class="mc-metric"><span class="mc-k">SHARPE</span><span class="mc-v">${fmt(R(rv,'sharpeRatio'))}</span></div>
-          <div class="mc-metric"><span class="mc-k">DD%</span><span class="mc-v">${fmtPct(R(rv,'maxDDPct'))}</span></div>
-        </div>
-      </div>
-    </div>`;
+    return '<div class="mini-card" data-id="' + rv.id + '" onclick="selectReportForDetail(\'' + rv.id + '\')">' +
+      '<div class="mc-spark">' + sparkSvg + '</div>' +
+      '<div class="mc-body">' +
+      '<div class="mc-symbol"><span>' + getSymbol(rv) + '</span>' + (tagPillsMini || '') + badgeHtml + '</div>' +
+      '<div class="mc-metrics">' +
+      '<div class="mc-metric"><span class="mc-k">P&amp;L</span><span class="mc-v ' + pnlClass + '">' + fmtPnl(pnl) + '</span></div>' +
+      '<div class="mc-metric"><span class="mc-k">PF</span><span class="mc-v">' + fmt(R(rv,'profitFactor')) + '</span></div>' +
+      '<div class="mc-metric"><span class="mc-k">SHARPE</span><span class="mc-v">' + fmt(R(rv,'sharpeRatio')) + '</span></div>' +
+      '<div class="mc-metric"><span class="mc-k">DD%</span><span class="mc-v">' + fmtPct(R(rv,'maxDDPct')) + '</span></div>' +
+      '</div></div></div>';
   }).join('');
+
+  grid.innerHTML = html;
 }
 
 function selectReportForDetail(id) {
@@ -2587,22 +2652,24 @@ function renderDetail() {
 
   // Additional detail charts (require deal-level data)
   if (hasDeals) {
+    ['tradePnlPanel','longShortPanel','streakPanel'].forEach(pid => document.getElementById(pid).classList.remove('hidden'));
     buildTradePnlChart(r);
     buildLongShortChart(r);
     buildStreakChart(r);
   } else {
-    ['tradePnlPanel','longShortPanel','streakPanel'].forEach(id => document.getElementById(id).classList.add('hidden'));
+    ['tradePnlPanel','longShortPanel','streakPanel'].forEach(pid => document.getElementById(pid).classList.add('hidden'));
   }
 
   // Monthly returns (requires balance curve with timestamps)
   if (curve.length > 5) {
+    document.getElementById('monthlyReturnsPanel').classList.remove('hidden');
     buildMonthlyReturnsChart(r);
   } else {
     document.getElementById('monthlyReturnsPanel').classList.add('hidden');
   }
 
   // Monte Carlo section
-  MONTE_CARLO.renderSection(r);
+  try { MONTE_CARLO.renderSection(r); } catch(e) { console.warn('MC render error:', e); }
 
   // Metrics grid
   const metricsData = [
@@ -3177,11 +3244,138 @@ function buildStreakChart(r) {
 }
 
 // ─── COMPARE TAB ───
+const COMPARE_SYSTEM = {
+  mode: 'pairs',  // 'pairs' or 'portfolios'
+  _paramToggles: {},  // { groupName: true/false }
+  _selectedPortfolios: new Set(),  // regime names selected for portfolio compare
+
+  setMode(mode) {
+    this.mode = mode;
+    document.querySelectorAll('.cmp-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.cmode === mode));
+    this._paramToggles = {};
+    renderCompare();
+  },
+
+  toggleParamGroup(group) {
+    this._paramToggles[group] = !this._paramToggles[group];
+    this._renderParamSection();
+  },
+
+  togglePortfolioSelect(regime) {
+    if (this._selectedPortfolios.has(regime)) this._selectedPortfolios.delete(regime);
+    else this._selectedPortfolios.add(regime);
+    renderCompare();
+  },
+
+  // Build grouped parameter structure from a set of reports
+  _getParamGroups(reports) {
+    const allInputs = {};
+    reports.forEach(rep => {
+      const inputs = getInputs(rep.r || rep);
+      for (const k of Object.keys(inputs)) allInputs[k] = true;
+    });
+
+    const paramGroups = {};
+    let currentGroup = 'GENERAL';
+    for (const key of Object.keys(allInputs)) {
+      const sampleRep = reports.find(rep => {
+        const inputs = getInputs(rep.r || rep);
+        return inputs[key];
+      });
+      const sampleVal = sampleRep ? (getInputs(sampleRep.r || sampleRep))[key] || '' : '';
+      if (key.match(/^_\d/) || (sampleVal && sampleVal.includes && sampleVal.includes('======'))) {
+        currentGroup = sampleVal.replace(/[=_\s]/g, ' ').trim() || key;
+        continue;
+      }
+      if (!paramGroups[currentGroup]) paramGroups[currentGroup] = [];
+      paramGroups[currentGroup].push(key);
+    }
+    return paramGroups;
+  },
+
+  // Render horizontal param table with toggles for the compare tab
+  _renderParamSection() {
+    const togglesDiv = document.getElementById('cmpParamToggles');
+    const thead = document.getElementById('cmpParamHHead');
+    const tbody = document.getElementById('cmpParamHBody');
+    const section = document.getElementById('cmpParamSection');
+    if (!togglesDiv || !thead || !tbody) return;
+
+    let reports, getReportInputs;
+    if (this.mode === 'pairs') {
+      const raw = [...STATE.checkedForCompare].map(id => store.get(id)).filter(Boolean);
+      const selected = DATE_FILTER.isActive() ? raw.map(r => DATE_FILTER.getView(r)).filter(Boolean) : raw;
+      if (selected.length < 2) { section.style.display = 'none'; return; }
+      reports = selected.map(r => ({ r, sym: getSymbol(r), id: r.id }));
+      getReportInputs = rep => getInputs(rep.r);
+    } else {
+      // Portfolio mode: compare all pairs across selected regimes
+      const regimes = PORTFOLIO_SYSTEM.getRegimePortfolios();
+      const selRegimes = [...this._selectedPortfolios].filter(rg => regimes[rg]);
+      if (selRegimes.length < 2) { section.style.display = 'none'; return; }
+      reports = [];
+      for (const rg of selRegimes) {
+        for (const id of regimes[rg]) {
+          const r = store.get(id);
+          if (r) reports.push({ r, sym: rg + ' / ' + getSymbol(r), id });
+        }
+      }
+      if (reports.length < 2) { section.style.display = 'none'; return; }
+      getReportInputs = rep => getInputs(rep.r);
+    }
+
+    section.style.display = '';
+    const paramGroups = this._getParamGroups(reports);
+
+    // Render toggles
+    togglesDiv.innerHTML = Object.keys(paramGroups).map(g => {
+      const active = this._paramToggles[g] !== false;
+      return '<span class="pf-param-toggle ' + (active ? 'active' : '') + '" onclick="COMPARE_SYSTEM.toggleParamGroup(\'' + g.replace(/'/g, "\\'") + '\')">' + g + '</span>';
+    }).join('');
+
+    // Render horizontal table: rows = parameters, cols = reports
+    thead.innerHTML = '<tr><th>PARAMETER</th>' + reports.map(rep => '<th>' + rep.sym + '</th>').join('') + '</tr>';
+
+    let bodyHtml = '';
+    for (const [group, keys] of Object.entries(paramGroups)) {
+      if (this._paramToggles[group] === false) continue;
+      for (const key of keys) {
+        const vals = reports.map(rep => (getReportInputs(rep))[key] || '\u2014');
+        const allSame = vals.every(v => v === vals[0]);
+        const rowBg = allSame ? '' : 'background:rgba(255,149,0,0.04)';
+        bodyHtml += '<tr style="' + rowBg + '"><td style="color:var(--t3)">' + key + '</td>';
+        for (const v of vals) {
+          const highlight = !allSame && v !== '\u2014' ? 'color:var(--acc)' : '';
+          bodyHtml += '<td style="' + highlight + '">' + v + '</td>';
+        }
+        bodyHtml += '</tr>';
+      }
+    }
+    if (!bodyHtml) bodyHtml = '<tr><td colspan="' + (reports.length + 1) + '" style="text-align:center;color:var(--t3)">NO PARAMETERS TO SHOW</td></tr>';
+    tbody.innerHTML = bodyHtml;
+  }
+};
+
 function renderCompare() {
   const empty = document.getElementById('compareEmpty');
   const view = document.getElementById('compareView');
+  const modeBar = document.getElementById('cmpModeBar');
+
+  if (COMPARE_SYSTEM.mode === 'pairs') {
+    return renderComparePairs(empty, view, modeBar);
+  } else {
+    return renderComparePortfolios(empty, view, modeBar);
+  }
+}
+
+function renderComparePairs(empty, view, modeBar) {
+  // Clean up portfolio selector if present
+  const pfSel = document.getElementById('cmpPortfolioSelector');
+  if (pfSel) pfSel.innerHTML = '';
 
   if (STATE.checkedForCompare.size < 2) {
+    empty.querySelector('.empty-title').textContent = 'SELECT 2+ REPORTS TO COMPARE';
+    empty.querySelector('.empty-sub').textContent = 'Use checkboxes in the REPORTS tab to select reports';
     empty.classList.remove('hidden');
     view.classList.add('hidden');
     return;
@@ -3195,6 +3389,7 @@ function renderCompare() {
   // Overlay chart
   if (CHARTS.compare) CHARTS.compare.destroy();
   const ctx = document.getElementById('compareChart').getContext('2d');
+  document.getElementById('cmpChartTitle').textContent = 'OVERLAY EQUITY CURVES (% RETURN)';
 
   const datasets = selected.map((r, i) => {
     const curve = getBalanceCurve(r);
@@ -3203,10 +3398,7 @@ function renderCompare() {
       label: getSymbol(r) + ' (' + r.id.slice(-8) + ')',
       data: curve.map(p => ((p.balance - initial) / initial) * 100),
       borderColor: COMPARE_COLORS[i % COMPARE_COLORS.length],
-      borderWidth: 1.5,
-      fill: false,
-      pointRadius: 0,
-      tension: 0.1,
+      borderWidth: 1.5, fill: false, pointRadius: 0, tension: 0.1,
     };
   });
 
@@ -3214,49 +3406,175 @@ function renderCompare() {
   const labels = getBalanceCurve(longest).map(p => p.time.split(' ')[0]);
 
   CHARTS.compare = new Chart(ctx, {
-    type: 'line',
-    data: { labels, datasets },
+    type: 'line', data: { labels, datasets },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      animation: { duration: 200 },
+      responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
       scales: {
-        x: {
-          grid: { color: 'rgba(42,42,42,0.5)', lineWidth: 0.5 },
-          ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, maxTicksLimit: 10, maxRotation: 0 }
-        },
-        y: {
-          grid: { color: 'rgba(42,42,42,0.5)', lineWidth: 0.5 },
-          ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, callback: v => v.toFixed(1) + '%' }
-        }
+        x: { grid: { color: 'rgba(42,42,42,0.5)', lineWidth: 0.5 }, ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, maxTicksLimit: 10, maxRotation: 0 } },
+        y: { grid: { color: 'rgba(42,42,42,0.5)', lineWidth: 0.5 }, ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, callback: v => v.toFixed(1) + '%' } }
       },
       plugins: {
-        legend: {
-          display: true, position: 'top',
-          labels: { font: { family: "'JetBrains Mono'", size: 9 }, color: V.t2, boxWidth: 12, padding: 8 }
-        },
+        legend: { display: true, position: 'top', labels: { font: { family: "'JetBrains Mono'", size: 9 }, color: V.t2, boxWidth: 12, padding: 8 } },
         tooltip: {
-          backgroundColor: V.g700 + 'ee',
-          titleFont: { family: "'JetBrains Mono'", size: 9 },
-          bodyFont: { family: "'JetBrains Mono'", size: 10 },
-          titleColor: V.t3, bodyColor: V.t1,
-          borderColor: V.g400, borderWidth: 1,
-          callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(2) + '%' }
+          backgroundColor: V.g700 + 'ee', titleFont: { family: "'JetBrains Mono'", size: 9 }, bodyFont: { family: "'JetBrains Mono'", size: 10 },
+          titleColor: V.t3, bodyColor: V.t1, borderColor: V.g400, borderWidth: 1,
+          callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y.toFixed(2) + '%' }
         },
-        zoom: {
-          pan: { enabled: true, mode: 'x' },
-          zoom: {
-            wheel: { enabled: false },
-            pinch: { enabled: true },
-            drag: { enabled: true, backgroundColor: 'rgba(0,255,136,0.08)', borderColor: 'rgba(0,255,136,0.3)', borderWidth: 1 },
-            mode: 'x'
-          }
-        }
+        zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: false }, pinch: { enabled: true },
+          drag: { enabled: true, backgroundColor: 'rgba(0,255,136,0.08)', borderColor: 'rgba(0,255,136,0.3)', borderWidth: 1 }, mode: 'x' } }
       },
       interaction: { mode: 'index', intersect: false }
     }
   });
 
+  // Ensure metrics and params sections are visible (may be hidden by portfolio mode)
+  const chartPanelEl = view.querySelector('.chart-panel');
+  if (chartPanelEl) chartPanelEl.style.display = '';
+  const metricsSec = document.querySelector('#compareMetricsTable').closest('.compare-section');
+  if (metricsSec) metricsSec.style.display = '';
+
   // Metrics comparison table
+  renderCompareMetrics(selected);
+
+  // Parameter differences (horizontal with toggles)
+  COMPARE_SYSTEM._renderParamSection();
+}
+
+function renderComparePortfolios(empty, view, modeBar) {
+  const regimes = PORTFOLIO_SYSTEM.getRegimePortfolios();
+  const regimeNames = Object.keys(regimes);
+
+  if (regimeNames.length < 2) {
+    empty.querySelector('.empty-title').textContent = 'NOT ENOUGH PORTFOLIOS TO COMPARE';
+    empty.querySelector('.empty-sub').textContent = 'Tag reports with at least 2 different regimes (Micro-Impulse, Micro-Trend, etc.)';
+    empty.classList.remove('hidden');
+    view.classList.add('hidden');
+    return;
+  }
+
+  // Show portfolio selector before requiring 2 selections
+  empty.classList.add('hidden');
+  view.classList.remove('hidden');
+
+  const selRegimes = [...COMPARE_SYSTEM._selectedPortfolios].filter(rg => regimes[rg]);
+
+  // Build portfolio selector checkboxes above the chart
+  let selectorHtml = '<div class="compare-section" style="margin-bottom:12px"><div class="compare-title">SELECT PORTFOLIOS TO COMPARE</div><div style="display:flex;flex-wrap:wrap;gap:8px">';
+  for (const rg of regimeNames) {
+    const checked = COMPARE_SYSTEM._selectedPortfolios.has(rg);
+    const m = PORTFOLIO_SYSTEM.computePortfolioMetrics(regimes[rg]);
+    const pnlStr = m ? ((m.netProfit >= 0 ? '+' : '') + '$' + Math.round(m.netProfit).toLocaleString()) : '—';
+    const pnlColor = m && m.netProfit >= 0 ? 'var(--neon)' : 'var(--crimson)';
+    selectorHtml += '<label class="pf-param-toggle ' + (checked ? 'active' : '') + '" style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:6px 12px" onclick="event.preventDefault();COMPARE_SYSTEM.togglePortfolioSelect(\'' + rg + '\')">' +
+      '<span>' + rg + '</span><span style="font-size:8px;color:' + pnlColor + '">' + pnlStr + '</span>' +
+      '<span style="font-size:8px;color:var(--t3)">' + regimes[rg].length + ' pairs</span></label>';
+  }
+  selectorHtml += '</div></div>';
+
+  // Insert selector before chart panel
+  const chartPanel = view.querySelector('.chart-panel');
+  let selectorDiv = document.getElementById('cmpPortfolioSelector');
+  if (!selectorDiv) {
+    selectorDiv = document.createElement('div');
+    selectorDiv.id = 'cmpPortfolioSelector';
+    view.insertBefore(selectorDiv, chartPanel);
+  }
+  selectorDiv.innerHTML = selectorHtml;
+
+  if (selRegimes.length < 2) {
+    // Hide chart and metrics until 2+ selected
+    chartPanel.style.display = 'none';
+    document.querySelector('#compareMetricsTable').closest('.compare-section').style.display = 'none';
+    document.getElementById('cmpParamSection').style.display = 'none';
+    return;
+  }
+
+  chartPanel.style.display = '';
+  document.querySelector('#compareMetricsTable').closest('.compare-section').style.display = '';
+
+  // Build combined equity curves for each selected portfolio
+  if (CHARTS.compare) CHARTS.compare.destroy();
+  const ctx = document.getElementById('compareChart').getContext('2d');
+  document.getElementById('cmpChartTitle').textContent = 'PORTFOLIO EQUITY CURVES (COMBINED)';
+
+  const datasets = [];
+  const portfolioData = [];
+  selRegimes.forEach((rg, i) => {
+    const { combined, totalInit } = PORTFOLIO_SYSTEM.computeCombined(regimes[rg]);
+    if (combined.length === 0) return;
+    const initial = combined[0].balance || totalInit;
+    portfolioData.push({ regime: rg, combined, totalInit, initial, ids: regimes[rg] });
+    datasets.push({
+      label: rg + ' (' + regimes[rg].length + ' pairs)',
+      data: combined.map(p => ((p.balance - initial) / initial) * 100),
+      borderColor: COMPARE_COLORS[i % COMPARE_COLORS.length],
+      borderWidth: 2, fill: false, pointRadius: 0, tension: 0.1,
+    });
+  });
+
+  const maxLen = Math.max(...datasets.map(d => d.data.length), 0);
+  const labels = Array.from({ length: maxLen }, (_, i) => i);
+
+  CHARTS.compare = new Chart(ctx, {
+    type: 'line', data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
+      scales: {
+        x: { grid: { color: 'rgba(42,42,42,0.5)', lineWidth: 0.5 }, ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, maxTicksLimit: 10, maxRotation: 0 } },
+        y: { grid: { color: 'rgba(42,42,42,0.5)', lineWidth: 0.5 }, ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, callback: v => v.toFixed(1) + '%' } }
+      },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { family: "'JetBrains Mono'", size: 9 }, color: V.t2, boxWidth: 12, padding: 8 } },
+        tooltip: {
+          backgroundColor: V.g700 + 'ee', titleFont: { family: "'JetBrains Mono'", size: 9 }, bodyFont: { family: "'JetBrains Mono'", size: 10 },
+          titleColor: V.t3, bodyColor: V.t1, borderColor: V.g400, borderWidth: 1,
+          callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y.toFixed(2) + '%' }
+        },
+        zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: false }, pinch: { enabled: true },
+          drag: { enabled: true, backgroundColor: 'rgba(0,255,136,0.08)', borderColor: 'rgba(0,255,136,0.3)', borderWidth: 1 }, mode: 'x' } }
+      },
+      interaction: { mode: 'index', intersect: false }
+    }
+  });
+
+  // Portfolio metrics comparison table
+  const metricsKeys = [
+    ['NET PROFIT', r => r.m.netProfit, v => fmtPnl(v), 1],
+    ['PROFIT FACTOR', r => r.m.profitFactor, v => fmt(v), 1],
+    ['AVG SHARPE', r => r.m.avgSharpe, v => fmt(v), 1],
+    ['PORTFOLIO DD%', r => r.m.maxDD, v => fmtPct(v), -1],
+    ['WIN RATE', r => r.m.winRate, v => fmtPct(v), 1],
+    ['DIVERSIFICATION', r => r.m.divRatio * 100, v => fmtPct(v), 1],
+    ['TOTAL TRADES', r => r.m.totalTrades, v => v, 0],
+    ['PAIRS', r => r.ids.length, v => v, 0],
+  ];
+
+  const pfMetrics = selRegimes.map(rg => {
+    const m = PORTFOLIO_SYSTEM.computePortfolioMetrics(regimes[rg]);
+    return { regime: rg, m: m || { netProfit: 0, profitFactor: 0, avgSharpe: 0, maxDD: 0, winRate: 0, divRatio: 0, totalTrades: 0 }, ids: regimes[rg] };
+  });
+
+  const thead = document.getElementById('compareMetricsHead');
+  const tbody = document.getElementById('compareMetricsBody');
+  thead.innerHTML = '<tr><th>METRIC</th>' + pfMetrics.map(p => '<th>' + p.regime + '<br><span style="font-size:7px;color:var(--t4)">' + p.ids.length + ' PAIRS</span></th>').join('') + '</tr>';
+
+  tbody.innerHTML = metricsKeys.map(([label, getter, formatter, dir]) => {
+    const vals = pfMetrics.map(p => getter(p) || 0);
+    const bestIdx = dir !== 0 ? vals.indexOf(dir > 0 ? Math.max(...vals) : Math.min(...vals)) : -1;
+    const worstIdx = dir !== 0 ? vals.indexOf(dir > 0 ? Math.min(...vals) : Math.max(...vals)) : -1;
+    return '<tr><td>' + label + '</td>' + vals.map((v, i) => {
+      let cls = '';
+      if (i === bestIdx && pfMetrics.length > 1) cls = 'best';
+      else if (i === worstIdx && pfMetrics.length > 1) cls = 'worst';
+      return '<td class="' + cls + '">' + formatter(v) + '</td>';
+    }).join('') + '</tr>';
+  }).join('');
+
+  // Parameter differences (horizontal with toggles across all pairs in selected portfolios)
+  COMPARE_SYSTEM._renderParamSection();
+}
+
+function renderCompareMetrics(selected) {
   const metricsKeys = [
     ['NET PROFIT', 'netProfit', v => fmtPnl(v), 1],
     ['PROFIT FACTOR', 'profitFactor', v => fmt(v), 1],
@@ -3273,39 +3591,19 @@ function renderCompare() {
 
   const thead = document.getElementById('compareMetricsHead');
   const tbody = document.getElementById('compareMetricsBody');
-  thead.innerHTML = '<tr><th>METRIC</th>' + selected.map(r => `<th>${getSymbol(r)}<br><span style="font-size:7px;color:var(--t4)">${r.id.slice(-12)}</span></th>`).join('') + '</tr>';
+  thead.innerHTML = '<tr><th>METRIC</th>' + selected.map(r => '<th>' + getSymbol(r) + '<br><span style="font-size:7px;color:var(--t4)">' + r.id.slice(-12) + '</span></th>').join('') + '</tr>';
 
   tbody.innerHTML = metricsKeys.map(([label, key, formatter, dir]) => {
     const vals = selected.map(r => R(r, key) || 0);
     const bestIdx = dir !== 0 ? vals.indexOf(dir > 0 ? Math.max(...vals) : Math.min(...vals)) : -1;
     const worstIdx = dir !== 0 ? vals.indexOf(dir > 0 ? Math.min(...vals) : Math.max(...vals)) : -1;
-    return `<tr><td>${label}</td>${vals.map((v, i) => {
+    return '<tr><td>' + label + '</td>' + vals.map((v, i) => {
       let cls = '';
       if (i === bestIdx && selected.length > 1) cls = 'best';
       else if (i === worstIdx && selected.length > 1) cls = 'worst';
-      return `<td class="${cls}">${formatter(v)}</td>`;
-    }).join('')}</tr>`;
+      return '<td class="' + cls + '">' + formatter(v) + '</td>';
+    }).join('') + '</tr>';
   }).join('');
-
-  // Parameter diff
-  const allInputKeys = new Set();
-  selected.forEach(r => Object.keys(getInputs(r)).forEach(k => allInputKeys.add(k)));
-  const diffKeys = [...allInputKeys].filter(k => {
-    const vals = selected.map(r => (getInputs(r))[k] || '\u2014');
-    return new Set(vals).size > 1;
-  });
-
-  const pdHead = document.getElementById('paramDiffHead');
-  const pdBody = document.getElementById('paramDiffBody');
-  pdHead.innerHTML = '<tr><th>PARAMETER</th>' + selected.map(r => `<th>${getSymbol(r)}<br><span style="font-size:7px;color:var(--t4)">${r.id.slice(-12)}</span></th>`).join('') + '</tr>';
-
-  if (diffKeys.length === 0) {
-    pdBody.innerHTML = '<tr><td colspan="' + (selected.length + 1) + '" style="text-align:center;color:var(--t3)">NO PARAMETER DIFFERENCES</td></tr>';
-  } else {
-    pdBody.innerHTML = diffKeys.map(k => {
-      return `<tr><td>${k}</td>${selected.map(r => `<td>${(getInputs(r))[k] || '\u2014'}</td>`).join('')}</tr>`;
-    }).join('');
-  }
 }
 
 // ─── PERFORMANCE TAB ───
@@ -4040,58 +4338,25 @@ const MONTE_CARLO = {
 };
 
 
-// ─── PORTFOLIO SYSTEM ───
+// ─── PORTFOLIO SYSTEM (Auto-grouped by regime) ───
 const PORTFOLIO_SYSTEM = {
-  portfolios: new Map(),
-  activeId: null,
   chartInstance: null,
+  activeRegime: null,   // currently expanded regime
+  _paramToggles: {},    // { groupName: true/false }
 
-  // Persistence
-  save() {
-    const data = { portfolios: [], activeId: this.activeId };
-    for (const [id, pf] of this.portfolios) data.portfolios.push(pf);
-    try { localStorage.setItem('dv_portfolios', JSON.stringify(data)); } catch(e) {}
-  },
-  load() {
-    try {
-      const raw = localStorage.getItem('dv_portfolios');
-      if (!raw) return;
-      const data = JSON.parse(raw);
-      this.portfolios.clear();
-      (data.portfolios || []).forEach(pf => this.portfolios.set(pf.id, pf));
-      this.activeId = data.activeId || null;
-    } catch(e) {}
+  // Get all regimes with their report IDs
+  getRegimePortfolios() {
+    const regimes = {};
+    for (const [id, r] of store) {
+      const style = getStyle(id);
+      if (!style) continue;
+      if (!regimes[style]) regimes[style] = [];
+      regimes[style].push(id);
+    }
+    return regimes;
   },
 
-  create(name) {
-    const id = 'pf_' + Date.now();
-    const colors = ['#00ff88','#ff9500','#00d4ff','#ff3b30','#af52de','#ffcc00'];
-    const pf = { id, name: name || 'Portfolio ' + (this.portfolios.size + 1), reportIds: [], created: new Date().toISOString(), color: colors[this.portfolios.size % colors.length] };
-    this.portfolios.set(id, pf);
-    this.activeId = id;
-    this.save();
-    this.render();
-  },
-
-  deleteActive() {
-    if (!this.activeId) return;
-    this.portfolios.delete(this.activeId);
-    this.activeId = this.portfolios.size > 0 ? [...this.portfolios.keys()][0] : null;
-    this.save();
-    this.render();
-  },
-
-  toggleReport(reportId) {
-    const pf = this.portfolios.get(this.activeId);
-    if (!pf) return;
-    const idx = pf.reportIds.indexOf(reportId);
-    if (idx >= 0) pf.reportIds.splice(idx, 1);
-    else pf.reportIds.push(reportId);
-    this.save();
-    this.render();
-  },
-
-  // Compute combined equity curve (normalized: each starts at equal weight of initial deposit)
+  // Compute combined equity curve (normalized: each starts at equal weight)
   computeCombined(reportIds) {
     const curves = reportIds.map(id => {
       const r = store.get(id);
@@ -4101,12 +4366,11 @@ const PORTFOLIO_SYSTEM = {
       return { id, curve: bc, initBal: bc[0].balance || 100000 };
     }).filter(Boolean);
 
-    if (curves.length === 0) return { combined: [], individual: curves };
+    if (curves.length === 0) return { combined: [], individual: curves, totalInit: 0 };
 
-    // Normalize all curves to % return, then combine
     const maxLen = Math.max(...curves.map(c => c.curve.length));
     const combined = [];
-    const perStrategy = 100000; // $100k per strategy
+    const perStrategy = 100000;
     const totalInit = perStrategy * curves.length;
 
     for (let i = 0; i < maxLen; i++) {
@@ -4119,11 +4383,9 @@ const PORTFOLIO_SYSTEM = {
       const time = curves[0].curve[Math.min(i, curves[0].curve.length - 1)].time || '';
       combined.push({ time, balance: totalBal });
     }
-
     return { combined, individual: curves, totalInit };
   },
 
-  // Pearson correlation between two balance curve return series
   pearsonCorrelation(curveA, curveB) {
     const minLen = Math.min(curveA.length, curveB.length);
     if (minLen < 10) return 0;
@@ -4133,6 +4395,7 @@ const PORTFOLIO_SYSTEM = {
       retB.push((curveB[i].balance - curveB[i-1].balance) / (curveB[i-1].balance || 1));
     }
     const n = retA.length;
+    if (n === 0) return 0;
     const meanA = retA.reduce((s,v) => s+v, 0) / n;
     const meanB = retB.reduce((s,v) => s+v, 0) / n;
     let cov = 0, varA = 0, varB = 0;
@@ -4163,11 +4426,13 @@ const PORTFOLIO_SYSTEM = {
   },
 
   computePortfolioMetrics(reportIds) {
-    const { combined, totalInit } = this.computeCombined(reportIds);
-    if (combined.length === 0) return null;
+    const validIds = reportIds.filter(id => store.has(id));
+    if (validIds.length === 0) return null;
+
+    const { combined, totalInit } = this.computeCombined(validIds);
+    if (combined.length === 0 || totalInit === 0) return null;
 
     const netProfit = combined[combined.length - 1].balance - totalInit;
-    const returnPct = (netProfit / totalInit) * 100;
 
     // Max drawdown of combined curve
     let peak = 0, maxDD = 0;
@@ -4177,181 +4442,109 @@ const PORTFOLIO_SYSTEM = {
       if (dd > maxDD) maxDD = dd;
     }
 
-    // Avg metrics from individual reports
-    let sumPF = 0, sumSharpe = 0, sumWin = 0, cnt = 0;
-    for (const id of reportIds) {
+    // Sum metrics from individual reports (not average — total P&L, weighted PF)
+    let totalGrossProfit = 0, totalGrossLoss = 0, sumSharpe = 0, sumWin = 0, totalTrades = 0, cnt = 0;
+    for (const id of validIds) {
       const r = store.get(id);
       if (!r) continue;
-      sumPF += parseFloat(R(r, 'profitFactor')) || 0;
+      totalGrossProfit += Math.abs(parseFloat(R(r, 'grossProfit'))) || 0;
+      totalGrossLoss += Math.abs(parseFloat(R(r, 'grossLoss'))) || 0;
       sumSharpe += parseFloat(R(r, 'sharpeRatio')) || 0;
-      sumWin += parseFloat(R(r, 'winRate')) || 0;
+      sumWin += (parseFloat(R(r, 'winRate')) || 0) * (parseInt(R(r, 'totalTrades')) || 0);
+      totalTrades += parseInt(R(r, 'totalTrades')) || 0;
       cnt++;
     }
 
-    // Diversification ratio (avg correlation from matrix)
-    const matrix = this.computeCorrelationMatrix(reportIds);
-    let corrSum = 0, corrCnt = 0;
-    for (let i = 0; i < matrix.length; i++) {
-      for (let j = i + 1; j < matrix.length; j++) {
-        corrSum += Math.abs(matrix[i][j]);
-        corrCnt++;
-      }
-    }
-    const avgCorr = corrCnt > 0 ? corrSum / corrCnt : 0;
-    const divRatio = 1 - avgCorr; // 1 = fully diversified, 0 = fully correlated
+    const profitFactor = totalGrossLoss > 0 ? totalGrossProfit / totalGrossLoss : totalGrossProfit > 0 ? 999 : 0;
+    const winRate = totalTrades > 0 ? sumWin / totalTrades : 0;
+
+    // Diversification ratio
+    if (validIds.length >= 2) {
+      const matrix = this.computeCorrelationMatrix(validIds);
+      let corrSum = 0, corrCnt = 0;
+      for (let i = 0; i < matrix.length; i++)
+        for (let j = i + 1; j < matrix.length; j++) { corrSum += Math.abs(matrix[i][j]); corrCnt++; }
+      var avgCorr = corrCnt > 0 ? corrSum / corrCnt : 0;
+    } else { var avgCorr = 0; }
+    const divRatio = 1 - avgCorr;
 
     return {
-      netProfit, returnPct, maxDD,
-      avgPF: cnt > 0 ? sumPF / cnt : 0,
+      netProfit, maxDD, profitFactor, winRate,
       avgSharpe: cnt > 0 ? sumSharpe / cnt : 0,
-      avgWinRate: cnt > 0 ? sumWin / cnt : 0,
-      divRatio, avgCorr
+      divRatio, avgCorr, totalTrades, count: cnt
     };
   },
 
-  // Algo: find best combinations
+  // Algo: find best cross-regime combinations
   runAlgo() {
     const results = document.getElementById('pfAlgoResults');
     if (!results) return;
+    const allReports = [...store.values()].filter(r => getBalanceCurve(r).length > 10);
+    if (allReports.length < 2) { results.innerHTML = '<span style="color:var(--t3)">Need at least 2 reports with equity curves</span>'; return; }
 
-    const allReports = [...store.values()].filter(r => {
-      const bc = getBalanceCurve(r);
-      return bc && bc.length > 10;
-    });
-
-    if (allReports.length < 2) {
-      results.innerHTML = '<span style="color:var(--t3)">Need at least 2 reports with equity curves</span>';
-      return;
-    }
-
-    results.innerHTML = '<span style="color:var(--amber)">Computing optimal combinations...</span>';
-
+    results.innerHTML = '<span style="color:var(--amber)">Computing...</span>';
     setTimeout(() => {
       const recommendations = [];
       const sizes = [2, 3, 4, 5].filter(n => n <= allReports.length);
-
       for (const size of sizes) {
         const combos = this._getCombinations(allReports.map(r => r.id), size);
         let best = null, bestScore = -Infinity;
-
         for (const combo of combos) {
-          const metrics = this.computePortfolioMetrics(combo);
-          if (!metrics) continue;
-          // Score: prioritize high return, low DD, low correlation
-          const score = (metrics.avgSharpe * metrics.divRatio) / (1 + metrics.maxDD / 100);
-          if (score > bestScore) { bestScore = score; best = { combo, metrics, score }; }
+          const m = this.computePortfolioMetrics(combo);
+          if (!m) continue;
+          const score = (m.avgSharpe * m.divRatio) / (1 + m.maxDD / 100);
+          if (score > bestScore) { bestScore = score; best = { combo, m, score }; }
         }
-
         if (best) {
-          const names = best.combo.map(id => {
-            const r = store.get(id);
-            return r ? getSymbol(r) : id;
-          });
-          recommendations.push({
-            size,
-            names,
-            combo: best.combo,
-            metrics: best.metrics,
-            score: best.score
+          recommendations.push({ size, combo: best.combo, m: best.m, score: best.score,
+            names: best.combo.map(id => { const r = store.get(id); return r ? getSymbol(r) : id; })
           });
         }
       }
-
-      if (recommendations.length === 0) {
-        results.innerHTML = '<span style="color:var(--t3)">Could not compute recommendations</span>';
-        return;
-      }
-
-      results.innerHTML = recommendations.map(rec => {
-        const m = rec.metrics;
-        return '<div class="pf-algo-rec">' +
-          '<div class="pf-algo-title">BEST ' + rec.size + '-STRATEGY PORTFOLIO</div>' +
+      results.innerHTML = recommendations.length === 0 ? '<span style="color:var(--t3)">No recommendations</span>' :
+        recommendations.map(rec => '<div class="pf-algo-rec"><div class="pf-algo-title">BEST ' + rec.size + '-STRATEGY COMBO</div>' +
           '<div class="pf-algo-detail">' + rec.names.join(' + ') + '</div>' +
-          '<div class="pf-algo-detail">' +
-          'P&L: <span style="color:' + (m.netProfit >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + Math.round(m.netProfit).toLocaleString() + '</span> · ' +
-          'DD: <span style="color:var(--crimson)">' + m.maxDD.toFixed(1) + '%</span> · ' +
-          'Avg PF: ' + m.avgPF.toFixed(2) + ' · ' +
-          'Div: ' + (m.divRatio * 100).toFixed(0) + '% · ' +
-          'Sharpe: ' + m.avgSharpe.toFixed(2) +
-          '</div>' +
-          '<div class="pf-algo-score">SCORE: ' + rec.score.toFixed(3) + '</div>' +
-          '<button class="action-btn" style="font-size:8px;padding:3px 10px;margin-top:4px" onclick="PORTFOLIO_SYSTEM.createFromAlgo(\'' + rec.combo.join(',') + '\',\'' + rec.names.join(' + ') + '\')">CREATE THIS PORTFOLIO</button>' +
-          '</div>';
-      }).join('');
+          '<div class="pf-algo-detail">P&L: <span style="color:' + (rec.m.netProfit >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + Math.round(rec.m.netProfit).toLocaleString() + '</span> · DD: ' + rec.m.maxDD.toFixed(1) + '% · PF: ' + rec.m.profitFactor.toFixed(2) + ' · Sharpe: ' + rec.m.avgSharpe.toFixed(2) + '</div>' +
+          '<div class="pf-algo-score">SCORE: ' + rec.score.toFixed(3) + '</div></div>'
+        ).join('');
     }, 50);
   },
 
-  createFromAlgo(comboStr, name) {
-    const ids = comboStr.split(',');
-    const id = 'pf_' + Date.now();
-    const colors = ['#00ff88','#ff9500','#00d4ff','#ff3b30','#af52de','#ffcc00'];
-    const pf = { id, name: name || 'Algo Portfolio', reportIds: ids, created: new Date().toISOString(), color: colors[this.portfolios.size % colors.length] };
-    this.portfolios.set(id, pf);
-    this.activeId = id;
-    this.save();
-    this.render();
-  },
-
   _getCombinations(arr, size) {
-    const result = [];
-    const maxCombos = 10000; // cap for performance
-
+    const result = []; const max = 10000;
     function combine(start, combo) {
-      if (result.length >= maxCombos) return;
+      if (result.length >= max) return;
       if (combo.length === size) { result.push([...combo]); return; }
-      for (let i = start; i < arr.length; i++) {
-        combo.push(arr[i]);
-        combine(i + 1, combo);
-        combo.pop();
-      }
+      for (let i = start; i < arr.length; i++) { combo.push(arr[i]); combine(i + 1, combo); combo.pop(); }
     }
     combine(0, []);
     return result;
   },
 
-  // Build the combined equity chart
   buildEquityChart(reportIds) {
     const canvas = document.getElementById('pfEquityChart');
     if (!canvas) return;
     if (this.chartInstance) this.chartInstance.destroy();
-
-    const { combined, individual, totalInit } = this.computeCombined(reportIds);
+    const { combined, individual } = this.computeCombined(reportIds);
     if (combined.length === 0) return;
 
     const labels = combined.map((_, i) => i);
     const datasets = [];
-
-    // Individual curves (thin, semi-transparent)
-    for (const c of individual) {
+    const colors = ['rgba(0,212,255,0.4)', 'rgba(255,149,0,0.4)', 'rgba(175,82,222,0.4)', 'rgba(255,204,0,0.4)', 'rgba(255,59,48,0.4)', 'rgba(52,199,89,0.4)'];
+    individual.forEach((c, idx) => {
       const r = store.get(c.id);
-      const sym = r ? getSymbol(r) : c.id;
-      datasets.push({
-        label: sym,
-        data: c.curve.map(p => p.balance),
-        borderColor: 'rgba(255,255,255,0.2)',
-        backgroundColor: 'transparent',
-        fill: false, pointRadius: 0, borderWidth: 1,
-      });
-    }
-
-    // Combined curve (bold)
-    datasets.push({
-      label: 'COMBINED',
-      data: combined.map(p => p.balance),
-      borderColor: '#00ff88',
-      backgroundColor: 'transparent',
-      fill: false, pointRadius: 0, borderWidth: 2.5,
+      datasets.push({ label: r ? getSymbol(r) : c.id, data: c.curve.map(p => p.balance),
+        borderColor: colors[idx % colors.length], backgroundColor: 'transparent', fill: false, pointRadius: 0, borderWidth: 1 });
     });
+    datasets.push({ label: 'COMBINED', data: combined.map(p => p.balance),
+      borderColor: '#00ff88', backgroundColor: 'transparent', fill: false, pointRadius: 0, borderWidth: 2.5 });
 
     this.chartInstance = new Chart(canvas, {
-      type: 'line',
-      data: { labels, datasets },
+      type: 'line', data: { labels, datasets },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { display: true, position: 'top', labels: { color: '#888', font: { family: "'JetBrains Mono',monospace", size: 8 }, boxWidth: 10, padding: 6 } },
-          tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => ctx.dataset.label + ': $' + Math.round(ctx.parsed.y).toLocaleString() } }
-        },
+        plugins: { legend: { display: true, position: 'top', labels: { color: '#888', font: { family: "'JetBrains Mono',monospace", size: 8 }, boxWidth: 10, padding: 6 } },
+          tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => ctx.dataset.label + ': $' + Math.round(ctx.parsed.y).toLocaleString() } } },
         scales: {
           x: { display: true, ticks: { color: '#555', font: { size: 7 }, maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.03)' } },
           y: { display: true, ticks: { color: '#555', font: { size: 8 }, callback: v => '$' + Math.round(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.03)' } }
@@ -4361,116 +4554,208 @@ const PORTFOLIO_SYSTEM = {
     });
   },
 
+  openDetail(regime) {
+    this.activeRegime = regime;
+    this._paramToggles = {};
+    this.render();
+  },
+
+  closeDetail() {
+    this.activeRegime = null;
+    if (this.chartInstance) { this.chartInstance.destroy(); this.chartInstance = null; }
+    this.render();
+  },
+
+  toggleParamGroup(group) {
+    this._paramToggles[group] = !this._paramToggles[group];
+    this._renderParamTable();
+  },
+
+  _renderParamTable() {
+    const regimes = this.getRegimePortfolios();
+    const ids = regimes[this.activeRegime] || [];
+    if (ids.length === 0) return;
+
+    // Collect all inputs
+    const allInputs = {};
+    const reports = ids.map(id => {
+      const r = store.get(id);
+      const inputs = getInputs(r);
+      for (const k of Object.keys(inputs)) allInputs[k] = true;
+      return { id, r, inputs, sym: getSymbol(r) };
+    });
+
+    // Group parameters
+    const paramGroups = {};
+    let currentGroup = 'GENERAL';
+    for (const key of Object.keys(allInputs)) {
+      // Check if this is a group separator
+      const sampleVal = reports.find(r => r.inputs[key])?.inputs[key] || '';
+      if (key.match(/^_\d/) || (sampleVal && sampleVal.includes && sampleVal.includes('======'))) {
+        currentGroup = sampleVal.replace(/[=_\s]/g, ' ').trim() || key;
+        continue;
+      }
+      if (!paramGroups[currentGroup]) paramGroups[currentGroup] = [];
+      paramGroups[currentGroup].push(key);
+    }
+
+    // Render toggles
+    const togglesDiv = document.getElementById('pfParamToggles');
+    togglesDiv.innerHTML = Object.keys(paramGroups).map(g => {
+      const active = this._paramToggles[g] !== false; // default on
+      return '<span class="pf-param-toggle ' + (active ? 'active' : '') + '" onclick="PORTFOLIO_SYSTEM.toggleParamGroup(\'' + g.replace(/'/g, "\\'") + '\')">' + g + '</span>';
+    }).join('');
+
+    // Render horizontal table: rows = parameters, columns = pairs
+    const tableDiv = document.getElementById('pfParamTable');
+    let html = '<table class="pf-param-htable"><thead><tr><th>PARAMETER</th>';
+    for (const rep of reports) html += '<th>' + rep.sym + '</th>';
+    html += '</tr></thead><tbody>';
+
+    for (const [group, keys] of Object.entries(paramGroups)) {
+      if (this._paramToggles[group] === false) continue;
+      for (const key of keys) {
+        // Check if values differ across reports
+        const vals = reports.map(rep => rep.inputs[key] || '—');
+        const allSame = vals.every(v => v === vals[0]);
+        const rowStyle = allSame ? '' : 'background:rgba(255,149,0,0.04)';
+        html += '<tr style="' + rowStyle + '"><td style="color:var(--t3)">' + key + '</td>';
+        for (const v of vals) {
+          const highlight = !allSame && v !== '—' ? 'color:var(--acc)' : '';
+          html += '<td style="' + highlight + '">' + v + '</td>';
+        }
+        html += '</tr>';
+      }
+    }
+    html += '</tbody></table>';
+    tableDiv.innerHTML = html;
+  },
+
   // Main render
   render() {
     const empty = document.getElementById('pfEmpty');
-    const content = document.getElementById('pfContent');
-    const selector = document.getElementById('pfSelector');
+    const cardsGrid = document.getElementById('pfCardsGrid');
+    const detail = document.getElementById('pfDetail');
     const algoPanel = document.getElementById('pfAlgoPanel');
 
-    // Show algo panel if reports exist
+    const regimes = this.getRegimePortfolios();
+    const regimeNames = Object.keys(regimes);
+
     if (store.size >= 2 && algoPanel) algoPanel.style.display = '';
     else if (algoPanel) algoPanel.style.display = 'none';
 
-    // Build selector pills
-    selector.innerHTML = '';
-    for (const [id, pf] of this.portfolios) {
-      const pill = document.createElement('div');
-      pill.className = 'pf-pill' + (id === this.activeId ? ' active' : '');
-      pill.textContent = pf.name + ' (' + pf.reportIds.length + ')';
-      pill.onclick = () => { this.activeId = id; this.save(); this.render(); };
-      selector.appendChild(pill);
-    }
+    // Detail view
+    if (this.activeRegime && regimes[this.activeRegime]) {
+      empty.style.display = 'none';
+      cardsGrid.style.display = 'none';
+      detail.style.display = '';
 
-    if (!this.activeId || !this.portfolios.has(this.activeId)) {
-      empty.style.display = '';
-      content.style.display = 'none';
-      return;
-    }
+      const ids = regimes[this.activeRegime];
+      document.getElementById('pfDetailName').textContent = this.activeRegime;
 
-    empty.style.display = 'none';
-    content.style.display = '';
-
-    const pf = this.portfolios.get(this.activeId);
-    const validIds = pf.reportIds.filter(id => store.has(id));
-
-    // KPIs
-    const kpis = document.getElementById('pfKPIs');
-    if (validIds.length >= 2) {
-      const metrics = this.computePortfolioMetrics(validIds);
+      // KPIs
+      const kpis = document.getElementById('pfKPIs');
+      const metrics = this.computePortfolioMetrics(ids);
       if (metrics) {
         kpis.innerHTML = [
-          { label: 'NET P&L', value: '$' + Math.round(metrics.netProfit).toLocaleString(), cls: metrics.netProfit >= 0 ? 'positive' : 'negative' },
-          { label: 'AVG PROFIT FACTOR', value: metrics.avgPF.toFixed(2), cls: '' },
-          { label: 'PORTFOLIO DD%', value: metrics.maxDD.toFixed(1) + '%', cls: 'negative' },
+          { label: 'COMBINED P&L', value: (metrics.netProfit >= 0 ? '+' : '') + '$' + Math.round(metrics.netProfit).toLocaleString(), cls: metrics.netProfit >= 0 ? 'neon' : 'crimson' },
+          { label: 'PROFIT FACTOR', value: metrics.profitFactor.toFixed(2), cls: '' },
+          { label: 'PORTFOLIO DD%', value: metrics.maxDD.toFixed(1) + '%', cls: 'crimson' },
           { label: 'AVG SHARPE', value: metrics.avgSharpe.toFixed(2), cls: '' },
-          { label: 'DIVERSIFICATION', value: (metrics.divRatio * 100).toFixed(0) + '%', cls: metrics.divRatio > 0.5 ? 'positive' : '' },
-        ].map(k => '<div class="pf-kpi"><div class="pf-kpi-label">' + k.label + '</div><div class="pf-kpi-value" style="color:' + (k.cls === 'positive' ? 'var(--neon)' : k.cls === 'negative' ? 'var(--crimson)' : 'var(--acc)') + '">' + k.value + '</div></div>').join('');
+          { label: 'DIVERSIFICATION', value: (metrics.divRatio * 100).toFixed(0) + '%', cls: metrics.divRatio > 0.5 ? 'neon' : '' },
+        ].map(k => '<div class="pf-kpi"><div class="pf-kpi-label">' + k.label + '</div><div class="pf-kpi-value" style="color:' + (k.cls === 'neon' ? 'var(--neon)' : k.cls === 'crimson' ? 'var(--crimson)' : 'var(--acc)') + '">' + k.value + '</div></div>').join('');
       }
 
-      // Equity chart
-      this.buildEquityChart(validIds);
+      // Chart
+      this.buildEquityChart(ids);
 
-      // Correlation matrix
+      // Correlation
       const corrDiv = document.getElementById('pfCorrelation');
-      const matrix = this.computeCorrelationMatrix(validIds);
-      const symbols = validIds.map(id => { const r = store.get(id); return r ? getSymbol(r) : id; });
-      let corrHtml = '<table class="pf-corr-table"><thead><tr><th></th>' + symbols.map(s => '<th>' + s.slice(0, 8) + '</th>').join('') + '</tr></thead><tbody>';
-      for (let i = 0; i < matrix.length; i++) {
-        corrHtml += '<tr><th>' + symbols[i].slice(0, 8) + '</th>';
-        for (let j = 0; j < matrix[i].length; j++) {
-          const v = matrix[i][j];
-          const bg = i === j ? 'var(--g600)' : v > 0.5 ? 'rgba(255,59,48,0.2)' : v > 0 ? 'rgba(255,149,0,0.1)' : v > -0.5 ? 'rgba(0,255,136,0.1)' : 'rgba(0,255,136,0.25)';
-          corrHtml += '<td style="background:' + bg + '">' + v.toFixed(2) + '</td>';
+      if (ids.length >= 2) {
+        const matrix = this.computeCorrelationMatrix(ids);
+        const symbols = ids.map(id => { const r = store.get(id); return r ? getSymbol(r) : id; });
+        let corrHtml = '<table class="pf-corr-table"><thead><tr><th></th>' + symbols.map(s => '<th>' + s.slice(0, 10) + '</th>').join('') + '</tr></thead><tbody>';
+        for (let i = 0; i < matrix.length; i++) {
+          corrHtml += '<tr><th>' + symbols[i].slice(0, 10) + '</th>';
+          for (let j = 0; j < matrix[i].length; j++) {
+            const v = matrix[i][j];
+            const bg = i === j ? 'var(--g600)' : v > 0.5 ? 'rgba(255,59,48,0.2)' : v > 0 ? 'rgba(255,149,0,0.1)' : 'rgba(0,255,136,0.15)';
+            corrHtml += '<td style="background:' + bg + '">' + v.toFixed(2) + '</td>';
+          }
+          corrHtml += '</tr>';
         }
-        corrHtml += '</tr>';
-      }
-      corrHtml += '</tbody></table>';
-      corrDiv.innerHTML = corrHtml;
+        corrDiv.innerHTML = corrHtml + '</tbody></table>';
+      } else { corrDiv.innerHTML = ''; }
 
       // Allocation
       const allocDiv = document.getElementById('pfAllocation');
-      const pct = (100 / validIds.length).toFixed(0);
-      allocDiv.innerHTML = validIds.map(id => {
+      const pct = ids.length > 0 ? (100 / ids.length).toFixed(0) : 0;
+      allocDiv.innerHTML = ids.map(id => {
         const r = store.get(id);
         const sym = r ? getSymbol(r) : id;
         const pnl = r ? parseFloat(R(r, 'netProfit')) || 0 : 0;
         return '<div class="pf-alloc-row"><span class="pf-strat-name">' + sym + '</span><div class="pf-alloc-bar" style="width:' + pct + '%"></div><span style="font-family:var(--mono);font-size:9px;color:var(--t3)">' + pct + '%</span><span style="font-family:var(--mono);font-size:9px;color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + ';min-width:60px;text-align:right">$' + Math.round(pnl).toLocaleString() + '</span></div>';
       }).join('');
 
-    } else {
-      kpis.innerHTML = '<div style="grid-column:1/-1;text-align:center;font-family:var(--mono);font-size:10px;color:var(--t3);padding:12px">Add at least 2 strategies to see portfolio metrics</div>';
-      if (this.chartInstance) { this.chartInstance.destroy(); this.chartInstance = null; }
-      document.getElementById('pfCorrelation').innerHTML = '';
-      document.getElementById('pfAllocation').innerHTML = '';
+      // Pairs list
+      const pairsDiv = document.getElementById('pfPairsList');
+      pairsDiv.innerHTML = ids.map(id => {
+        const r = store.get(id);
+        if (!r) return '';
+        const pnl = parseFloat(R(r, 'netProfit')) || 0;
+        const pf = parseFloat(R(r, 'profitFactor')) || 0;
+        const dd = parseFloat(R(r, 'maxDDPct')) || 0;
+        return '<div class="pf-strat-row" onclick="selectReportForDetail(\'' + id + '\')">' +
+          '<span class="pf-strat-name">' + getSymbol(r) + '</span>' +
+          '<span style="font-family:var(--mono);font-size:9px;color:var(--t3);min-width:50px">PF ' + pf.toFixed(2) + '</span>' +
+          '<span style="font-family:var(--mono);font-size:9px;color:var(--crimson);min-width:50px">DD ' + dd.toFixed(1) + '%</span>' +
+          '<span class="pf-strat-pnl" style="color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + Math.round(pnl).toLocaleString() + '</span>' +
+          '</div>';
+      }).join('');
+
+      // Parameter comparison
+      const paramPanel = document.getElementById('pfParamPanel');
+      const hasInputs = ids.some(id => { const r = store.get(id); return r && Object.keys(getInputs(r)).length > 0; });
+      if (hasInputs && ids.length >= 2) {
+        paramPanel.style.display = '';
+        this._renderParamTable();
+      } else {
+        paramPanel.style.display = 'none';
+      }
+
+      return;
     }
 
-    // Strategy list (all reports with checkboxes)
-    const listDiv = document.getElementById('pfStrategyList');
-    let listHtml = '';
-    for (const [id, r] of store) {
-      const checked = pf.reportIds.includes(id) ? 'checked' : '';
-      const sym = getSymbol(r);
-      const pnl = parseFloat(R(r, 'netProfit')) || 0;
-      listHtml += '<div class="pf-strat-row" onclick="PORTFOLIO_SYSTEM.toggleReport(\'' + id + '\')">' +
-        '<input type="checkbox" ' + checked + ' onclick="event.stopPropagation();PORTFOLIO_SYSTEM.toggleReport(\'' + id + '\')">' +
-        '<span class="pf-strat-name">' + sym + ' — ' + (r.expert || r.filename || '') + '</span>' +
-        '<span class="pf-strat-pnl" style="color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + Math.round(pnl).toLocaleString() + '</span>' +
-        '</div>';
+    // Cards view (no detail expanded)
+    detail.style.display = 'none';
+
+    if (regimeNames.length === 0) {
+      empty.style.display = '';
+      cardsGrid.style.display = 'none';
+      return;
     }
-    listDiv.innerHTML = listHtml;
+
+    empty.style.display = 'none';
+    cardsGrid.style.display = '';
+
+    cardsGrid.innerHTML = regimeNames.map(regime => {
+      const ids = regimes[regime];
+      const metrics = this.computePortfolioMetrics(ids);
+      if (!metrics) return '';
+
+      const pnlColor = metrics.netProfit >= 0 ? 'var(--neon)' : 'var(--crimson)';
+      return '<div class="pf-card" onclick="PORTFOLIO_SYSTEM.openDetail(\'' + regime + '\')">' +
+        '<div class="pf-card-name">' + regime + '</div>' +
+        '<div class="pf-card-count">' + ids.length + ' PAIRS</div>' +
+        '<div class="pf-card-metrics">' +
+        '<div class="pf-card-metric"><div class="pf-card-k">NET P&L</div><div class="pf-card-v" style="color:' + pnlColor + '">' + (metrics.netProfit >= 0 ? '+' : '') + '$' + Math.round(metrics.netProfit).toLocaleString() + '</div></div>' +
+        '<div class="pf-card-metric"><div class="pf-card-k">PROFIT FACTOR</div><div class="pf-card-v">' + metrics.profitFactor.toFixed(2) + '</div></div>' +
+        '<div class="pf-card-metric"><div class="pf-card-k">MAX DD%</div><div class="pf-card-v" style="color:var(--crimson)">' + metrics.maxDD.toFixed(1) + '%</div></div>' +
+        '<div class="pf-card-metric"><div class="pf-card-k">TOTAL TRADES</div><div class="pf-card-v">' + metrics.totalTrades + '</div></div>' +
+        '</div></div>';
+    }).join('');
   }
 };
-
-// Wire portfolio buttons
-document.getElementById('pfNewBtn').addEventListener('click', () => {
-  const name = prompt('Portfolio name:');
-  if (name) PORTFOLIO_SYSTEM.create(name);
-});
-document.getElementById('pfDeleteBtn').addEventListener('click', () => {
-  if (PORTFOLIO_SYSTEM.activeId && confirm('Delete this portfolio?')) PORTFOLIO_SYSTEM.deleteActive();
-});
-PORTFOLIO_SYSTEM.load();
 
 
 // ─── QUANTLAB ANALYST ENGINE (Advanced Algorithm) ───
