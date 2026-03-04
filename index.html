@@ -1151,7 +1151,7 @@ table.portfolio tr.selected td { color: var(--t1); }
             <span class="mc-progress-text" id="mcProgressText">0%</span>
           </div>
           <div id="mcResults" style="display:none">
-            <div class="chart-canvas-wrap" style="height:320px">
+            <div class="chart-canvas-wrap" style="height:400px">
               <canvas id="mcFanChart"></canvas>
             </div>
             <div class="mc-charts-row">
@@ -4141,6 +4141,35 @@ const MONTE_CARLO = {
       await new Promise(r => setTimeout(r, 0));
     }
 
+    // Select sample paths for spaghetti overlay (50 evenly spaced) + extreme paths
+    const samplePaths = [];
+    const step = Math.max(1, Math.floor(paths.length / 50));
+    for (let i = 0; i < paths.length && samplePaths.length < 50; i += step) {
+      samplePaths.push(paths[i]);
+    }
+    // Find extreme paths
+    let bestPathIdx = 0, worstPathIdx = 0, worstDDPathIdx = 0;
+    let bestFinal = -Infinity, worstFinal = Infinity, worstDDVal = 0;
+    for (let i = 0; i < paths.length; i++) {
+      const fe = paths[i][N];
+      if (fe > bestFinal) { bestFinal = fe; bestPathIdx = i; }
+      if (fe < worstFinal) { worstFinal = fe; worstPathIdx = i; }
+    }
+    // Find highest DD path (use maxDDs before sorting)
+    const unsortedMaxDDs = paths.map(p => {
+      let pk = p[0], mx = 0;
+      for (let t = 1; t <= N; t++) { if (p[t] > pk) pk = p[t]; const dd = pk > 0 ? ((pk - p[t]) / pk) * 100 : 0; if (dd > mx) mx = dd; }
+      return mx;
+    });
+    for (let i = 0; i < unsortedMaxDDs.length; i++) {
+      if (unsortedMaxDDs[i] > worstDDVal) { worstDDVal = unsortedMaxDDs[i]; worstDDPathIdx = i; }
+    }
+    const extremePaths = {
+      best: paths[bestPathIdx],
+      worst: paths[worstPathIdx],
+      worstDD: paths[worstDDPathIdx]
+    };
+
     // Compute percentile bands with proper linear interpolation
     const levels = [1, 5, 10, 25, 50, 75, 90, 95, 99];
     const percentiles = {};
@@ -4208,6 +4237,8 @@ const MONTE_CARLO = {
 
     return {
       percentiles,
+      samplePaths,
+      extremePaths,
       finalEquities,
       maxDDs,
       returns,
@@ -4241,77 +4272,86 @@ const MONTE_CARLO = {
     const labels = Array.from({ length: result.numTrades + 1 }, (_, i) => i);
     const datasets = [];
 
-    // P1-P99 extreme outer band
-    datasets.push({
-      label: 'P1-P99',
-      data: result.percentiles.P99,
-      borderColor: 'transparent', backgroundColor: 'rgba(0,255,136,0.03)',
-      fill: '+1', pointRadius: 0, borderWidth: 0,
-    });
-    datasets.push({
-      label: 'P1',
-      data: result.percentiles.P1,
-      borderColor: 'rgba(0,255,136,0.08)', backgroundColor: 'transparent',
-      fill: false, pointRadius: 0, borderWidth: 0.5,
-    });
+    // ─── LAYER 1: Spaghetti paths (individual simulation curves) ───
+    if (result.samplePaths && result.samplePaths.length > 0) {
+      result.samplePaths.forEach((path, i) => {
+        datasets.push({
+          label: i === 0 ? 'SIMULATED PATHS' : 'path_' + i,
+          data: path,
+          borderColor: 'rgba(0,255,136,0.07)',
+          backgroundColor: 'transparent',
+          fill: false, pointRadius: 0, borderWidth: 0.5,
+          tension: 0.1,
+        });
+      });
+    }
 
-    // P5-P95 band (outer)
+    // ─── LAYER 2: Percentile bands (subtle behind paths) ───
+    // P5-P95 outer band
     datasets.push({
-      label: 'P5-P95',
+      label: 'P5-P95 BAND',
       data: result.percentiles.P95,
-      borderColor: 'transparent', backgroundColor: 'rgba(0,255,136,0.06)',
-      fill: '+1', pointRadius: 0, borderWidth: 0,
+      borderColor: 'rgba(0,255,136,0.2)', backgroundColor: 'rgba(0,255,136,0.04)',
+      fill: '+1', pointRadius: 0, borderWidth: 1, borderDash: [4, 4],
     });
     datasets.push({
-      label: 'P5',
+      label: '_P5_low',
       data: result.percentiles.P5,
-      borderColor: 'rgba(0,255,136,0.15)', backgroundColor: 'transparent',
-      fill: false, pointRadius: 0, borderWidth: 1,
-    });
-
-    // P10-P90 band
-    datasets.push({
-      label: 'P10-P90',
-      data: result.percentiles.P90,
-      borderColor: 'transparent', backgroundColor: 'rgba(0,255,136,0.08)',
-      fill: '+1', pointRadius: 0, borderWidth: 0,
-    });
-    datasets.push({
-      label: 'P10',
-      data: result.percentiles.P10,
       borderColor: 'rgba(0,255,136,0.2)', backgroundColor: 'transparent',
-      fill: false, pointRadius: 0, borderWidth: 0.5,
+      fill: false, pointRadius: 0, borderWidth: 1, borderDash: [4, 4],
     });
 
-    // P25-P75 band (inner IQR)
+    // P25-P75 inner band (IQR)
     datasets.push({
-      label: 'P25-P75',
+      label: 'P25-P75 IQR',
       data: result.percentiles.P75,
-      borderColor: 'transparent', backgroundColor: 'rgba(0,255,136,0.12)',
-      fill: '+1', pointRadius: 0, borderWidth: 0,
+      borderColor: 'rgba(0,255,136,0.35)', backgroundColor: 'rgba(0,255,136,0.06)',
+      fill: '+1', pointRadius: 0, borderWidth: 1,
     });
     datasets.push({
-      label: 'P25',
+      label: '_P25_low',
       data: result.percentiles.P25,
-      borderColor: 'rgba(0,255,136,0.3)', backgroundColor: 'transparent',
+      borderColor: 'rgba(0,255,136,0.35)', backgroundColor: 'transparent',
       fill: false, pointRadius: 0, borderWidth: 1,
     });
 
-    // P50 median (bold)
+    // ─── LAYER 3: Extreme paths (highlighted) ───
+    if (result.extremePaths) {
+      datasets.push({
+        label: 'BEST OUTCOME',
+        data: result.extremePaths.best,
+        borderColor: '#00ff88', backgroundColor: 'transparent',
+        fill: false, pointRadius: 0, borderWidth: 1.5,
+      });
+      datasets.push({
+        label: 'WORST OUTCOME',
+        data: result.extremePaths.worst,
+        borderColor: '#ff3b30', backgroundColor: 'transparent',
+        fill: false, pointRadius: 0, borderWidth: 1.5,
+      });
+      datasets.push({
+        label: 'WORST DRAWDOWN',
+        data: result.extremePaths.worstDD,
+        borderColor: '#ff9500', backgroundColor: 'transparent',
+        fill: false, pointRadius: 0, borderWidth: 1.5, borderDash: [6, 3],
+      });
+    }
+
+    // ─── LAYER 4: Median (bold, on top) ───
     datasets.push({
       label: 'MEDIAN (P50)',
       data: result.percentiles.P50,
-      borderColor: '#00ff88', backgroundColor: 'transparent',
+      borderColor: '#ffffff', backgroundColor: 'transparent',
       fill: false, pointRadius: 0, borderWidth: 2.5,
     });
 
-    // Original equity curve
+    // ─── LAYER 5: Original equity curve ───
     if (originalCurve && originalCurve.length > 0) {
       datasets.push({
         label: 'ORIGINAL',
         data: originalCurve.map(p => p.balance),
-        borderColor: '#ffffff', backgroundColor: 'transparent',
-        fill: false, pointRadius: 0, borderWidth: 1.5, borderDash: [6, 3],
+        borderColor: '#00bcd4', backgroundColor: 'transparent',
+        fill: false, pointRadius: 0, borderWidth: 2, borderDash: [8, 4],
       });
     }
 
@@ -4320,11 +4360,16 @@ const MONTE_CARLO = {
       data: { labels, datasets },
       options: {
         responsive: true, maintainAspectRatio: false,
+        animation: false, // faster with 50+ datasets
         plugins: {
           legend: { display: true, position: 'top', labels: { color: '#888', font: { family: "'JetBrains Mono',monospace", size: 8 }, boxWidth: 12, padding: 8,
-            filter: (item) => ['MEDIAN (P50)', 'ORIGINAL', 'P5-P95', 'P25-P75', 'P1-P99'].includes(item.text)
+            filter: (item) => ['MEDIAN (P50)', 'ORIGINAL', 'SIMULATED PATHS', 'BEST OUTCOME', 'WORST OUTCOME', 'WORST DRAWDOWN', 'P5-P95 BAND', 'P25-P75 IQR'].includes(item.text)
           }},
-          tooltip: { enabled: true, mode: 'index', intersect: false,
+          tooltip: { enabled: true, mode: 'nearest', intersect: false,
+            filter: (item) => {
+              const l = item.dataset.label || '';
+              return !l.startsWith('path_') && !l.startsWith('_');
+            },
             callbacks: { label: ctx => ctx.dataset.label + ': $' + ctx.parsed.y.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) }
           }
         },
