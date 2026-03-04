@@ -3373,6 +3373,11 @@ const COMPARE_SYSTEM = {
     this._renderParamSection();
   },
 
+  showAllParams() {
+    this._hiddenParams.clear();
+    this._renderParamSection();
+  },
+
   // Render param table: ROWS = pairs/reports, COLS = parameters (click param header to hide)
   _renderParamSection() {
     const togglesDiv = document.getElementById('cmpParamToggles');
@@ -3412,7 +3417,8 @@ const COMPARE_SYSTEM = {
       return '<span class="pf-param-toggle ' + (active ? 'active' : '') + '" onclick="COMPARE_SYSTEM.toggleParamGroup(\'' + g.replace(/'/g, "\\'") + '\')">' + g + ' (' + paramGroups[g].length + ')</span>';
     }).join('');
     if (hiddenParams.length > 0) {
-      toggleHtml += '<span style="color:var(--t4);font-family:var(--mono);font-size:7px;margin-left:8px">HIDDEN: </span>';
+      toggleHtml += '<span class="pf-param-toggle active" style="font-size:7px;margin-left:8px;background:var(--g500);color:var(--neon);border-color:var(--neon)" onclick="COMPARE_SYSTEM.showAllParams()">SHOW ALL</span>';
+      toggleHtml += '<span style="color:var(--t4);font-family:var(--mono);font-size:7px;margin-left:4px">HIDDEN: </span>';
       toggleHtml += hiddenParams.map(p => '<span class="pf-param-toggle" style="font-size:7px;opacity:0.5" onclick="COMPARE_SYSTEM.toggleParam(\'' + p.key.replace(/'/g, "\\'") + '\')">' + p.key + '</span>').join('');
     }
     togglesDiv.innerHTML = toggleHtml;
@@ -4941,6 +4947,11 @@ const PORTFOLIO_SYSTEM = {
     this._renderParamTable();
   },
 
+  showAllParams() {
+    this._hiddenParams.clear();
+    this._renderParamTable();
+  },
+
   _renderParamTable() {
     const regimes = this.getRegimePortfolios();
     const ids = regimes[this.activeRegime] || [];
@@ -4988,7 +4999,8 @@ const PORTFOLIO_SYSTEM = {
           '<span>' + g + '</span><span style="font-size:7px;opacity:0.6">(' + count + ')</span></button>';
       }).join('');
     if (hiddenParams.length > 0) {
-      toggleHtml += '<span style="color:var(--t4);font-family:var(--mono);font-size:7px;margin-left:8px;display:flex;align-items:center">HIDDEN: </span>';
+      toggleHtml += '<span class="pf-param-toggle active" style="font-size:7px;margin-left:8px;background:var(--g500);color:var(--neon);border-color:var(--neon)" onclick="PORTFOLIO_SYSTEM.showAllParams()">SHOW ALL</span>';
+      toggleHtml += '<span style="color:var(--t4);font-family:var(--mono);font-size:7px;margin-left:4px;display:flex;align-items:center">HIDDEN: </span>';
       toggleHtml += hiddenParams.map(p => '<span class="pf-param-toggle" style="font-size:7px;opacity:0.5" onclick="PORTFOLIO_SYSTEM.toggleParam(\'' + p.key.replace(/'/g, "\\'") + '\')">' + p.key + '</span>').join('');
     }
     toggleHtml += '</div>';
