@@ -1213,10 +1213,10 @@ table.portfolio tr.selected td { color: var(--t1); }
           </div>
         </div>
 
-        <!-- Parameter Differences (horizontal with toggles) -->
+        <!-- Performance Comparison (horizontal with toggles) -->
         <div class="compare-section" id="cmpParamSection">
           <div class="compare-title" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            PARAMETER DIFFERENCES
+            PERFORMANCE COMPARISON
             <div class="pf-param-toggles" id="cmpParamToggles"></div>
           </div>
           <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;max-height:500px;overflow-y:auto">
@@ -3660,10 +3660,12 @@ function renderComparePortfolios(empty, view, modeBar) {
   const pfCompareDiv = document.getElementById('cmpParamSection');
   if (pfCompareDiv) {
     pfCompareDiv.style.display = '';
+    const pfTitle = pfCompareDiv.querySelector('.compare-title');
+    if (pfTitle) pfTitle.childNodes[0].textContent = 'PORTFOLIO RISK BREAKDOWN';
     const togglesDiv = document.getElementById('cmpParamToggles');
     const thead = document.getElementById('cmpParamHHead');
     const tbody = document.getElementById('cmpParamHBody');
-    if (togglesDiv) togglesDiv.innerHTML = '<span style="font-family:var(--mono);font-size:9px;color:var(--t2);letter-spacing:0.08em">PORTFOLIO RISK BREAKDOWN</span>';
+    if (togglesDiv) togglesDiv.innerHTML = '';
 
     // Build a risk breakdown table: rows = risk metrics, cols = portfolios
     const riskKeys = [
