@@ -2174,7 +2174,7 @@ const DATE_FILTER = {
     let totalTrades = 0, totalPnl = 0;
     for (const r of store.values()) {
       const deals = this.filterDeals(r);
-      const closed = deals.filter(d => d.profit !== 0 && d.balance > 0);
+      const closed = deals.filter(d => d.profit !== 0 && d.balance > 0 && d.type !== 'balance');
       totalTrades += closed.length;
       totalPnl += closed.reduce((s,d) => s + d.profit, 0);
     }
@@ -2301,7 +2301,7 @@ function updateKPIs() {
 
       const worstDdPf = pfMetrics.reduce((a, b) => a.m.maxDD > b.m.maxDD ? a : b);
       document.getElementById('kpiWorstDD').textContent = worstDdPf.m.maxDD.toFixed(2) + '%';
-      document.getElementById('kpiWorstDD').className = 'kpi-value pnl-neg';
+      document.getElementById('kpiWorstDD').className = 'kpi-value';
       document.getElementById('kpiWorstDDSym').textContent = worstDdPf.regime;
 
       const avgWR = pfMetrics.reduce((s, p) => s + p.m.winRate, 0) / pfMetrics.length;
@@ -2340,7 +2340,7 @@ function updateKPIs() {
 
     const wDD = best('maxDDPct');
     document.getElementById('kpiWorstDD').textContent = fmtPct(R(wDD, 'maxDDPct'));
-    document.getElementById('kpiWorstDD').className = 'kpi-value pnl-neg';
+    document.getElementById('kpiWorstDD').className = 'kpi-value';
     document.getElementById('kpiWorstDDSym').textContent = getSymbol(wDD);
 
     const avgWR = reports.reduce((s, r) => s + R(r, 'winRate'), 0) / n;
@@ -3364,7 +3364,16 @@ const COMPARE_SYSTEM = {
     return paramGroups;
   },
 
-  // Render horizontal param table with toggles for the compare tab
+  // Hidden param keys (individual parameter toggle)
+  _hiddenParams: new Set(),
+
+  toggleParam(key) {
+    if (this._hiddenParams.has(key)) this._hiddenParams.delete(key);
+    else this._hiddenParams.add(key);
+    this._renderParamSection();
+  },
+
+  // Render param table: ROWS = pairs/reports, COLS = parameters (click param header to hide)
   _renderParamSection() {
     const togglesDiv = document.getElementById('cmpParamToggles');
     const thead = document.getElementById('cmpParamHHead');
@@ -3380,49 +3389,55 @@ const COMPARE_SYSTEM = {
       reports = selected.map(r => ({ r, sym: getSymbol(r), id: r.id }));
       getReportInputs = rep => getInputs(rep.r);
     } else {
-      // Portfolio mode: compare all pairs across selected regimes
-      const regimes = PORTFOLIO_SYSTEM.getRegimePortfolios();
-      const selRegimes = [...this._selectedPortfolios].filter(rg => regimes[rg]);
-      if (selRegimes.length < 2) { section.style.display = 'none'; return; }
-      reports = [];
-      for (const rg of selRegimes) {
-        for (const id of regimes[rg]) {
-          const r = store.get(id);
-          if (r) reports.push({ r, sym: rg + ' / ' + getSymbol(r), id });
-        }
-      }
-      if (reports.length < 2) { section.style.display = 'none'; return; }
-      getReportInputs = rep => getInputs(rep.r);
+      // Portfolio mode — skip param section entirely, handled separately
+      section.style.display = 'none';
+      return;
     }
 
     section.style.display = '';
     const paramGroups = this._getParamGroups(reports);
 
-    // Render toggles
-    togglesDiv.innerHTML = Object.keys(paramGroups).map(g => {
-      const active = this._paramToggles[g] !== false;
-      return '<span class="pf-param-toggle ' + (active ? 'active' : '') + '" onclick="COMPARE_SYSTEM.toggleParamGroup(\'' + g.replace(/'/g, "\\'") + '\')">' + g + '</span>';
-    }).join('');
-
-    // Render horizontal table: rows = parameters, cols = reports
-    thead.innerHTML = '<tr><th>PARAMETER</th>' + reports.map(rep => '<th>' + rep.sym + '</th>').join('') + '</tr>';
-
-    let bodyHtml = '';
+    // Collect all visible param keys
+    const allParams = [];
     for (const [group, keys] of Object.entries(paramGroups)) {
       if (this._paramToggles[group] === false) continue;
-      for (const key of keys) {
-        const vals = reports.map(rep => (getReportInputs(rep))[key] || '\u2014');
-        const allSame = vals.every(v => v === vals[0]);
-        const rowBg = allSame ? '' : 'background:rgba(255,149,0,0.04)';
-        bodyHtml += '<tr style="' + rowBg + '"><td style="color:var(--t3)">' + key + '</td>';
-        for (const v of vals) {
-          const highlight = !allSame && v !== '\u2014' ? 'color:var(--acc)' : '';
-          bodyHtml += '<td style="' + highlight + '">' + v + '</td>';
-        }
-        bodyHtml += '</tr>';
-      }
+      for (const key of keys) allParams.push({ key, group });
     }
-    if (!bodyHtml) bodyHtml = '<tr><td colspan="' + (reports.length + 1) + '" style="text-align:center;color:var(--t3)">NO PARAMETERS TO SHOW</td></tr>';
+    const visibleParams = allParams.filter(p => !this._hiddenParams.has(p.key));
+    const hiddenParams = allParams.filter(p => this._hiddenParams.has(p.key));
+
+    // Render group toggles (to hide whole groups) + hidden param pills (to re-show)
+    let toggleHtml = Object.keys(paramGroups).map(g => {
+      const active = this._paramToggles[g] !== false;
+      return '<span class="pf-param-toggle ' + (active ? 'active' : '') + '" onclick="COMPARE_SYSTEM.toggleParamGroup(\'' + g.replace(/'/g, "\\'") + '\')">' + g + ' (' + paramGroups[g].length + ')</span>';
+    }).join('');
+    if (hiddenParams.length > 0) {
+      toggleHtml += '<span style="color:var(--t4);font-family:var(--mono);font-size:7px;margin-left:8px">HIDDEN: </span>';
+      toggleHtml += hiddenParams.map(p => '<span class="pf-param-toggle" style="font-size:7px;opacity:0.5" onclick="COMPARE_SYSTEM.toggleParam(\'' + p.key.replace(/'/g, "\\'") + '\')">' + p.key + '</span>').join('');
+    }
+    togglesDiv.innerHTML = toggleHtml;
+
+    // Render table: ROWS = pairs, COLS = parameters
+    // Header row: first col = PAIR, then each visible param as a column header (clickable to hide)
+    thead.innerHTML = '<tr><th style="text-align:left;position:sticky;left:0;background:var(--g700);z-index:1">PAIR</th>' +
+      visibleParams.map(p => '<th style="cursor:pointer;white-space:nowrap" title="Click to hide ' + p.key + '" onclick="COMPARE_SYSTEM.toggleParam(\'' + p.key.replace(/'/g, "\\'") + '\')">' + p.key + '</th>').join('') + '</tr>';
+
+    // Body: one row per pair/report
+    let bodyHtml = '';
+    for (const rep of reports) {
+      const inputs = getReportInputs(rep);
+      bodyHtml += '<tr><td style="color:var(--t1);text-align:left;position:sticky;left:0;background:var(--g700);z-index:1;white-space:nowrap">' + rep.sym + '</td>';
+      for (const p of visibleParams) {
+        const v = inputs[p.key] || '\u2014';
+        // Check if this value differs from other reports
+        const allVals = reports.map(r => (getReportInputs(r))[p.key] || '\u2014');
+        const allSame = allVals.every(val => val === allVals[0]);
+        const highlight = !allSame && v !== '\u2014' ? 'color:var(--acc)' : '';
+        bodyHtml += '<td style="' + highlight + '">' + v + '</td>';
+      }
+      bodyHtml += '</tr>';
+    }
+    if (!bodyHtml) bodyHtml = '<tr><td colspan="' + (visibleParams.length + 1) + '" style="text-align:center;color:var(--t3)">NO PARAMETERS TO SHOW</td></tr>';
     tbody.innerHTML = bodyHtml;
   }
 };
@@ -3641,8 +3656,36 @@ function renderComparePortfolios(empty, view, modeBar) {
     }).join('') + '</tr>';
   }).join('');
 
-  // Parameter differences (horizontal with toggles across all pairs in selected portfolios)
-  COMPARE_SYSTEM._renderParamSection();
+  // Portfolio-specific comparison data (replaces param differences)
+  const pfCompareDiv = document.getElementById('cmpParamSection');
+  if (pfCompareDiv) {
+    pfCompareDiv.style.display = '';
+    const togglesDiv = document.getElementById('cmpParamToggles');
+    const thead = document.getElementById('cmpParamHHead');
+    const tbody = document.getElementById('cmpParamHBody');
+    if (togglesDiv) togglesDiv.innerHTML = '<span style="font-family:var(--mono);font-size:9px;color:var(--t2);letter-spacing:0.08em">PORTFOLIO RISK BREAKDOWN</span>';
+
+    // Build a risk breakdown table: rows = risk metrics, cols = portfolios
+    const riskKeys = [
+      ['BEST PAIR P&L', p => { let best = -Infinity; for (const id of p.ids) { const r = store.get(id); if (r) { const v = R(r,'netProfit'); if (v > best) best = v; } } return best; }, v => fmtPnl(v)],
+      ['WORST PAIR P&L', p => { let worst = Infinity; for (const id of p.ids) { const r = store.get(id); if (r) { const v = R(r,'netProfit'); if (v < worst) worst = v; } } return worst; }, v => fmtPnl(v)],
+      ['P&L STD DEV', p => { const pnls = p.ids.map(id => { const r = store.get(id); return r ? R(r,'netProfit') : 0; }); const m = pnls.reduce((s,v)=>s+v,0)/pnls.length; return Math.sqrt(pnls.reduce((s,v)=>s+(v-m)**2,0)/pnls.length); }, v => '$' + fmt(v)],
+      ['AVG PAIR DD%', p => { let sum = 0, cnt = 0; for (const id of p.ids) { const r = store.get(id); if (r) { sum += Math.abs(R(r,'maxDDPct')||0); cnt++; } } return cnt > 0 ? sum/cnt : 0; }, v => fmtPct(v)],
+      ['WORST PAIR DD%', p => { let worst = 0; for (const id of p.ids) { const r = store.get(id); if (r) { const v = Math.abs(R(r,'maxDDPct')||0); if (v > worst) worst = v; } } return worst; }, v => fmtPct(v)],
+      ['AVG PAIR PF', p => { let sum = 0, cnt = 0; for (const id of p.ids) { const r = store.get(id); if (r) { sum += R(r,'profitFactor')||0; cnt++; } } return cnt > 0 ? sum/cnt : 0; }, v => fmt(v)],
+      ['AVG PAIR SHARPE', p => { let sum = 0, cnt = 0; for (const id of p.ids) { const r = store.get(id); if (r) { sum += R(r,'sharpeRatio')||0; cnt++; } } return cnt > 0 ? sum/cnt : 0; }, v => fmt(v)],
+      ['PROFITABLE PAIRS', p => { let prof = 0; for (const id of p.ids) { const r = store.get(id); if (r && R(r,'netProfit') > 0) prof++; } return prof + '/' + p.ids.length; }, v => v],
+      ['UNIQUE SYMBOLS', p => { const syms = new Set(); for (const id of p.ids) { const r = store.get(id); if (r) syms.add(getSymbol(r)); } return syms.size; }, v => v],
+    ];
+
+    if (thead && tbody) {
+      thead.innerHTML = '<tr><th style="text-align:left">RISK METRIC</th>' + pfMetrics.map(p => '<th>' + p.regime + '</th>').join('') + '</tr>';
+      tbody.innerHTML = riskKeys.map(([label, getter, formatter]) => {
+        const vals = pfMetrics.map(p => getter(p));
+        return '<tr><td style="color:var(--t2);text-align:left">' + label + '</td>' + vals.map(v => '<td>' + formatter(v) + '</td>').join('') + '</tr>';
+      }).join('');
+    }
+  }
 }
 
 function renderCompareMetrics(selected) {
@@ -3926,11 +3969,9 @@ function buildCorrelationMatrix() {
     for (let j=0;j<metrics.length;j++) {
       const corr = i===j ? 1 : pearson(vectors[i], vectors[j]);
       const abs = Math.abs(corr);
-      const hue = corr >= 0 ? 145 : 0;
-      const sat = Math.round(abs * 80);
-      const light = Math.round(10 + (1-abs) * 5);
-      const bg = `hsl(${hue},${sat}%,${light}%)`;
-      const tc = abs > 0.3 ? (corr>=0 ? '#00ff88' : '#ff3b30') : '#555';
+      // Clean UI: neon for positive, crimson for negative, gray for neutral
+      const bg = i===j ? 'var(--g600)' : corr >= 0 ? `rgba(0,255,136,${(abs * 0.2).toFixed(2)})` : `rgba(255,59,48,${(abs * 0.2).toFixed(2)})`;
+      const tc = abs > 0.3 ? (corr>=0 ? '#00ff88' : '#ff3b30') : 'var(--t3)';
       html += `<td style="background:${bg};color:${tc}">${corr.toFixed(2)}</td>`;
     }
     html += '</tr>';
@@ -4410,7 +4451,7 @@ const MONTE_CARLO = {
           data: bins,
           backgroundColor: bins.map((_, i) => {
             const midPct = i * binSize + binSize / 2;
-            return midPct > 30 ? 'rgba(255,59,48,0.7)' : midPct > 15 ? 'rgba(255,149,0,0.6)' : 'rgba(0,255,136,0.5)';
+            return midPct > 30 ? 'rgba(255,59,48,0.7)' : midPct > 15 ? 'rgba(255,255,255,0.3)' : 'rgba(0,255,136,0.5)';
           }),
           borderWidth: 0
         }]
@@ -4890,6 +4931,14 @@ const PORTFOLIO_SYSTEM = {
     this._renderParamTable();
   },
 
+  _hiddenParams: new Set(),
+
+  toggleParam(key) {
+    if (this._hiddenParams.has(key)) this._hiddenParams.delete(key);
+    else this._hiddenParams.add(key);
+    this._renderParamTable();
+  },
+
   _renderParamTable() {
     const regimes = this.getRegimePortfolios();
     const ids = regimes[this.activeRegime] || [];
@@ -4917,46 +4966,56 @@ const PORTFOLIO_SYSTEM = {
       paramGroups[currentGroup].push(key);
     }
 
-    // Render toggles — clear, prominent toggle buttons
+    // Collect visible/hidden params
+    const allParams = [];
+    for (const [group, keys] of Object.entries(paramGroups)) {
+      if (this._paramToggles[group] === false) continue;
+      for (const key of keys) allParams.push({ key, group });
+    }
+    const visibleParams = allParams.filter(p => !this._hiddenParams.has(p.key));
+    const hiddenParams = allParams.filter(p => this._hiddenParams.has(p.key));
+
+    // Render toggles — group toggles + hidden param pills
     const togglesDiv = document.getElementById('pfParamToggles');
     const groupNames = Object.keys(paramGroups);
-    togglesDiv.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">' +
+    let toggleHtml = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">' +
       groupNames.map(g => {
         const active = this._paramToggles[g] !== false;
         const count = paramGroups[g].length;
         return '<button class="pf-param-toggle ' + (active ? 'active' : '') + '" onclick="PORTFOLIO_SYSTEM.toggleParamGroup(\'' + g.replace(/'/g, "\\'") + '\')" style="display:inline-flex;align-items:center;gap:4px">' +
           '<span>' + g + '</span><span style="font-size:7px;opacity:0.6">(' + count + ')</span></button>';
-      }).join('') + '</div>';
+      }).join('');
+    if (hiddenParams.length > 0) {
+      toggleHtml += '<span style="color:var(--t4);font-family:var(--mono);font-size:7px;margin-left:8px;display:flex;align-items:center">HIDDEN: </span>';
+      toggleHtml += hiddenParams.map(p => '<span class="pf-param-toggle" style="font-size:7px;opacity:0.5" onclick="PORTFOLIO_SYSTEM.toggleParam(\'' + p.key.replace(/'/g, "\\'") + '\')">' + p.key + '</span>').join('');
+    }
+    toggleHtml += '</div>';
+    togglesDiv.innerHTML = toggleHtml;
 
-    // Horizontal table: ROWS = parameters, COLUMNS = pairs (each pair is a column)
+    // FLIPPED table: ROWS = pairs, COLS = parameters (click param header to hide)
     const tableDiv = document.getElementById('pfParamTable');
-    let html = '<table class="pf-param-htable"><thead><tr><th style="text-align:left;min-width:160px">PARAMETER</th>';
-    for (const rep of reports) {
-      html += '<th style="text-align:left;min-width:100px">' + rep.sym + '</th>';
+    let html = '<table class="pf-param-htable"><thead><tr><th style="text-align:left;min-width:120px;position:sticky;left:0;background:var(--g700);z-index:1">PAIR</th>';
+    for (const p of visibleParams) {
+      html += '<th style="cursor:pointer;white-space:nowrap" title="Click to hide" onclick="PORTFOLIO_SYSTEM.toggleParam(\'' + p.key.replace(/'/g, "\\'") + '\')">' + p.key + '</th>';
     }
     html += '</tr></thead><tbody>';
 
     let hasRows = false;
-    for (const [group, keys] of Object.entries(paramGroups)) {
-      if (this._paramToggles[group] === false) continue;
-      // Group header row
-      html += '<tr><td colspan="' + (reports.length + 1) + '" style="background:var(--g600);color:var(--amber);font-weight:700;font-size:8px;letter-spacing:0.1em;padding:6px 8px;border:none">' + group + '</td></tr>';
-      for (const key of keys) {
-        const vals = reports.map(rep => rep.inputs[key] || '\u2014');
-        const allSame = vals.every(v => v === vals[0]);
-        const rowBg = allSame ? '' : 'background:rgba(255,149,0,0.04)';
-        html += '<tr style="' + rowBg + '"><td style="color:var(--t2);text-align:left">' + key + '</td>';
-        for (const v of vals) {
-          const highlight = !allSame && v !== '\u2014' ? 'color:var(--acc);font-weight:500' : 'color:var(--t3)';
-          html += '<td style="' + highlight + ';text-align:left">' + v + '</td>';
-        }
-        html += '</tr>';
-        hasRows = true;
+    for (const rep of reports) {
+      html += '<tr><td style="color:var(--t1);text-align:left;position:sticky;left:0;background:var(--g700);z-index:1;white-space:nowrap">' + rep.sym + '</td>';
+      for (const p of visibleParams) {
+        const v = rep.inputs[p.key] || '\u2014';
+        const allVals = reports.map(r => r.inputs[p.key] || '\u2014');
+        const allSame = allVals.every(val => val === allVals[0]);
+        const highlight = !allSame && v !== '\u2014' ? 'color:var(--acc);font-weight:500' : 'color:var(--t3)';
+        html += '<td style="' + highlight + ';text-align:center;white-space:nowrap">' + v + '</td>';
       }
+      html += '</tr>';
+      hasRows = true;
     }
 
     if (!hasRows) {
-      html += '<tr><td colspan="' + (reports.length + 1) + '" style="text-align:center;color:var(--t3);padding:16px">ALL PARAMETER GROUPS ARE HIDDEN — USE TOGGLES ABOVE TO SHOW</td></tr>';
+      html += '<tr><td colspan="' + (visibleParams.length + 1) + '" style="text-align:center;color:var(--t3);padding:16px">ALL PARAMETER GROUPS ARE HIDDEN — USE TOGGLES ABOVE TO SHOW</td></tr>';
     }
 
     html += '</tbody></table>';
@@ -4992,7 +5051,7 @@ const PORTFOLIO_SYSTEM = {
         kpis.innerHTML = [
           { label: 'COMBINED P&L', value: (metrics.netProfit >= 0 ? '+' : '') + '$' + metrics.netProfit.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}), cls: metrics.netProfit >= 0 ? 'neon' : 'crimson' },
           { label: 'PROFIT FACTOR', value: metrics.profitFactor.toFixed(2), cls: '' },
-          { label: 'PORTFOLIO DD%', value: metrics.maxDD.toFixed(2) + '%', cls: 'crimson' },
+          { label: 'PORTFOLIO DD%', value: metrics.maxDD.toFixed(2) + '%', cls: '' },
           { label: 'AVG SHARPE', value: metrics.avgSharpe.toFixed(2), cls: '' },
           { label: 'DIVERSIFICATION', value: (metrics.divRatio * 100).toFixed(1) + '%', cls: metrics.divRatio > 0.5 ? 'neon' : '' },
         ].map(k => '<div class="pf-kpi"><div class="pf-kpi-label">' + k.label + '</div><div class="pf-kpi-value" style="color:' + (k.cls === 'neon' ? 'var(--neon)' : k.cls === 'crimson' ? 'var(--crimson)' : 'var(--acc)') + '">' + k.value + '</div></div>').join('');
@@ -5011,8 +5070,10 @@ const PORTFOLIO_SYSTEM = {
           corrHtml += '<tr><th>' + symbols[i].slice(0, 10) + '</th>';
           for (let j = 0; j < matrix[i].length; j++) {
             const v = matrix[i][j];
-            const bg = i === j ? 'var(--g600)' : v > 0.5 ? 'rgba(255,59,48,0.2)' : v > 0 ? 'rgba(255,149,0,0.1)' : 'rgba(0,255,136,0.15)';
-            corrHtml += '<td style="background:' + bg + '">' + v.toFixed(2) + '</td>';
+            const abs = Math.abs(v);
+            const bg = i === j ? 'var(--g600)' : v >= 0 ? 'rgba(0,255,136,' + (abs * 0.2).toFixed(2) + ')' : 'rgba(255,59,48,' + (abs * 0.2).toFixed(2) + ')';
+            const tc = abs > 0.3 ? (v >= 0 ? '#00ff88' : '#ff3b30') : 'var(--t3)';
+            corrHtml += '<td style="background:' + bg + ';color:' + tc + '">' + v.toFixed(2) + '</td>';
           }
           corrHtml += '</tr>';
         }
@@ -5046,7 +5107,7 @@ const PORTFOLIO_SYSTEM = {
           '<span style="font-family:var(--mono);font-size:10px;color:var(--acc);min-width:90px">' + getSymbol(r) + '</span>' +
           '<span style="font-family:var(--mono);font-size:9px;color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + pnl.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span>' +
           '<span style="font-family:var(--mono);font-size:9px;color:var(--t2)">PF ' + pf.toFixed(2) + '</span>' +
-          '<span style="font-family:var(--mono);font-size:9px;color:var(--crimson)">DD ' + dd.toFixed(2) + '%</span>' +
+          '<span style="font-family:var(--mono);font-size:9px;color:var(--acc)">DD ' + dd.toFixed(2) + '%</span>' +
           '<span style="font-family:var(--mono);font-size:9px;color:var(--t2)">WR ' + wr.toFixed(2) + '%</span>' +
           '</div>';
       }).join('');
@@ -5088,7 +5149,7 @@ const PORTFOLIO_SYSTEM = {
         '<div class="pf-card-metrics">' +
         '<div class="pf-card-metric"><div class="pf-card-k">NET P&L</div><div class="pf-card-v" style="color:' + pnlColor + '">' + (metrics.netProfit >= 0 ? '+' : '') + '$' + metrics.netProfit.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + '</div></div>' +
         '<div class="pf-card-metric"><div class="pf-card-k">PROFIT FACTOR</div><div class="pf-card-v">' + metrics.profitFactor.toFixed(2) + '</div></div>' +
-        '<div class="pf-card-metric"><div class="pf-card-k">MAX DD%</div><div class="pf-card-v" style="color:var(--crimson)">' + metrics.maxDD.toFixed(2) + '%</div></div>' +
+        '<div class="pf-card-metric"><div class="pf-card-k">MAX DD%</div><div class="pf-card-v" style="color:var(--acc)">' + metrics.maxDD.toFixed(2) + '%</div></div>' +
         '<div class="pf-card-metric"><div class="pf-card-k">TOTAL TRADES</div><div class="pf-card-v">' + metrics.totalTrades + '</div></div>' +
         '</div></div>';
     }).join('');
