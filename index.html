@@ -5410,7 +5410,7 @@ document.getElementById('btnSyncDrive').addEventListener('click', syncFromDrive)
 async function fetchDriveBalanceCurves() {
   const missing = [];
   for (const [id, r] of store) {
-    if (r.source === 'drive' && r.driveFileId && (!r.balanceCurve || r.balanceCurve.length === 0 || r._curveTruncated)) {
+    if (r.source === 'drive' && r.driveFileId && (!r.balanceCurve || r.balanceCurve.length === 0 || r._curveTruncated || !r.deals || r.deals.length === 0)) {
       missing.push(r);
     }
   }
@@ -5438,11 +5438,19 @@ async function fetchDriveBalanceCurves() {
 
       // Parse using same DOM parser as local imports
       const parsed = parseMT5Report(json.html, report.filename);
-      if (parsed && parsed.balanceCurve && parsed.balanceCurve.length > 0) {
-        report.balanceCurve = parsed.balanceCurve;
-        report.deals = parsed.deals || report.deals;
+      if (parsed) {
+        if (parsed.balanceCurve && parsed.balanceCurve.length > 0) {
+          report.balanceCurve = parsed.balanceCurve;
+        }
+        if (parsed.deals && parsed.deals.length > 0) {
+          report.deals = parsed.deals;
+        }
+        if (parsed.inputs && Object.keys(parsed.inputs).length > 0) {
+          report.inputs = parsed.inputs;
+        }
+        report._curveTruncated = false;
         loaded++;
-        console.log('Loaded ' + parsed.balanceCurve.length + ' curve points for ' + report.filename);
+        console.log('Loaded ' + (parsed.balanceCurve||[]).length + ' curve points + ' + (parsed.deals||[]).length + ' deals for ' + report.filename);
       }
 
       setDriveStatus('LOADING CURVES (' + loaded + '/' + missing.length + ')...', 'var(--amber)');
