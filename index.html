@@ -2403,11 +2403,6 @@ function renderOverview() {
       const { combined } = PORTFOLIO_SYSTEM.computeCombined(pf.ids);
       const sparkSvg = combined.length > 2 ? buildSparklineSVG(combined, 260, 50) : '';
 
-      // Use worst individual DD if combined DD seems too low
-      const individualDDs = pf.ids.map(id => { const r = store.get(id); return r ? Math.abs(parseFloat(R(r, 'maxDDPct')) || 0) : 0; });
-      const worstIndDD = Math.max(...individualDDs);
-      const displayDD = m.maxDD < 1 && worstIndDD > 1 ? worstIndDD : m.maxDD;
-
       return '<div class="mini-card" onclick="TAB_SYSTEM.switchTab(\'portfolio\');PORTFOLIO_SYSTEM.openDetail(\'' + pf.regime + '\')">' +
         '<div class="mc-spark">' + sparkSvg + '</div>' +
         '<div class="mc-body">' +
@@ -2416,7 +2411,7 @@ function renderOverview() {
         '<div class="mc-metric"><span class="mc-k">P&amp;L</span><span class="mc-v ' + pnlColor + '">' + fmtPnl(m.netProfit) + '</span></div>' +
         '<div class="mc-metric"><span class="mc-k">PF</span><span class="mc-v">' + fmt(m.profitFactor) + '</span></div>' +
         '<div class="mc-metric"><span class="mc-k">SHARPE</span><span class="mc-v">' + fmt(m.avgSharpe) + '</span></div>' +
-        '<div class="mc-metric"><span class="mc-k">DD%</span><span class="mc-v">' + fmtPct(displayDD) + '</span></div>' +
+        '<div class="mc-metric"><span class="mc-k">DD%</span><span class="mc-v">' + fmtPct(m.maxDD) + '</span></div>' +
         '</div></div></div>';
     }).join('');
   }
@@ -4527,30 +4522,29 @@ const PORTFOLIO_SYSTEM = {
     const netProfit = combined[combined.length - 1].balance - totalInit;
 
     // Max drawdown of combined curve (from peak equity)
-    let peak = combined[0].balance, maxDD = 0;
+    let combinedDD = 0;
+    let peak = combined[0].balance;
     for (const p of combined) {
       if (p.balance > peak) peak = p.balance;
       const dd = peak > 0 ? ((peak - p.balance) / peak) * 100 : 0;
-      if (dd > maxDD) maxDD = dd;
+      if (dd > combinedDD) combinedDD = dd;
     }
 
-    // Also compute worst individual DD as sanity check
-    let worstIndDD = 0;
+    // Compute worst individual DD (the real risk metric users care about)
+    let worstIndDD = 0, sumIndDD = 0;
     for (const id of validIds) {
       const r = store.get(id);
-      if (r) { const idd = Math.abs(parseFloat(R(r, 'maxDDPct')) || 0); if (idd > worstIndDD) worstIndDD = idd; }
-    }
-    // If combined DD is suspiciously low compared to individual DDs, use weighted average of individual DDs
-    if (maxDD < 0.5 && worstIndDD > 1) {
-      let sumDD = 0;
-      for (const id of validIds) {
-        const r = store.get(id);
-        if (r) sumDD += Math.abs(parseFloat(R(r, 'maxDDPct')) || 0);
+      if (r) {
+        const idd = Math.abs(parseFloat(R(r, 'maxDDPct')) || 0);
+        if (idd > worstIndDD) worstIndDD = idd;
+        sumIndDD += idd;
       }
-      // Portfolio DD should be less than worst individual but not near zero
-      // Use average individual DD as a better estimate when combined curve is too flat
-      maxDD = sumDD / validIds.length;
     }
+
+    // Use the worst individual DD as the portfolio DD
+    // This reflects actual risk: the worst any single pair drew down.
+    // The combined curve DD is too diluted by normalization to be meaningful.
+    const maxDD = worstIndDD > 0 ? worstIndDD : combinedDD;
 
     // Sum metrics from individual reports (not average — total P&L, weighted PF)
     let totalGrossProfit = 0, totalGrossLoss = 0, sumSharpe = 0, sumWin = 0, totalTrades = 0, cnt = 0;
