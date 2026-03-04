@@ -409,7 +409,7 @@ table.portfolio tr.selected td { color: var(--t1); }
 .mc-metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
 .mc-metric { background: var(--g700); border: 1px solid var(--g400); padding: 10px 12px; }
 .mc-metric-label { font-family: var(--mono); font-size: 7px; color: var(--t3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 3px; }
-.mc-metric-value { font-family: var(--mono); font-size: 14px; color: var(--acc); font-weight: 600; }
+.mc-metric-value { font-family: var(--mono); font-size: 13px; color: var(--acc); font-weight: 600; word-break: break-word; }
 .mc-metric-value.positive { color: var(--neon); }
 .mc-metric-value.negative { color: var(--crimson); }
 .mc-empty { text-align: center; padding: 24px; }
@@ -1130,8 +1130,14 @@ table.portfolio tr.selected td { color: var(--t1); }
                 <option value="5000" selected>5,000</option>
                 <option value="10000">10,000</option>
               </select></label>
+              <label class="mc-label">BLOCK: <select id="mcBlockSize" class="mc-select">
+                <option value="1">1 (IID)</option>
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="20">20</option>
+                <option value="auto">AUTO</option>
+              </select></label>
               <label class="mc-label">CONFIDENCE: <select id="mcConfidence" class="mc-select">
-                <option value="80">80%</option>
                 <option value="90" selected>90%</option>
                 <option value="95">95%</option>
                 <option value="99">99%</option>
@@ -1139,6 +1145,7 @@ table.portfolio tr.selected td { color: var(--t1); }
               <button class="action-btn mc-run-btn" id="mcRunBtn">RUN SIMULATION</button>
             </div>
           </div>
+          <div id="mcMethodLabel" style="display:none;padding:2px 12px;font-family:var(--mono);font-size:7px;color:var(--t4);letter-spacing:0.1em"></div>
           <div id="mcProgress" class="mc-progress" style="display:none">
             <div class="mc-progress-bar"><div class="mc-progress-fill" id="mcProgressFill"></div></div>
             <span class="mc-progress-text" id="mcProgressText">0%</span>
@@ -1161,7 +1168,7 @@ table.portfolio tr.selected td { color: var(--t1); }
           </div>
           <div id="mcEmpty" class="mc-empty">
             <span style="color:var(--t3);font-family:var(--mono);font-size:10px;letter-spacing:0.08em">
-              CLICK RUN SIMULATION TO GENERATE 5,000 RANDOMIZED EQUITY PATHS
+              CLICK RUN SIMULATION TO GENERATE 5,000 BLOCK-BOOTSTRAP EQUITY PATHS
             </span>
           </div>
         </div>
@@ -1787,12 +1794,12 @@ function fmt(n, dec=2) {
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return (n < 0 ? '-' : '') + parts.join('.');
 }
-function fmtPnl(n) {
+function fmtPnl(n, dec=2) {
   if (isNaN(n)) return '\u2014';
   const prefix = n >= 0 ? '+$' : '-$';
-  return prefix + fmt(Math.abs(n));
+  return prefix + fmt(Math.abs(n), dec);
 }
-function fmtPct(n) { return isNaN(n) ? '\u2014' : fmt(n, 2) + '%'; }
+function fmtPct(n, dec=2) { return isNaN(n) ? '\u2014' : fmt(n, dec) + '%'; }
 function fmtHoldTime(val) {
   if (!val) return '\u2014';
   // Handle ISO date from Google Sheets epoch (1899-12-30T06:10:14.000Z)
@@ -2293,7 +2300,7 @@ function updateKPIs() {
       document.getElementById('kpiBestSharpeSym').textContent = bestShPf.regime;
 
       const worstDdPf = pfMetrics.reduce((a, b) => a.m.maxDD > b.m.maxDD ? a : b);
-      document.getElementById('kpiWorstDD').textContent = worstDdPf.m.maxDD.toFixed(1) + '%';
+      document.getElementById('kpiWorstDD').textContent = worstDdPf.m.maxDD.toFixed(2) + '%';
       document.getElementById('kpiWorstDD').className = 'kpi-value pnl-neg';
       document.getElementById('kpiWorstDDSym').textContent = worstDdPf.regime;
 
@@ -3527,7 +3534,7 @@ function renderComparePortfolios(empty, view, modeBar) {
   for (const rg of regimeNames) {
     const checked = COMPARE_SYSTEM._selectedPortfolios.has(rg);
     const m = PORTFOLIO_SYSTEM.computePortfolioMetrics(regimes[rg]);
-    const pnlStr = m ? ((m.netProfit >= 0 ? '+' : '') + '$' + Math.round(m.netProfit).toLocaleString()) : '—';
+    const pnlStr = m ? ((m.netProfit >= 0 ? '+' : '') + '$' + m.netProfit.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : '—';
     const pnlColor = m && m.netProfit >= 0 ? 'var(--neon)' : 'var(--crimson)';
     selectorHtml += '<label class="pf-param-toggle ' + (checked ? 'active' : '') + '" style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:6px 12px" onclick="event.preventDefault();COMPARE_SYSTEM.togglePortfolioSelect(\'' + rg + '\')">' +
       '<span>' + rg + '</span><span style="font-size:8px;color:' + pnlColor + '">' + pnlStr + '</span>' +
@@ -3702,16 +3709,16 @@ function renderPerformance() {
   document.getElementById('perfKpiCount').textContent = n;
   document.getElementById('perfKpiProfitable').textContent = profCount + '/' + n + ' PROFITABLE';
   const tp = sum(pnls);
-  document.getElementById('perfKpiPnl').textContent = '$' + Math.abs(tp).toLocaleString(undefined,{maximumFractionDigits:0});
+  document.getElementById('perfKpiPnl').textContent = '$' + Math.abs(tp).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
   document.getElementById('perfKpiPnl').className = 'kpi-value ' + (tp>=0?'pnl-pos':'pnl-neg');
-  document.getElementById('perfKpiAvgPnl').textContent = 'AVG $' + Math.abs(avg(pnls)).toLocaleString(undefined,{maximumFractionDigits:0});
+  document.getElementById('perfKpiAvgPnl').textContent = 'AVG $' + Math.abs(avg(pnls)).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
   document.getElementById('perfKpiPF').textContent = avg(pfs).toFixed(2);
   document.getElementById('perfKpiMedianPF').textContent = 'MEDIAN ' + median(pfs).toFixed(2);
   document.getElementById('perfKpiSharpe').textContent = avg(sharpes).toFixed(2);
   document.getElementById('perfKpiMedianSharpe').textContent = 'MEDIAN ' + median(sharpes).toFixed(2);
-  document.getElementById('perfKpiDD').textContent = avg(dds).toFixed(1) + '%';
-  document.getElementById('perfKpiWorstDD').textContent = 'WORST ' + Math.max(...dds).toFixed(1) + '%';
-  document.getElementById('perfKpiWR').textContent = avg(wrs).toFixed(1) + '%';
+  document.getElementById('perfKpiDD').textContent = avg(dds).toFixed(2) + '%';
+  document.getElementById('perfKpiWorstDD').textContent = 'WORST ' + Math.max(...dds).toFixed(2) + '%';
+  document.getElementById('perfKpiWR').textContent = avg(wrs).toFixed(2) + '%';
   document.getElementById('perfKpiAvgRecovery').textContent = 'RECOVERY ' + avg(recs).toFixed(2);
 
   buildHistogramChart();
@@ -3972,7 +3979,7 @@ function buildRiskReturnChart() {
           backgroundColor:V.g700+'ee', titleFont:{family:"'JetBrains Mono'",size:9},
           bodyFont:{family:"'JetBrains Mono'",size:10}, titleColor:V.t3, bodyColor:V.t1,
           borderColor:V.g400, borderWidth:1,
-          callbacks: { label: ctx => { const d = data[ctx.dataIndex]; return `${d.label}: DD=${d.x.toFixed(1)}%, P&L=$${d.y.toLocaleString()}, PF=${d.pf.toFixed(2)}`; } }
+          callbacks: { label: ctx => { const d = data[ctx.dataIndex]; return `${d.label}: DD=${d.x.toFixed(2)}%, P&L=$${d.y.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}, PF=${d.pf.toFixed(2)}`; } }
         }
       }
     }
@@ -4032,8 +4039,44 @@ const MONTE_CARLO = {
   cache: new Map(), // reportId -> results
   chartInstances: { fan: null, ddHist: null, retHist: null },
 
-  // Run simulation with chunked async to avoid UI freeze
-  async run(report, numSims, confidencePct) {
+  // Compute optimal block length using Politis-White (2004) heuristic
+  _autoBlockLength(profits) {
+    const N = profits.length;
+    if (N < 20) return 1;
+    const mean = profits.reduce((s, v) => s + v, 0) / N;
+    const centered = profits.map(v => v - mean);
+    const variance = centered.reduce((s, v) => s + v * v, 0) / N;
+    if (variance === 0) return 1;
+    // Compute lag-1 autocorrelation
+    let autoCorr = 0;
+    for (let i = 0; i < N - 1; i++) autoCorr += centered[i] * centered[i + 1];
+    autoCorr /= (N * variance);
+    // Politis-White rule: blockLength ≈ (2 * |rho| / (1 - |rho|^2))^(1/3) * N^(1/3)
+    const rho = Math.abs(autoCorr);
+    if (rho < 0.01) return 1; // No serial correlation, use IID bootstrap
+    const bLen = Math.round(Math.pow(2 * rho / (1 - rho * rho + 0.001), 1/3) * Math.pow(N, 1/3));
+    return Math.max(1, Math.min(bLen, Math.floor(N / 3)));
+  },
+
+  // Circular Block Bootstrap: preserves serial correlation structure
+  _blockBootstrapSample(profits, blockLen) {
+    const N = profits.length;
+    if (blockLen <= 1) {
+      // IID bootstrap fallback
+      return Array.from({length: N}, () => profits[Math.floor(Math.random() * N)]);
+    }
+    const sampled = [];
+    while (sampled.length < N) {
+      const start = Math.floor(Math.random() * N);
+      for (let j = 0; j < blockLen && sampled.length < N; j++) {
+        sampled.push(profits[(start + j) % N]); // Circular: wraps around
+      }
+    }
+    return sampled;
+  },
+
+  // Run simulation with block bootstrap + enhanced metrics
+  async run(report, numSims, confidencePct, blockSize) {
     const deals = (report.deals || []).filter(d => d.profit !== 0 && d.balance > 0);
     if (deals.length < 10) return null;
 
@@ -4041,10 +4084,22 @@ const MONTE_CARLO = {
     const N = profits.length;
     const initBal = parseFloat(R(report, 'initialDeposit') || report.settings?.initialDeposit) || 100000;
 
+    // Determine block length
+    const effectiveBlock = blockSize === 'auto' ? this._autoBlockLength(profits) : parseInt(blockSize) || 10;
+
+    // Compute serial autocorrelation for display
+    const pmean = profits.reduce((s,v)=>s+v,0)/N;
+    const pcentered = profits.map(v=>v-pmean);
+    const pvar = pcentered.reduce((s,v)=>s+v*v,0)/N;
+    let lag1AutoCorr = 0;
+    if (pvar > 0) { for (let i=0;i<N-1;i++) lag1AutoCorr += pcentered[i]*pcentered[i+1]; lag1AutoCorr /= (N*pvar); }
+
     // Run sims in chunks for UI responsiveness
-    const paths = []; // each path = array of cumulative equity values
+    const paths = [];
     const finalEquities = [];
     const maxDDs = [];
+    const simSharpes = [];
+    const simSortinos = [];
     const CHUNK = 200;
     const totalChunks = Math.ceil(numSims / CHUNK);
 
@@ -4053,12 +4108,12 @@ const MONTE_CARLO = {
       const end = Math.min(start + CHUNK, numSims);
 
       for (let s = start; s < end; s++) {
+        const sampledProfits = this._blockBootstrapSample(profits, effectiveBlock);
         const equity = [initBal];
         let peak = initBal, maxDD = 0;
 
         for (let t = 0; t < N; t++) {
-          const idx = Math.floor(Math.random() * N);
-          const newBal = equity[t] + profits[idx];
+          const newBal = equity[t] + sampledProfits[t];
           equity.push(newBal);
           if (newBal > peak) peak = newBal;
           const dd = peak > 0 ? ((peak - newBal) / peak) * 100 : 0;
@@ -4068,43 +4123,66 @@ const MONTE_CARLO = {
         paths.push(equity);
         finalEquities.push(equity[N]);
         maxDDs.push(maxDD);
+
+        // Per-sim Sharpe & Sortino from trade returns
+        const tradeReturns = sampledProfits.map((p, i) => p / (equity[i] || initBal));
+        const trMean = tradeReturns.reduce((s,v)=>s+v,0) / tradeReturns.length;
+        const trStd = Math.sqrt(tradeReturns.reduce((s,v)=>s+(v-trMean)**2,0) / tradeReturns.length);
+        simSharpes.push(trStd > 0 ? (trMean / trStd) * Math.sqrt(252) : 0);
+        // Sortino: downside deviation only
+        const downside = tradeReturns.filter(r => r < 0);
+        const downDev = downside.length > 0 ? Math.sqrt(downside.reduce((s,v)=>s+v*v,0) / tradeReturns.length) : 0;
+        simSortinos.push(downDev > 0 ? (trMean / downDev) * Math.sqrt(252) : 0);
       }
 
-      // Update progress
       const pct = Math.round(((chunk + 1) / totalChunks) * 100);
       document.getElementById('mcProgressFill').style.width = pct + '%';
       document.getElementById('mcProgressText').textContent = pct + '%';
-      // Yield to UI
       await new Promise(r => setTimeout(r, 0));
     }
 
-    // Compute percentile bands at each trade index
-    const levels = [5, 10, 25, 50, 75, 90, 95];
+    // Compute percentile bands with proper linear interpolation
+    const levels = [1, 5, 10, 25, 50, 75, 90, 95, 99];
     const percentiles = {};
     levels.forEach(l => percentiles['P' + l] = []);
+
+    const getPercentile = (sortedArr, p) => {
+      const rank = (p / 100) * (sortedArr.length - 1);
+      const lo = Math.floor(rank), hi = Math.ceil(rank);
+      const frac = rank - lo;
+      return sortedArr[lo] * (1 - frac) + sortedArr[hi] * frac;
+    };
 
     for (let t = 0; t <= N; t++) {
       const vals = paths.map(p => p[t]).sort((a, b) => a - b);
       levels.forEach(l => {
-        const idx = Math.floor((l / 100) * vals.length);
-        percentiles['P' + l].push(vals[Math.min(idx, vals.length - 1)]);
+        percentiles['P' + l].push(getPercentile(vals, l));
       });
     }
 
     // Sort distributions
     finalEquities.sort((a, b) => a - b);
     maxDDs.sort((a, b) => a - b);
+    simSharpes.sort((a, b) => a - b);
+    simSortinos.sort((a, b) => a - b);
 
     // Risk metrics
-    const medianReturn = finalEquities[Math.floor(finalEquities.length * 0.5)] - initBal;
-    const p10Return = finalEquities[Math.floor(finalEquities.length * 0.1)] - initBal;
-    const p90Return = finalEquities[Math.floor(finalEquities.length * 0.9)] - initBal;
-    const medianDD = maxDDs[Math.floor(maxDDs.length * 0.5)];
+    const medianReturn = getPercentile(finalEquities, 50) - initBal;
+    const p10Return = getPercentile(finalEquities, 10) - initBal;
+    const p90Return = getPercentile(finalEquities, 90) - initBal;
+    const medianDD = getPercentile(maxDDs, 50);
     const worstDD = maxDDs[maxDDs.length - 1];
     const bestDD = maxDDs[0];
 
-    // Probability of ruin (equity drops below X% of initial at any point)
-    const ruinThreshold = initBal * 0.5; // 50% loss
+    // VaR & CVaR (Expected Shortfall) at 95%
+    const returns = finalEquities.map(e => ((e - initBal) / initBal) * 100);
+    returns.sort((a, b) => a - b);
+    const var95 = getPercentile(returns, 5); // 95% VaR = 5th percentile of returns
+    const cvarReturns = returns.filter(r => r <= var95);
+    const cvar95 = cvarReturns.length > 0 ? cvarReturns.reduce((s,v)=>s+v,0) / cvarReturns.length : var95;
+
+    // Probability of ruin (equity drops below 50% of initial at any point)
+    const ruinThreshold = initBal * 0.5;
     let ruinCount = 0;
     for (const path of paths) {
       for (let t = 0; t <= N; t++) {
@@ -4113,26 +4191,38 @@ const MONTE_CARLO = {
     }
     const probRuin = (ruinCount / numSims) * 100;
 
-    // Sharpe from median path
-    const medianReturns = [];
-    for (let t = 1; t <= N; t++) {
-      medianReturns.push(percentiles.P50[t] - percentiles.P50[t - 1]);
-    }
-    const meanRet = medianReturns.reduce((s, v) => s + v, 0) / medianReturns.length;
-    const stdRet = Math.sqrt(medianReturns.reduce((s, v) => s + (v - meanRet) ** 2, 0) / medianReturns.length);
-    const medianSharpe = stdRet > 0 ? (meanRet / stdRet) * Math.sqrt(252) : 0;
+    // Sharpe/Sortino distributions
+    const medianSharpe = getPercentile(simSharpes, 50);
+    const sharpeLo = getPercentile(simSharpes, 5);
+    const sharpeHi = getPercentile(simSharpes, 95);
+    const medianSortino = getPercentile(simSortinos, 50);
+
+    // Calmar ratio: median annualized return / median max DD
+    const medianAnnReturn = medianDD > 0 ? ((medianReturn / initBal) * 100) : 0;
+    const calmarRatio = medianDD > 0 ? medianAnnReturn / medianDD : 0;
+
+    // Recovery factor distribution
+    const recoveryFactors = finalEquities.map((fe, i) => maxDDs[i] > 0 ? ((fe - initBal) / (initBal * maxDDs[i] / 100)) : 0);
+    recoveryFactors.sort((a, b) => a - b);
+    const medianRecovery = getPercentile(recoveryFactors, 50);
 
     return {
       percentiles,
       finalEquities,
       maxDDs,
+      returns,
       initBal,
       numTrades: N,
       numSims,
+      blockLen: effectiveBlock,
+      lag1AutoCorr,
       metrics: {
         medianReturn, p10Return, p90Return,
         medianDD, worstDD, bestDD,
-        probRuin, medianSharpe
+        var95, cvar95,
+        probRuin,
+        medianSharpe, sharpeLo, sharpeHi,
+        medianSortino, calmarRatio, medianRecovery
       }
     };
   },
@@ -4151,6 +4241,20 @@ const MONTE_CARLO = {
     const labels = Array.from({ length: result.numTrades + 1 }, (_, i) => i);
     const datasets = [];
 
+    // P1-P99 extreme outer band
+    datasets.push({
+      label: 'P1-P99',
+      data: result.percentiles.P99,
+      borderColor: 'transparent', backgroundColor: 'rgba(0,255,136,0.03)',
+      fill: '+1', pointRadius: 0, borderWidth: 0,
+    });
+    datasets.push({
+      label: 'P1',
+      data: result.percentiles.P1,
+      borderColor: 'rgba(0,255,136,0.08)', backgroundColor: 'transparent',
+      fill: false, pointRadius: 0, borderWidth: 0.5,
+    });
+
     // P5-P95 band (outer)
     datasets.push({
       label: 'P5-P95',
@@ -4165,7 +4269,21 @@ const MONTE_CARLO = {
       fill: false, pointRadius: 0, borderWidth: 1,
     });
 
-    // P25-P75 band (inner)
+    // P10-P90 band
+    datasets.push({
+      label: 'P10-P90',
+      data: result.percentiles.P90,
+      borderColor: 'transparent', backgroundColor: 'rgba(0,255,136,0.08)',
+      fill: '+1', pointRadius: 0, borderWidth: 0,
+    });
+    datasets.push({
+      label: 'P10',
+      data: result.percentiles.P10,
+      borderColor: 'rgba(0,255,136,0.2)', backgroundColor: 'transparent',
+      fill: false, pointRadius: 0, borderWidth: 0.5,
+    });
+
+    // P25-P75 band (inner IQR)
     datasets.push({
       label: 'P25-P75',
       data: result.percentiles.P75,
@@ -4175,7 +4293,7 @@ const MONTE_CARLO = {
     datasets.push({
       label: 'P25',
       data: result.percentiles.P25,
-      borderColor: 'rgba(0,255,136,0.25)', backgroundColor: 'transparent',
+      borderColor: 'rgba(0,255,136,0.3)', backgroundColor: 'transparent',
       fill: false, pointRadius: 0, borderWidth: 1,
     });
 
@@ -4184,7 +4302,7 @@ const MONTE_CARLO = {
       label: 'MEDIAN (P50)',
       data: result.percentiles.P50,
       borderColor: '#00ff88', backgroundColor: 'transparent',
-      fill: false, pointRadius: 0, borderWidth: 2,
+      fill: false, pointRadius: 0, borderWidth: 2.5,
     });
 
     // Original equity curve
@@ -4204,17 +4322,17 @@ const MONTE_CARLO = {
         responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { display: true, position: 'top', labels: { color: '#888', font: { family: "'JetBrains Mono',monospace", size: 8 }, boxWidth: 12, padding: 8,
-            filter: (item) => ['MEDIAN (P50)', 'ORIGINAL', 'P5-P95', 'P25-P75'].includes(item.text)
+            filter: (item) => ['MEDIAN (P50)', 'ORIGINAL', 'P5-P95', 'P25-P75', 'P1-P99'].includes(item.text)
           }},
           tooltip: { enabled: true, mode: 'index', intersect: false,
-            callbacks: { label: ctx => ctx.dataset.label + ': $' + Math.round(ctx.parsed.y).toLocaleString() }
+            callbacks: { label: ctx => ctx.dataset.label + ': $' + ctx.parsed.y.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) }
           }
         },
         scales: {
           x: { display: true, title: { display: true, text: 'TRADE #', color: '#555', font: { family: "'JetBrains Mono',monospace", size: 8 } },
             ticks: { color: '#555', font: { size: 7 }, maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.03)' } },
           y: { display: true, title: { display: true, text: 'EQUITY ($)', color: '#555', font: { family: "'JetBrains Mono',monospace", size: 8 } },
-            ticks: { color: '#555', font: { size: 8 }, callback: v => '$' + Math.round(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.03)' } }
+            ticks: { color: '#555', font: { size: 8 }, callback: v => '$' + v.toLocaleString(undefined,{maximumFractionDigits:0}) }, grid: { color: 'rgba(255,255,255,0.03)' } }
         },
         interaction: { mode: 'nearest', axis: 'x', intersect: false }
       }
@@ -4277,16 +4395,25 @@ const MONTE_CARLO = {
     if (!ctx) return;
     if (this.chartInstances.retHist) this.chartInstances.retHist.destroy();
 
-    const returns = result.finalEquities.map(e => ((e - result.initBal) / result.initBal) * 100);
+    const returns = result.returns || result.finalEquities.map(e => ((e - result.initBal) / result.initBal) * 100);
     const binSize = 10;
     const minBin = Math.floor(Math.min(...returns) / binSize) * binSize;
     const maxBin = Math.ceil(Math.max(...returns) / binSize) * binSize;
     const bins = [];
     const labels = [];
+    const var95 = result.metrics.var95;
     for (let b = minBin; b <= maxBin; b += binSize) {
       labels.push(b + '%');
       bins.push(returns.filter(r => r >= b && r < b + binSize).length);
     }
+
+    // Color: green for positive, red for negative, dark red for below VaR (CVaR region)
+    const bgColors = labels.map(l => {
+      const midPct = parseInt(l) + binSize / 2;
+      if (midPct < var95) return 'rgba(180,20,20,0.8)'; // CVaR tail region
+      if (parseInt(l) < 0) return 'rgba(255,59,48,0.6)';
+      return 'rgba(0,255,136,0.5)';
+    });
 
     this.chartInstances.retHist = new Chart(ctx, {
       type: 'bar',
@@ -4294,7 +4421,7 @@ const MONTE_CARLO = {
         labels,
         datasets: [{
           data: bins,
-          backgroundColor: labels.map(l => parseInt(l) >= 0 ? 'rgba(0,255,136,0.5)' : 'rgba(255,59,48,0.6)'),
+          backgroundColor: bgColors,
           borderWidth: 0
         }]
       },
@@ -4302,7 +4429,9 @@ const MONTE_CARLO = {
         responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: ctx => ctx.parsed.y + ' sims (' + ((ctx.parsed.y / result.numSims) * 100).toFixed(1) + '%)' } }
+          tooltip: { callbacks: { label: ctx => ctx.parsed.y + ' sims (' + ((ctx.parsed.y / result.numSims) * 100).toFixed(2) + '%)' } },
+          title: { display: true, text: 'VaR 95%: ' + result.metrics.var95.toFixed(2) + '% | CVaR: ' + result.metrics.cvar95.toFixed(2) + '%',
+            color: '#888', font: { family: "'JetBrains Mono',monospace", size: 7 }, padding: { bottom: 4 } }
         },
         scales: {
           x: { ticks: { color: '#555', font: { size: 7 }, maxRotation: 45 }, grid: { display: false } },
@@ -4316,21 +4445,26 @@ const MONTE_CARLO = {
     const grid = document.getElementById('mcMetricsGrid');
     if (!grid) return;
     const m = result.metrics;
-    const fmt = (v, prefix = '$') => {
+    const fmtMC = (v, prefix = '$') => {
       const sign = v >= 0 ? '+' : '';
-      return sign + prefix + Math.abs(Math.round(v)).toLocaleString();
+      return sign + prefix + Math.abs(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
     };
     const cls = v => v >= 0 ? 'positive' : 'negative';
 
     grid.innerHTML = [
-      { label: 'MEDIAN RETURN', value: fmt(m.medianReturn), cls: cls(m.medianReturn) },
-      { label: 'P10 RETURN (WORST 10%)', value: fmt(m.p10Return), cls: cls(m.p10Return) },
-      { label: 'P90 RETURN (BEST 10%)', value: fmt(m.p90Return), cls: cls(m.p90Return) },
-      { label: 'PROB. OF RUIN (50% LOSS)', value: m.probRuin.toFixed(1) + '%', cls: m.probRuin > 10 ? 'negative' : 'positive' },
-      { label: 'MEDIAN MAX DRAWDOWN', value: '-' + m.medianDD.toFixed(1) + '%', cls: 'negative' },
-      { label: 'WORST MAX DRAWDOWN', value: '-' + m.worstDD.toFixed(1) + '%', cls: 'negative' },
-      { label: 'BEST MAX DRAWDOWN', value: '-' + m.bestDD.toFixed(1) + '%', cls: m.bestDD < 10 ? 'positive' : 'negative' },
-      { label: 'MEDIAN SHARPE RATIO', value: m.medianSharpe.toFixed(2), cls: m.medianSharpe >= 1 ? 'positive' : m.medianSharpe < 0 ? 'negative' : '' },
+      { label: 'MEDIAN RETURN', value: fmtMC(m.medianReturn), cls: cls(m.medianReturn) },
+      { label: 'P10 RETURN (WORST 10%)', value: fmtMC(m.p10Return), cls: cls(m.p10Return) },
+      { label: 'P90 RETURN (BEST 10%)', value: fmtMC(m.p90Return), cls: cls(m.p90Return) },
+      { label: 'VaR 95%', value: m.var95.toFixed(2) + '%', cls: 'negative' },
+      { label: 'CVaR 95% (EXPECTED SHORTFALL)', value: m.cvar95.toFixed(2) + '%', cls: 'negative' },
+      { label: 'PROB. OF RUIN (50% LOSS)', value: m.probRuin.toFixed(2) + '%', cls: m.probRuin > 10 ? 'negative' : 'positive' },
+      { label: 'MEDIAN MAX DRAWDOWN', value: '-' + m.medianDD.toFixed(2) + '%', cls: 'negative' },
+      { label: 'WORST MAX DRAWDOWN', value: '-' + m.worstDD.toFixed(2) + '%', cls: 'negative' },
+      { label: 'BEST MAX DRAWDOWN', value: '-' + m.bestDD.toFixed(2) + '%', cls: m.bestDD < 10 ? 'positive' : 'negative' },
+      { label: 'MEDIAN SHARPE (95% CI)', value: m.medianSharpe.toFixed(2) + ' [' + m.sharpeLo.toFixed(2) + ', ' + m.sharpeHi.toFixed(2) + ']', cls: m.medianSharpe >= 1 ? 'positive' : m.medianSharpe < 0 ? 'negative' : '' },
+      { label: 'MEDIAN SORTINO', value: m.medianSortino.toFixed(2), cls: m.medianSortino >= 2 ? 'positive' : m.medianSortino < 0 ? 'negative' : '' },
+      { label: 'CALMAR RATIO', value: m.calmarRatio.toFixed(2), cls: m.calmarRatio >= 1 ? 'positive' : '' },
+      { label: 'RECOVERY FACTOR', value: m.medianRecovery.toFixed(2), cls: m.medianRecovery >= 3 ? 'positive' : '' },
     ].map(item =>
       '<div class="mc-metric"><div class="mc-metric-label">' + item.label + '</div>' +
       '<div class="mc-metric-value ' + item.cls + '">' + item.value + '</div></div>'
@@ -4375,12 +4509,16 @@ const MONTE_CARLO = {
     const mcCtrl = section.querySelector('.mc-controls');
     if (mcCtrl) mcCtrl.style.display = '';
 
+    // Show methodology label if cached
+    const methodLabel = document.getElementById('mcMethodLabel');
+
     // Check cache
     const cached = this.cache.get(report.id);
     if (cached) {
       document.getElementById('mcResults').style.display = '';
       document.getElementById('mcEmpty').style.display = 'none';
       document.getElementById('mcProgress').style.display = 'none';
+      this._showMethodLabel(cached, methodLabel);
       this.buildFanChart(cached, getBalanceCurve(report));
       this.buildDDHistChart(cached);
       this.buildReturnHistChart(cached);
@@ -4389,6 +4527,7 @@ const MONTE_CARLO = {
       document.getElementById('mcResults').style.display = 'none';
       document.getElementById('mcEmpty').style.display = '';
       document.getElementById('mcProgress').style.display = 'none';
+      if (methodLabel) methodLabel.style.display = 'none';
       this.destroyCharts();
     }
 
@@ -4397,6 +4536,7 @@ const MONTE_CARLO = {
     btn.onclick = async () => {
       const numSims = parseInt(document.getElementById('mcSimCount').value) || 5000;
       const conf = parseInt(document.getElementById('mcConfidence').value) || 90;
+      const blockSel = document.getElementById('mcBlockSize').value;
       btn.disabled = true;
       btn.textContent = 'RUNNING...';
       document.getElementById('mcProgress').style.display = 'flex';
@@ -4404,10 +4544,11 @@ const MONTE_CARLO = {
       document.getElementById('mcEmpty').style.display = 'none';
 
       try {
-        const result = await MONTE_CARLO.run(report, numSims, conf);
+        const result = await MONTE_CARLO.run(report, numSims, conf, blockSel);
         if (result) {
           MONTE_CARLO.cache.set(report.id, result);
           document.getElementById('mcResults').style.display = '';
+          MONTE_CARLO._showMethodLabel(result, methodLabel);
           MONTE_CARLO.buildFanChart(result, getBalanceCurve(report));
           MONTE_CARLO.buildDDHistChart(result);
           MONTE_CARLO.buildReturnHistChart(result);
@@ -4421,6 +4562,13 @@ const MONTE_CARLO = {
         document.getElementById('mcProgress').style.display = 'none';
       }
     };
+  },
+
+  _showMethodLabel(result, el) {
+    if (!el) return;
+    const method = result.blockLen <= 1 ? 'IID BOOTSTRAP' : 'CIRCULAR BLOCK BOOTSTRAP (BLOCK=' + result.blockLen + ')';
+    el.textContent = result.numSims.toLocaleString() + ' PATHS \u00B7 ' + method + ' \u00B7 ' + result.numTrades + ' TRADES \u00B7 LAG-1 AUTOCORRELATION: ' + result.lag1AutoCorr.toFixed(3);
+    el.style.display = '';
   }
 };
 
@@ -4608,7 +4756,7 @@ const PORTFOLIO_SYSTEM = {
       results.innerHTML = recommendations.length === 0 ? '<span style="color:var(--t3)">No recommendations</span>' :
         recommendations.map(rec => '<div class="pf-algo-rec"><div class="pf-algo-title">BEST ' + rec.size + '-STRATEGY COMBO</div>' +
           '<div class="pf-algo-detail">' + rec.names.join(' + ') + '</div>' +
-          '<div class="pf-algo-detail">P&L: <span style="color:' + (rec.m.netProfit >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + Math.round(rec.m.netProfit).toLocaleString() + '</span> · DD: ' + rec.m.maxDD.toFixed(1) + '% · PF: ' + rec.m.profitFactor.toFixed(2) + ' · Sharpe: ' + rec.m.avgSharpe.toFixed(2) + '</div>' +
+          '<div class="pf-algo-detail">P&L: <span style="color:' + (rec.m.netProfit >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + rec.m.netProfit.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span> · DD: ' + rec.m.maxDD.toFixed(2) + '% · PF: ' + rec.m.profitFactor.toFixed(2) + ' · Sharpe: ' + rec.m.avgSharpe.toFixed(2) + '</div>' +
           '<div class="pf-algo-score">SCORE: ' + rec.score.toFixed(3) + '</div></div>'
         ).join('');
     }, 50);
@@ -4797,11 +4945,11 @@ const PORTFOLIO_SYSTEM = {
       const metrics = this.computePortfolioMetrics(ids);
       if (metrics) {
         kpis.innerHTML = [
-          { label: 'COMBINED P&L', value: (metrics.netProfit >= 0 ? '+' : '') + '$' + Math.round(metrics.netProfit).toLocaleString(), cls: metrics.netProfit >= 0 ? 'neon' : 'crimson' },
+          { label: 'COMBINED P&L', value: (metrics.netProfit >= 0 ? '+' : '') + '$' + metrics.netProfit.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}), cls: metrics.netProfit >= 0 ? 'neon' : 'crimson' },
           { label: 'PROFIT FACTOR', value: metrics.profitFactor.toFixed(2), cls: '' },
-          { label: 'PORTFOLIO DD%', value: metrics.maxDD.toFixed(1) + '%', cls: 'crimson' },
+          { label: 'PORTFOLIO DD%', value: metrics.maxDD.toFixed(2) + '%', cls: 'crimson' },
           { label: 'AVG SHARPE', value: metrics.avgSharpe.toFixed(2), cls: '' },
-          { label: 'DIVERSIFICATION', value: (metrics.divRatio * 100).toFixed(0) + '%', cls: metrics.divRatio > 0.5 ? 'neon' : '' },
+          { label: 'DIVERSIFICATION', value: (metrics.divRatio * 100).toFixed(1) + '%', cls: metrics.divRatio > 0.5 ? 'neon' : '' },
         ].map(k => '<div class="pf-kpi"><div class="pf-kpi-label">' + k.label + '</div><div class="pf-kpi-value" style="color:' + (k.cls === 'neon' ? 'var(--neon)' : k.cls === 'crimson' ? 'var(--crimson)' : 'var(--acc)') + '">' + k.value + '</div></div>').join('');
       }
 
@@ -4828,7 +4976,7 @@ const PORTFOLIO_SYSTEM = {
 
       // Allocation
       const allocDiv = document.getElementById('pfAllocation');
-      const pct = ids.length > 0 ? (100 / ids.length).toFixed(0) : 0;
+      const pct = ids.length > 0 ? (100 / ids.length).toFixed(1) : 0;
       allocDiv.innerHTML = ids.map(id => {
         const r = store.get(id);
         const sym = r ? getSymbol(r) : id;
@@ -4837,7 +4985,7 @@ const PORTFOLIO_SYSTEM = {
           '<span style="font-family:var(--mono);font-size:10px;color:var(--acc);min-width:90px">' + sym + '</span>' +
           '<div style="flex:0 0 120px;height:4px;background:var(--g500);position:relative"><div style="height:100%;width:' + pct + '%;background:var(--neon)"></div></div>' +
           '<span style="font-family:var(--mono);font-size:9px;color:var(--t3)">' + pct + '%</span>' +
-          '<span style="font-family:var(--mono);font-size:9px;color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + Math.round(pnl).toLocaleString() + '</span></div>';
+          '<span style="font-family:var(--mono);font-size:9px;color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + pnl.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span></div>';
       }).join('');
 
       // Pairs list
@@ -4851,10 +4999,10 @@ const PORTFOLIO_SYSTEM = {
         const wr = parseFloat(R(r, 'winRate')) || 0;
         return '<div style="display:flex;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid var(--g600);cursor:pointer" onclick="selectReportForDetail(\'' + id + '\')">' +
           '<span style="font-family:var(--mono);font-size:10px;color:var(--acc);min-width:90px">' + getSymbol(r) + '</span>' +
-          '<span style="font-family:var(--mono);font-size:9px;color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + Math.round(pnl).toLocaleString() + '</span>' +
+          '<span style="font-family:var(--mono);font-size:9px;color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + pnl.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span>' +
           '<span style="font-family:var(--mono);font-size:9px;color:var(--t2)">PF ' + pf.toFixed(2) + '</span>' +
-          '<span style="font-family:var(--mono);font-size:9px;color:var(--crimson)">DD ' + dd.toFixed(1) + '%</span>' +
-          '<span style="font-family:var(--mono);font-size:9px;color:var(--t2)">WR ' + wr.toFixed(0) + '%</span>' +
+          '<span style="font-family:var(--mono);font-size:9px;color:var(--crimson)">DD ' + dd.toFixed(2) + '%</span>' +
+          '<span style="font-family:var(--mono);font-size:9px;color:var(--t2)">WR ' + wr.toFixed(2) + '%</span>' +
           '</div>';
       }).join('');
 
@@ -4893,9 +5041,9 @@ const PORTFOLIO_SYSTEM = {
         '<div class="pf-card-name">' + regime + '</div>' +
         '<div class="pf-card-count">' + ids.length + ' PAIRS</div>' +
         '<div class="pf-card-metrics">' +
-        '<div class="pf-card-metric"><div class="pf-card-k">NET P&L</div><div class="pf-card-v" style="color:' + pnlColor + '">' + (metrics.netProfit >= 0 ? '+' : '') + '$' + Math.round(metrics.netProfit).toLocaleString() + '</div></div>' +
+        '<div class="pf-card-metric"><div class="pf-card-k">NET P&L</div><div class="pf-card-v" style="color:' + pnlColor + '">' + (metrics.netProfit >= 0 ? '+' : '') + '$' + metrics.netProfit.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + '</div></div>' +
         '<div class="pf-card-metric"><div class="pf-card-k">PROFIT FACTOR</div><div class="pf-card-v">' + metrics.profitFactor.toFixed(2) + '</div></div>' +
-        '<div class="pf-card-metric"><div class="pf-card-k">MAX DD%</div><div class="pf-card-v" style="color:var(--crimson)">' + metrics.maxDD.toFixed(1) + '%</div></div>' +
+        '<div class="pf-card-metric"><div class="pf-card-k">MAX DD%</div><div class="pf-card-v" style="color:var(--crimson)">' + metrics.maxDD.toFixed(2) + '%</div></div>' +
         '<div class="pf-card-metric"><div class="pf-card-k">TOTAL TRADES</div><div class="pf-card-v">' + metrics.totalTrades + '</div></div>' +
         '</div></div>';
     }).join('');
@@ -5015,7 +5163,7 @@ function runQuantAnalyst() {
     h += `<div class="ai-insight" style="color:var(--amber)">FRAGILE: ${fragile.length} strateg${fragile.length>1?'ies':'y'} with at least one critically weak metric (sub-score <20). These have a single point of failure: ${fragile.slice(0,5).map(s=>s.sym).join(', ')}${fragile.length>5?'...':''}.</div>`;
   }
   if (returnSpread > 3) {
-    h += `<div class="ai-insight" style="color:var(--amber)">HIGH VARIANCE: P&L standard deviation ($${pnlStd.toLocaleString(undefined,{maximumFractionDigits:0})}) is ${returnSpread.toFixed(1)}x the mean. Portfolio outcomes are inconsistent — consider tighter parameter windows.</div>`;
+    h += `<div class="ai-insight" style="color:var(--amber)">HIGH VARIANCE: P&L standard deviation ($${pnlStd.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}) is ${returnSpread.toFixed(1)}x the mean. Portfolio outcomes are inconsistent — consider tighter parameter windows.</div>`;
   }
   if (curveFitSuspects.length===0 && tailRisk.length===0 && fragile.length===0 && returnSpread<=3) {
     h += `<div class="ai-insight" style="color:var(--neon)">NO CRITICAL FLAGS. Portfolio risk profile is within acceptable bounds.</div>`;
@@ -5037,7 +5185,7 @@ function runQuantAnalyst() {
   else if (worstDD>20) h+=`<div class="ai-insight">Worst DD ${worstDD.toFixed(1)}%, avg ${avgDD.toFixed(1)}%. Within tolerance for systematic strategies. Monitor correlation between DD events across strategies.</div>`;
   else h+=`<div class="ai-insight" style="color:var(--neon)">Max DD contained at ${worstDD.toFixed(1)}%. Conservative risk profile suitable for allocated capital.</div>`;
   // Profitability
-  h+=`<div class="ai-insight">${profRate.toFixed(0)}% hit rate (${profN}/${N} profitable). ${profRate>75?'Strong pipeline — most configurations generate alpha.':profRate>50?'Moderate — review losing configs for shared failure patterns.':'Low — parameter search may be too broad. Narrow the optimization space.'}</div>`;
+  h+=`<div class="ai-insight">${profRate.toFixed(1)}% hit rate (${profN}/${N} profitable). ${profRate>75?'Strong pipeline — most configurations generate alpha.':profRate>50?'Moderate — review losing configs for shared failure patterns.':'Low — parameter search may be too broad. Narrow the optimization space.'}</div>`;
   h += `</div>`;
 
   // Section: Strategy Rankings
@@ -5068,11 +5216,11 @@ function runQuantAnalyst() {
     h+=`</div>`;
     // Detail row
     h+=`<div style="display:flex;gap:6px;padding:2px 0 4px 28px;font-size:7px;flex-wrap:wrap">`;
-    h+=`<span style="color:var(--t3)">P&L:<span style="color:${c.pnl>=0?V.neon:V.crimson}">$${c.pnl.toLocaleString(undefined,{maximumFractionDigits:0})}</span></span>`;
+    h+=`<span style="color:var(--t3)">P&L:<span style="color:${c.pnl>=0?V.neon:V.crimson}">$${c.pnl.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</span></span>`;
     h+=`<span style="color:var(--t3)">PF:${c.pf.toFixed(2)}</span>`;
     h+=`<span style="color:var(--t3)">Sharpe:${c.sharpe.toFixed(2)}</span>`;
-    h+=`<span style="color:var(--t3)">DD:${c.dd.toFixed(1)}%</span>`;
-    h+=`<span style="color:var(--t3)">Win:${c.wr.toFixed(0)}%</span>`;
+    h+=`<span style="color:var(--t3)">DD:${c.dd.toFixed(2)}%</span>`;
+    h+=`<span style="color:var(--t3)">Win:${c.wr.toFixed(2)}%</span>`;
     if(strengths.length) h+=`<span style="color:var(--neon)">${strengths.join(', ')}</span>`;
     if(weaknesses.length) h+=`<span style="color:var(--crimson)">${weaknesses.join(', ')}</span>`;
     h+=`</div>`;
