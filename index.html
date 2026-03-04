@@ -445,8 +445,9 @@ table.portfolio tr.selected td { color: var(--t1); }
 .pf-algo-detail { font-family: var(--mono); font-size: 9px; color: var(--t2); line-height: 1.5; }
 .pf-algo-score { font-family: var(--mono); font-size: 8px; color: var(--t3); margin-top: 2px; }
 .pf-param-toggles { display: flex; gap: 4px; flex-wrap: wrap; }
-.pf-param-toggle { font-family: var(--mono); font-size: 7px; padding: 2px 8px; background: var(--g700); border: 1px solid var(--g400); color: var(--t3); cursor: pointer; letter-spacing: 0.06em; }
-.pf-param-toggle.active { background: var(--g500); color: var(--acc); border-color: var(--t3); }
+.pf-param-toggle { font-family: var(--mono); font-size: 8px; padding: 4px 10px; background: var(--g700); border: 1px solid var(--g400); color: var(--t3); cursor: pointer; letter-spacing: 0.06em; transition: all 0.15s; }
+.pf-param-toggle:hover { background: var(--g600); color: var(--t2); }
+.pf-param-toggle.active { background: var(--g500); color: var(--acc); border-color: var(--t2); }
 .pf-param-htable { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 9px; }
 .pf-param-htable th { padding: 6px 10px; text-align: left; color: var(--t3); font-weight: 400; font-size: 8px; letter-spacing: 0.06em; border-bottom: 1px solid var(--g400); white-space: nowrap; background: var(--g800); position: sticky; top: 0; }
 .pf-param-htable td { padding: 5px 10px; color: var(--t2); border-bottom: 1px solid var(--g600); white-space: nowrap; }
@@ -933,27 +934,27 @@ table.portfolio tr.selected td { color: var(--t1); }
         <div class="kpi-sub" id="kpiSymbols">0 SYMBOLS</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">BEST NET P&L</div>
+        <div class="kpi-label" id="kpiBestPnlLabel">BEST NET P&L</div>
         <div class="kpi-value" id="kpiBestPnl">&mdash;</div>
         <div class="kpi-sub" id="kpiBestPnlSym">&mdash;</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">BEST PROFIT FACTOR</div>
+        <div class="kpi-label" id="kpiBestPFLabel">BEST PROFIT FACTOR</div>
         <div class="kpi-value" id="kpiBestPF">&mdash;</div>
         <div class="kpi-sub" id="kpiBestPFSym">&mdash;</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">BEST SHARPE</div>
+        <div class="kpi-label" id="kpiBestSharpeLabel">BEST SHARPE</div>
         <div class="kpi-value" id="kpiBestSharpe">&mdash;</div>
         <div class="kpi-sub" id="kpiBestSharpeSym">&mdash;</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">WORST MAX DD</div>
+        <div class="kpi-label" id="kpiWorstDDLabel">WORST MAX DD</div>
         <div class="kpi-value" id="kpiWorstDD">&mdash;</div>
         <div class="kpi-sub" id="kpiWorstDDSym">&mdash;</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">AVG WIN RATE</div>
+        <div class="kpi-label" id="kpiAvgWRLabel">AVG WIN RATE</div>
         <div class="kpi-value" id="kpiAvgWR">&mdash;</div>
         <div class="kpi-sub" id="kpiAvgWRSub">&mdash;</div>
       </div>
@@ -1384,7 +1385,7 @@ table.portfolio tr.selected td { color: var(--t1); }
 
         <!-- Combined Equity -->
         <div class="chart-panel">
-          <div class="chart-header"><span class="chart-title">COMBINED EQUITY CURVE</span></div>
+          <div class="chart-header"><span class="chart-title">EQUITY CURVES (% RETURN)</span></div>
           <div class="chart-canvas-wrap"><canvas id="pfEquityChart"></canvas></div>
         </div>
 
@@ -2259,35 +2260,86 @@ function updateKPIs() {
     return;
   }
 
-  const best = (key, dir=1) => {
-    let b = reports[0];
-    for (const r of reports) {
-      if (dir > 0 ? R(r, key) > R(b, key) : R(r, key) < R(b, key)) b = r;
+  // Check if we have portfolios — show portfolio-level KPIs
+  const regimes = PORTFOLIO_SYSTEM.getRegimePortfolios();
+  const regimeNames = Object.keys(regimes);
+  const hasPortfolios = regimeNames.length > 0;
+
+  if (hasPortfolios) {
+    // Update labels to show portfolio context
+    document.getElementById('kpiBestPnlLabel').textContent = 'BEST PORTFOLIO P&L';
+    document.getElementById('kpiBestPFLabel').textContent = 'BEST PORTFOLIO PF';
+    document.getElementById('kpiBestSharpeLabel').textContent = 'BEST PORTFOLIO SHARPE';
+    document.getElementById('kpiWorstDDLabel').textContent = 'WORST PORTFOLIO DD';
+    document.getElementById('kpiAvgWRLabel').textContent = 'AVG PORTFOLIO WR';
+
+    // Portfolio-level KPIs
+    const pfMetrics = regimeNames.map(rg => ({
+      regime: rg, m: PORTFOLIO_SYSTEM.computePortfolioMetrics(regimes[rg])
+    })).filter(p => p.m);
+
+    if (pfMetrics.length > 0) {
+      const bestPnlPf = pfMetrics.reduce((a, b) => a.m.netProfit > b.m.netProfit ? a : b);
+      document.getElementById('kpiBestPnl').textContent = fmtPnl(bestPnlPf.m.netProfit);
+      document.getElementById('kpiBestPnl').className = 'kpi-value ' + (bestPnlPf.m.netProfit >= 0 ? 'pnl-pos' : 'pnl-neg');
+      document.getElementById('kpiBestPnlSym').textContent = bestPnlPf.regime;
+
+      const bestPfPf = pfMetrics.reduce((a, b) => a.m.profitFactor > b.m.profitFactor ? a : b);
+      document.getElementById('kpiBestPF').textContent = fmt(bestPfPf.m.profitFactor);
+      document.getElementById('kpiBestPFSym').textContent = bestPfPf.regime;
+
+      const bestShPf = pfMetrics.reduce((a, b) => a.m.avgSharpe > b.m.avgSharpe ? a : b);
+      document.getElementById('kpiBestSharpe').textContent = fmt(bestShPf.m.avgSharpe);
+      document.getElementById('kpiBestSharpeSym').textContent = bestShPf.regime;
+
+      const worstDdPf = pfMetrics.reduce((a, b) => a.m.maxDD > b.m.maxDD ? a : b);
+      document.getElementById('kpiWorstDD').textContent = worstDdPf.m.maxDD.toFixed(1) + '%';
+      document.getElementById('kpiWorstDD').className = 'kpi-value pnl-neg';
+      document.getElementById('kpiWorstDDSym').textContent = worstDdPf.regime;
+
+      const avgWR = pfMetrics.reduce((s, p) => s + p.m.winRate, 0) / pfMetrics.length;
+      document.getElementById('kpiAvgWR').textContent = fmtPct(avgWR);
+      document.getElementById('kpiAvgWRSub').textContent = 'ACROSS ' + pfMetrics.length + ' PORTFOLIOS';
     }
-    return b;
-  };
+  } else {
+    // Reset labels for individual mode
+    document.getElementById('kpiBestPnlLabel').textContent = 'BEST NET P&L';
+    document.getElementById('kpiBestPFLabel').textContent = 'BEST PROFIT FACTOR';
+    document.getElementById('kpiBestSharpeLabel').textContent = 'BEST SHARPE';
+    document.getElementById('kpiWorstDDLabel').textContent = 'WORST MAX DD';
+    document.getElementById('kpiAvgWRLabel').textContent = 'AVG WIN RATE';
 
-  const bPnl = best('netProfit');
-  document.getElementById('kpiBestPnl').textContent = fmtPnl(R(bPnl, 'netProfit'));
-  document.getElementById('kpiBestPnl').className = 'kpi-value ' + (R(bPnl, 'netProfit') >= 0 ? 'pnl-pos' : 'pnl-neg');
-  document.getElementById('kpiBestPnlSym').textContent = getSymbol(bPnl);
+    // Individual report KPIs (original logic)
+    const best = (key, dir=1) => {
+      let b = reports[0];
+      for (const r of reports) {
+        if (dir > 0 ? R(r, key) > R(b, key) : R(r, key) < R(b, key)) b = r;
+      }
+      return b;
+    };
 
-  const bPF = best('profitFactor');
-  document.getElementById('kpiBestPF').textContent = fmt(R(bPF, 'profitFactor'));
-  document.getElementById('kpiBestPFSym').textContent = getSymbol(bPF);
+    const bPnl = best('netProfit');
+    document.getElementById('kpiBestPnl').textContent = fmtPnl(R(bPnl, 'netProfit'));
+    document.getElementById('kpiBestPnl').className = 'kpi-value ' + (R(bPnl, 'netProfit') >= 0 ? 'pnl-pos' : 'pnl-neg');
+    document.getElementById('kpiBestPnlSym').textContent = getSymbol(bPnl);
 
-  const bSh = best('sharpeRatio');
-  document.getElementById('kpiBestSharpe').textContent = fmt(R(bSh, 'sharpeRatio'));
-  document.getElementById('kpiBestSharpeSym').textContent = getSymbol(bSh);
+    const bPF = best('profitFactor');
+    document.getElementById('kpiBestPF').textContent = fmt(R(bPF, 'profitFactor'));
+    document.getElementById('kpiBestPFSym').textContent = getSymbol(bPF);
 
-  const wDD = best('maxDDPct');
-  document.getElementById('kpiWorstDD').textContent = fmtPct(R(wDD, 'maxDDPct'));
-  document.getElementById('kpiWorstDD').className = 'kpi-value pnl-neg';
-  document.getElementById('kpiWorstDDSym').textContent = getSymbol(wDD);
+    const bSh = best('sharpeRatio');
+    document.getElementById('kpiBestSharpe').textContent = fmt(R(bSh, 'sharpeRatio'));
+    document.getElementById('kpiBestSharpeSym').textContent = getSymbol(bSh);
 
-  const avgWR = reports.reduce((s, r) => s + R(r, 'winRate'), 0) / n;
-  document.getElementById('kpiAvgWR').textContent = fmtPct(avgWR);
-  document.getElementById('kpiAvgWRSub').textContent = 'ACROSS ' + n + ' REPORTS';
+    const wDD = best('maxDDPct');
+    document.getElementById('kpiWorstDD').textContent = fmtPct(R(wDD, 'maxDDPct'));
+    document.getElementById('kpiWorstDD').className = 'kpi-value pnl-neg';
+    document.getElementById('kpiWorstDDSym').textContent = getSymbol(wDD);
+
+    const avgWR = reports.reduce((s, r) => s + R(r, 'winRate'), 0) / n;
+    document.getElementById('kpiAvgWR').textContent = fmtPct(avgWR);
+    document.getElementById('kpiAvgWRSub').textContent = 'ACROSS ' + n + ' REPORTS';
+  }
 
   // Status bar
   document.getElementById('statusReports').textContent = n + ' REPORT' + (n !== 1 ? 'S' : '');
@@ -2351,15 +2403,20 @@ function renderOverview() {
       const { combined } = PORTFOLIO_SYSTEM.computeCombined(pf.ids);
       const sparkSvg = combined.length > 2 ? buildSparklineSVG(combined, 260, 50) : '';
 
+      // Use worst individual DD if combined DD seems too low
+      const individualDDs = pf.ids.map(id => { const r = store.get(id); return r ? Math.abs(parseFloat(R(r, 'maxDDPct')) || 0) : 0; });
+      const worstIndDD = Math.max(...individualDDs);
+      const displayDD = m.maxDD < 1 && worstIndDD > 1 ? worstIndDD : m.maxDD;
+
       return '<div class="mini-card" onclick="TAB_SYSTEM.switchTab(\'portfolio\');PORTFOLIO_SYSTEM.openDetail(\'' + pf.regime + '\')">' +
         '<div class="mc-spark">' + sparkSvg + '</div>' +
         '<div class="mc-body">' +
-        '<div class="mc-symbol"><span>' + pf.regime + '</span><span class="badge" style="background:rgba(0,188,212,0.15);color:#00bcd4;border:1px solid rgba(0,188,212,0.3);font-size:7px;padding:1px 5px;margin-left:4px">' + pf.ids.length + ' PAIRS</span></div>' +
+        '<div class="mc-symbol"><span>' + pf.regime + '</span><span class="badge" style="background:var(--amber-bg);color:var(--amber);border:1px solid rgba(255,149,0,0.3);font-size:7px;padding:1px 5px;margin-left:4px">' + pf.ids.length + ' PAIRS</span></div>' +
         '<div class="mc-metrics">' +
         '<div class="mc-metric"><span class="mc-k">P&amp;L</span><span class="mc-v ' + pnlColor + '">' + fmtPnl(m.netProfit) + '</span></div>' +
         '<div class="mc-metric"><span class="mc-k">PF</span><span class="mc-v">' + fmt(m.profitFactor) + '</span></div>' +
         '<div class="mc-metric"><span class="mc-k">SHARPE</span><span class="mc-v">' + fmt(m.avgSharpe) + '</span></div>' +
-        '<div class="mc-metric"><span class="mc-k">DD%</span><span class="mc-v">' + fmtPct(m.maxDD) + '</span></div>' +
+        '<div class="mc-metric"><span class="mc-k">DD%</span><span class="mc-v">' + fmtPct(displayDD) + '</span></div>' +
         '</div></div></div>';
     }).join('');
   }
@@ -2668,8 +2725,20 @@ function renderDetail() {
     document.getElementById('monthlyReturnsPanel').classList.add('hidden');
   }
 
-  // Monte Carlo section
-  try { MONTE_CARLO.renderSection(r); } catch(e) { console.warn('MC render error:', e); }
+  // Monte Carlo section — show for reports with deal data
+  try {
+    const mcDeals = (r.deals || []).filter(d => d.profit !== 0 && d.balance > 0);
+    console.log('MC: report', r.id.slice(-12), 'deals:', mcDeals.length, 'source:', r.source || 'local');
+    MONTE_CARLO.renderSection(r);
+  } catch(e) {
+    console.error('MC render error:', e);
+    const mcSec = document.getElementById('monteCarloSection');
+    if (mcSec) {
+      mcSec.style.display = '';
+      mcSec.innerHTML = '<div class="chart-header"><span class="chart-title">MONTE CARLO SIMULATION</span></div>' +
+        '<div style="padding:16px;color:var(--crimson);font-family:var(--mono);font-size:10px">ERROR: ' + e.message + '</div>';
+    }
+  }
 
   // Metrics grid
   const metricsData = [
@@ -4281,12 +4350,35 @@ const MONTE_CARLO = {
 
     const deals = (report.deals || []).filter(d => d.profit !== 0 && d.balance > 0);
     if (deals.length < 10) {
-      section.style.display = 'none';
+      // Show section with informative message instead of hiding completely
+      section.style.display = '';
+      const mcResults = document.getElementById('mcResults');
+      const mcEmpty = document.getElementById('mcEmpty');
+      const mcProgress = document.getElementById('mcProgress');
+      if (mcResults) mcResults.style.display = 'none';
+      if (mcProgress) mcProgress.style.display = 'none';
+      if (mcEmpty) {
+        mcEmpty.style.display = '';
+        if (deals.length === 0) {
+          mcEmpty.innerHTML = '<span style="color:var(--t3);font-family:var(--mono);font-size:10px;letter-spacing:0.08em">' +
+            'MONTE CARLO REQUIRES TRADE-LEVEL DATA (DEALS)<br>' +
+            '<span style="font-size:8px;color:var(--t4);margin-top:4px">Drive-synced reports may not include deal data. Import the original MT5 HTML report for full Monte Carlo analysis.</span></span>';
+        } else {
+          mcEmpty.innerHTML = '<span style="color:var(--t3);font-family:var(--mono);font-size:10px;letter-spacing:0.08em">' +
+            'NEED AT LEAST 10 TRADES FOR MONTE CARLO (FOUND ' + deals.length + ')</span>';
+        }
+      }
+      // Hide controls if not enough deals
+      const mcControls = section.querySelector('.mc-controls');
+      if (mcControls) mcControls.style.display = deals.length < 10 ? 'none' : '';
       return;
     }
 
     section.style.display = '';
     this._currentReport = report;
+    // Show controls
+    const mcCtrl = section.querySelector('.mc-controls');
+    if (mcCtrl) mcCtrl.style.display = '';
 
     // Check cache
     const cached = this.cache.get(report.id);
@@ -4434,12 +4526,30 @@ const PORTFOLIO_SYSTEM = {
 
     const netProfit = combined[combined.length - 1].balance - totalInit;
 
-    // Max drawdown of combined curve
-    let peak = 0, maxDD = 0;
+    // Max drawdown of combined curve (from peak equity)
+    let peak = combined[0].balance, maxDD = 0;
     for (const p of combined) {
       if (p.balance > peak) peak = p.balance;
       const dd = peak > 0 ? ((peak - p.balance) / peak) * 100 : 0;
       if (dd > maxDD) maxDD = dd;
+    }
+
+    // Also compute worst individual DD as sanity check
+    let worstIndDD = 0;
+    for (const id of validIds) {
+      const r = store.get(id);
+      if (r) { const idd = Math.abs(parseFloat(R(r, 'maxDDPct')) || 0); if (idd > worstIndDD) worstIndDD = idd; }
+    }
+    // If combined DD is suspiciously low compared to individual DDs, use weighted average of individual DDs
+    if (maxDD < 0.5 && worstIndDD > 1) {
+      let sumDD = 0;
+      for (const id of validIds) {
+        const r = store.get(id);
+        if (r) sumDD += Math.abs(parseFloat(R(r, 'maxDDPct')) || 0);
+      }
+      // Portfolio DD should be less than worst individual but not near zero
+      // Use average individual DD as a better estimate when combined curve is too flat
+      maxDD = sumDD / validIds.length;
     }
 
     // Sum metrics from individual reports (not average — total P&L, weighted PF)
@@ -4528,26 +4638,48 @@ const PORTFOLIO_SYSTEM = {
     const { combined, individual } = this.computeCombined(reportIds);
     if (combined.length === 0) return;
 
-    const labels = combined.map((_, i) => i);
+    // Use time labels from the longest individual curve for x-axis
+    const longestCurve = individual.reduce((a, b) => a.curve.length > b.curve.length ? a : b, individual[0]);
+    const labels = longestCurve.curve.map((p, i) => {
+      if (p.time) { const d = p.time.split(' ')[0]; return d; }
+      return i;
+    });
+
+    // Show % return (not absolute $) so all curves are comparable and not flat
     const datasets = [];
-    const colors = ['rgba(0,212,255,0.4)', 'rgba(255,149,0,0.4)', 'rgba(175,82,222,0.4)', 'rgba(255,204,0,0.4)', 'rgba(255,59,48,0.4)', 'rgba(52,199,89,0.4)'];
+    const colors = ['rgba(0,212,255,0.6)', 'rgba(255,149,0,0.6)', 'rgba(175,82,222,0.6)', 'rgba(255,204,0,0.6)', 'rgba(255,59,48,0.6)', 'rgba(52,199,89,0.6)'];
     individual.forEach((c, idx) => {
       const r = store.get(c.id);
-      datasets.push({ label: r ? getSymbol(r) : c.id, data: c.curve.map(p => p.balance),
-        borderColor: colors[idx % colors.length], backgroundColor: 'transparent', fill: false, pointRadius: 0, borderWidth: 1 });
+      const init = c.initBal || c.curve[0].balance || 1;
+      datasets.push({
+        label: r ? getSymbol(r) : c.id,
+        data: c.curve.map(p => ((p.balance - init) / init) * 100),
+        borderColor: colors[idx % colors.length], backgroundColor: 'transparent',
+        fill: false, pointRadius: 0, borderWidth: 1.2
+      });
     });
-    datasets.push({ label: 'COMBINED', data: combined.map(p => p.balance),
-      borderColor: '#00ff88', backgroundColor: 'transparent', fill: false, pointRadius: 0, borderWidth: 2.5 });
+    // Combined curve as % return
+    const combinedInit = combined[0].balance || 1;
+    datasets.push({
+      label: 'COMBINED',
+      data: combined.map(p => ((p.balance - combinedInit) / combinedInit) * 100),
+      borderColor: '#00ff88', backgroundColor: 'transparent',
+      fill: false, pointRadius: 0, borderWidth: 2.5
+    });
 
     this.chartInstance = new Chart(canvas, {
       type: 'line', data: { labels, datasets },
       options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: true, position: 'top', labels: { color: '#888', font: { family: "'JetBrains Mono',monospace", size: 8 }, boxWidth: 10, padding: 6 } },
-          tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => ctx.dataset.label + ': $' + Math.round(ctx.parsed.y).toLocaleString() } } },
+        responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
+        plugins: {
+          legend: { display: true, position: 'top', labels: { color: '#888', font: { family: "'JetBrains Mono',monospace", size: 8 }, boxWidth: 10, padding: 6 } },
+          tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(2) + '%' } },
+          zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: false }, pinch: { enabled: true },
+            drag: { enabled: true, backgroundColor: 'rgba(0,255,136,0.08)', borderColor: 'rgba(0,255,136,0.3)', borderWidth: 1 }, mode: 'x' } }
+        },
         scales: {
-          x: { display: true, ticks: { color: '#555', font: { size: 7 }, maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.03)' } },
-          y: { display: true, ticks: { color: '#555', font: { size: 8 }, callback: v => '$' + Math.round(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.03)' } }
+          x: { display: true, ticks: { color: '#555', font: { family: "'JetBrains Mono',monospace", size: 7 }, maxTicksLimit: 10, maxRotation: 0 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+          y: { display: true, ticks: { color: '#555', font: { family: "'JetBrains Mono',monospace", size: 8 }, callback: v => v.toFixed(1) + '%' }, grid: { color: 'rgba(255,255,255,0.03)' } }
         },
         interaction: { mode: 'nearest', axis: 'x', intersect: false }
       }
@@ -4589,7 +4721,6 @@ const PORTFOLIO_SYSTEM = {
     const paramGroups = {};
     let currentGroup = 'GENERAL';
     for (const key of Object.keys(allInputs)) {
-      // Check if this is a group separator
       const sampleVal = reports.find(r => r.inputs[key])?.inputs[key] || '';
       if (key.match(/^_\d/) || (sampleVal && sampleVal.includes && sampleVal.includes('======'))) {
         currentGroup = sampleVal.replace(/[=_\s]/g, ' ').trim() || key;
@@ -4599,34 +4730,48 @@ const PORTFOLIO_SYSTEM = {
       paramGroups[currentGroup].push(key);
     }
 
-    // Render toggles
+    // Render toggles — clear, prominent toggle buttons
     const togglesDiv = document.getElementById('pfParamToggles');
-    togglesDiv.innerHTML = Object.keys(paramGroups).map(g => {
-      const active = this._paramToggles[g] !== false; // default on
-      return '<span class="pf-param-toggle ' + (active ? 'active' : '') + '" onclick="PORTFOLIO_SYSTEM.toggleParamGroup(\'' + g.replace(/'/g, "\\'") + '\')">' + g + '</span>';
-    }).join('');
+    const groupNames = Object.keys(paramGroups);
+    togglesDiv.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">' +
+      groupNames.map(g => {
+        const active = this._paramToggles[g] !== false;
+        const count = paramGroups[g].length;
+        return '<button class="pf-param-toggle ' + (active ? 'active' : '') + '" onclick="PORTFOLIO_SYSTEM.toggleParamGroup(\'' + g.replace(/'/g, "\\'") + '\')" style="display:inline-flex;align-items:center;gap:4px">' +
+          '<span>' + g + '</span><span style="font-size:7px;opacity:0.6">(' + count + ')</span></button>';
+      }).join('') + '</div>';
 
-    // Render horizontal table: rows = parameters, columns = pairs
+    // Horizontal table: ROWS = parameters, COLUMNS = pairs (each pair is a column)
     const tableDiv = document.getElementById('pfParamTable');
-    let html = '<table class="pf-param-htable"><thead><tr><th>PARAMETER</th>';
-    for (const rep of reports) html += '<th>' + rep.sym + '</th>';
+    let html = '<table class="pf-param-htable"><thead><tr><th style="text-align:left;min-width:160px">PARAMETER</th>';
+    for (const rep of reports) {
+      html += '<th style="text-align:left;min-width:100px">' + rep.sym + '</th>';
+    }
     html += '</tr></thead><tbody>';
 
+    let hasRows = false;
     for (const [group, keys] of Object.entries(paramGroups)) {
       if (this._paramToggles[group] === false) continue;
+      // Group header row
+      html += '<tr><td colspan="' + (reports.length + 1) + '" style="background:var(--g600);color:var(--amber);font-weight:700;font-size:8px;letter-spacing:0.1em;padding:6px 8px;border:none">' + group + '</td></tr>';
       for (const key of keys) {
-        // Check if values differ across reports
-        const vals = reports.map(rep => rep.inputs[key] || '—');
+        const vals = reports.map(rep => rep.inputs[key] || '\u2014');
         const allSame = vals.every(v => v === vals[0]);
-        const rowStyle = allSame ? '' : 'background:rgba(255,149,0,0.04)';
-        html += '<tr style="' + rowStyle + '"><td style="color:var(--t3)">' + key + '</td>';
+        const rowBg = allSame ? '' : 'background:rgba(255,149,0,0.04)';
+        html += '<tr style="' + rowBg + '"><td style="color:var(--t2);text-align:left">' + key + '</td>';
         for (const v of vals) {
-          const highlight = !allSame && v !== '—' ? 'color:var(--acc)' : '';
-          html += '<td style="' + highlight + '">' + v + '</td>';
+          const highlight = !allSame && v !== '\u2014' ? 'color:var(--acc);font-weight:500' : 'color:var(--t3)';
+          html += '<td style="' + highlight + ';text-align:left">' + v + '</td>';
         }
         html += '</tr>';
+        hasRows = true;
       }
     }
+
+    if (!hasRows) {
+      html += '<tr><td colspan="' + (reports.length + 1) + '" style="text-align:center;color:var(--t3);padding:16px">ALL PARAMETER GROUPS ARE HIDDEN — USE TOGGLES ABOVE TO SHOW</td></tr>';
+    }
+
     html += '</tbody></table>';
     tableDiv.innerHTML = html;
   },
@@ -4694,7 +4839,11 @@ const PORTFOLIO_SYSTEM = {
         const r = store.get(id);
         const sym = r ? getSymbol(r) : id;
         const pnl = r ? parseFloat(R(r, 'netProfit')) || 0 : 0;
-        return '<div class="pf-alloc-row"><span class="pf-strat-name">' + sym + '</span><div class="pf-alloc-bar" style="width:' + pct + '%"></div><span style="font-family:var(--mono);font-size:9px;color:var(--t3)">' + pct + '%</span><span style="font-family:var(--mono);font-size:9px;color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + ';min-width:60px;text-align:right">$' + Math.round(pnl).toLocaleString() + '</span></div>';
+        return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--g600)">' +
+          '<span style="font-family:var(--mono);font-size:10px;color:var(--acc);min-width:90px">' + sym + '</span>' +
+          '<div style="flex:0 0 120px;height:4px;background:var(--g500);position:relative"><div style="height:100%;width:' + pct + '%;background:var(--neon)"></div></div>' +
+          '<span style="font-family:var(--mono);font-size:9px;color:var(--t3)">' + pct + '%</span>' +
+          '<span style="font-family:var(--mono);font-size:9px;color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + Math.round(pnl).toLocaleString() + '</span></div>';
       }).join('');
 
       // Pairs list
@@ -4704,12 +4853,14 @@ const PORTFOLIO_SYSTEM = {
         if (!r) return '';
         const pnl = parseFloat(R(r, 'netProfit')) || 0;
         const pf = parseFloat(R(r, 'profitFactor')) || 0;
-        const dd = parseFloat(R(r, 'maxDDPct')) || 0;
-        return '<div class="pf-strat-row" onclick="selectReportForDetail(\'' + id + '\')">' +
-          '<span class="pf-strat-name">' + getSymbol(r) + '</span>' +
-          '<span style="font-family:var(--mono);font-size:9px;color:var(--t3);min-width:50px">PF ' + pf.toFixed(2) + '</span>' +
-          '<span style="font-family:var(--mono);font-size:9px;color:var(--crimson);min-width:50px">DD ' + dd.toFixed(1) + '%</span>' +
-          '<span class="pf-strat-pnl" style="color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + Math.round(pnl).toLocaleString() + '</span>' +
+        const dd = Math.abs(parseFloat(R(r, 'maxDDPct')) || 0);
+        const wr = parseFloat(R(r, 'winRate')) || 0;
+        return '<div style="display:flex;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid var(--g600);cursor:pointer" onclick="selectReportForDetail(\'' + id + '\')">' +
+          '<span style="font-family:var(--mono);font-size:10px;color:var(--acc);min-width:90px">' + getSymbol(r) + '</span>' +
+          '<span style="font-family:var(--mono);font-size:9px;color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + Math.round(pnl).toLocaleString() + '</span>' +
+          '<span style="font-family:var(--mono);font-size:9px;color:var(--t2)">PF ' + pf.toFixed(2) + '</span>' +
+          '<span style="font-family:var(--mono);font-size:9px;color:var(--crimson)">DD ' + dd.toFixed(1) + '%</span>' +
+          '<span style="font-family:var(--mono);font-size:9px;color:var(--t2)">WR ' + wr.toFixed(0) + '%</span>' +
           '</div>';
       }).join('');
 
