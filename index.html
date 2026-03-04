@@ -391,6 +391,57 @@ table.portfolio tr.selected td { color: var(--t1); }
 .chart-canvas-wrap canvas { width: 100% !important; height: 100% !important; }
 .chart-canvas-wrap.short { height: 180px; }
 
+/* Monte Carlo */
+.mc-section { margin-top: 12px; }
+.mc-header { flex-wrap: wrap; gap: 8px; }
+.mc-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.mc-label { font-family: var(--mono); font-size: 8px; color: var(--t3); letter-spacing: 0.08em; display: flex; align-items: center; gap: 4px; }
+.mc-select { background: var(--g700); border: 1px solid var(--g400); color: var(--acc); font-family: var(--mono); font-size: 9px; padding: 3px 6px; }
+.mc-run-btn { font-size: 9px !important; padding: 4px 14px !important; background: var(--neon) !important; color: var(--bg) !important; font-weight: 700 !important; letter-spacing: 0.08em; }
+.mc-run-btn:hover { opacity: 0.85; }
+.mc-run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.mc-progress { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+.mc-progress-bar { flex: 1; height: 4px; background: var(--g600); position: relative; overflow: hidden; }
+.mc-progress-fill { height: 100%; background: var(--neon); width: 0%; transition: width 0.15s; }
+.mc-progress-text { font-family: var(--mono); font-size: 9px; color: var(--t2); min-width: 36px; }
+.mc-charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+.mc-sub-panel { margin-bottom: 0; }
+.mc-metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+.mc-metric { background: var(--g700); border: 1px solid var(--g400); padding: 10px 12px; }
+.mc-metric-label { font-family: var(--mono); font-size: 7px; color: var(--t3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 3px; }
+.mc-metric-value { font-family: var(--mono); font-size: 14px; color: var(--acc); font-weight: 600; }
+.mc-metric-value.positive { color: var(--neon); }
+.mc-metric-value.negative { color: var(--crimson); }
+.mc-empty { text-align: center; padding: 24px; }
+
+/* Portfolio */
+.pf-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.pf-selector { display: flex; gap: 4px; overflow-x: auto; flex: 1; }
+.pf-pill { font-family: var(--mono); font-size: 9px; color: var(--t2); background: var(--g700); border: 1px solid var(--g400); padding: 4px 14px; cursor: pointer; white-space: nowrap; letter-spacing: 0.06em; }
+.pf-pill.active { background: var(--acc); color: var(--bg); font-weight: 700; }
+.pf-pill:hover { border-color: var(--t3); }
+.pf-empty { text-align: center; padding: 48px 24px; }
+.pf-kpi-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px; }
+.pf-kpi { background: var(--g800); border: 1px solid var(--g400); padding: 10px 12px; }
+.pf-kpi-label { font-family: var(--mono); font-size: 7px; color: var(--t3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 3px; }
+.pf-kpi-value { font-family: var(--mono); font-size: 16px; color: var(--acc); font-weight: 600; }
+.pf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.pf-strategy-list { max-height: 300px; overflow-y: auto; }
+.pf-strat-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-bottom: 1px solid var(--g600); font-family: var(--mono); font-size: 10px; color: var(--t2); cursor: pointer; }
+.pf-strat-row:hover { background: var(--g700); }
+.pf-strat-row input[type=checkbox] { accent-color: var(--neon); }
+.pf-strat-name { flex: 1; }
+.pf-strat-pnl { min-width: 80px; text-align: right; }
+.pf-corr-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 8px; }
+.pf-corr-table th, .pf-corr-table td { padding: 4px 6px; text-align: center; border: 1px solid var(--g600); }
+.pf-corr-table th { color: var(--t3); font-weight: 400; font-size: 7px; }
+.pf-alloc-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; font-family: var(--mono); font-size: 10px; color: var(--t2); }
+.pf-alloc-bar { height: 8px; background: var(--neon); min-width: 2px; }
+.pf-algo-rec { background: var(--g700); border: 1px solid var(--g400); padding: 12px 16px; margin-bottom: 8px; }
+.pf-algo-title { font-family: var(--mono); font-size: 10px; color: var(--neon); font-weight: 700; letter-spacing: 0.06em; margin-bottom: 4px; }
+.pf-algo-detail { font-family: var(--mono); font-size: 9px; color: var(--t2); line-height: 1.5; }
+.pf-algo-score { font-family: var(--mono); font-size: 8px; color: var(--t3); margin-top: 2px; }
+
 /* Metrics grid */
 .metrics-grid {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;
@@ -741,6 +792,16 @@ table.portfolio tr.selected td { color: var(--t1); }
   /* QUANTLAB ANALYST panel — override inline width for mobile */
   .perf-grid > .chart-panel:last-child { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }
 
+  /* Monte Carlo mobile */
+  .mc-charts-row { grid-template-columns: 1fr; }
+  .mc-metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  .mc-controls { gap: 6px; }
+
+  /* Portfolio mobile */
+  .pf-kpi-strip { grid-template-columns: repeat(2, 1fr); }
+  .pf-grid { grid-template-columns: 1fr; }
+  .pf-corr-table { font-size: 7px; }
+  .pf-corr-table th, .pf-corr-table td { padding: 3px 4px; }
 }
 
 /* Correlation Matrix */
@@ -805,6 +866,7 @@ table.portfolio tr.selected td { color: var(--t1); }
     <button class="tab-btn" data-tab="detail">DETAIL</button>
     <button class="tab-btn" data-tab="compare">COMPARE <span class="tab-badge" id="compareBadge"></span></button>
     <button class="tab-btn" data-tab="performance">PERFORMANCE</button>
+    <button class="tab-btn" data-tab="portfolio">PORTFOLIO</button>
   </div>
 
   <!-- DATE PERIOD BAR -->
@@ -869,6 +931,7 @@ table.portfolio tr.selected td { color: var(--t1); }
         <div class="kpi-sub" id="kpiAvgWRSub">&mdash;</div>
       </div>
     </div>
+    <div id="overviewPortfolioBanner" style="display:none;margin-bottom:12px;cursor:pointer" onclick="TAB_SYSTEM.switchTab('portfolio')"></div>
     <div class="mini-card-grid" id="overviewGrid"></div>
     <div class="empty-state" id="overviewEmpty">
       <div class="empty-icon">&#x26A1;</div>
@@ -1027,6 +1090,54 @@ table.portfolio tr.selected td { color: var(--t1); }
 
         <!-- Input Parameters -->
         <div id="paramsContainer"></div>
+
+        <!-- ═══ MONTE CARLO SIMULATION ═══ -->
+        <div class="chart-panel mc-section" id="monteCarloSection" style="display:none">
+          <div class="chart-header mc-header">
+            <span class="chart-title">MONTE CARLO SIMULATION</span>
+            <div class="mc-controls">
+              <label class="mc-label">SIMS: <select id="mcSimCount" class="mc-select">
+                <option value="1000">1,000</option>
+                <option value="3000">3,000</option>
+                <option value="5000" selected>5,000</option>
+                <option value="10000">10,000</option>
+              </select></label>
+              <label class="mc-label">CONFIDENCE: <select id="mcConfidence" class="mc-select">
+                <option value="80">80%</option>
+                <option value="90" selected>90%</option>
+                <option value="95">95%</option>
+                <option value="99">99%</option>
+              </select></label>
+              <button class="action-btn mc-run-btn" id="mcRunBtn">RUN SIMULATION</button>
+            </div>
+          </div>
+          <div id="mcProgress" class="mc-progress" style="display:none">
+            <div class="mc-progress-bar"><div class="mc-progress-fill" id="mcProgressFill"></div></div>
+            <span class="mc-progress-text" id="mcProgressText">0%</span>
+          </div>
+          <div id="mcResults" style="display:none">
+            <div class="chart-canvas-wrap" style="height:320px">
+              <canvas id="mcFanChart"></canvas>
+            </div>
+            <div class="mc-charts-row">
+              <div class="chart-panel mc-sub-panel">
+                <div class="chart-header"><span class="chart-title">DRAWDOWN DISTRIBUTION</span></div>
+                <div class="chart-canvas-wrap short"><canvas id="mcDDHistChart"></canvas></div>
+              </div>
+              <div class="chart-panel mc-sub-panel">
+                <div class="chart-header"><span class="chart-title">RETURN DISTRIBUTION</span></div>
+                <div class="chart-canvas-wrap short"><canvas id="mcReturnHistChart"></canvas></div>
+              </div>
+            </div>
+            <div class="mc-metrics-grid" id="mcMetricsGrid"></div>
+          </div>
+          <div id="mcEmpty" class="mc-empty">
+            <span style="color:var(--t3);font-family:var(--mono);font-size:10px;letter-spacing:0.08em">
+              CLICK RUN SIMULATION TO GENERATE 5,000 RANDOMIZED EQUITY PATHS
+            </span>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -1203,6 +1314,63 @@ table.portfolio tr.selected td { color: var(--t1); }
           <div id="aiAnalystOutput" style="font-family:var(--mono);font-size:10px;color:var(--t2);line-height:1.6;padding:4px 0">
             <span style="color:var(--t3)">Click ANALYZE to generate strategy intelligence report</span>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB 6: PORTFOLIO ═══ -->
+  <div class="tab-pane" id="panePortfolio">
+    <div style="padding:16px 24px;">
+      <div class="pf-toolbar">
+        <button class="action-btn" id="pfNewBtn" style="font-size:9px;padding:4px 14px">+ NEW PORTFOLIO</button>
+        <button class="action-btn" id="pfDeleteBtn" style="font-size:9px;padding:4px 10px;background:var(--g600)">DELETE</button>
+        <div class="pf-selector" id="pfSelector"></div>
+      </div>
+
+      <div class="pf-empty" id="pfEmpty">
+        <div class="empty-icon">&#x1F4CA;</div>
+        <div class="empty-title">CREATE YOUR FIRST PORTFOLIO</div>
+        <div class="empty-sub">Combine strategies to see combined performance and optimal allocations</div>
+      </div>
+
+      <div id="pfContent" style="display:none">
+        <!-- Combined Equity -->
+        <div class="chart-panel">
+          <div class="chart-header"><span class="chart-title">COMBINED EQUITY CURVE</span></div>
+          <div class="chart-canvas-wrap"><canvas id="pfEquityChart"></canvas></div>
+        </div>
+
+        <!-- Portfolio KPIs -->
+        <div class="pf-kpi-strip" id="pfKPIs"></div>
+
+        <!-- Grid: Allocation + Correlation -->
+        <div class="pf-grid">
+          <div class="chart-panel">
+            <div class="chart-header"><span class="chart-title">STRATEGY ALLOCATION</span></div>
+            <div id="pfAllocation"></div>
+          </div>
+          <div class="chart-panel">
+            <div class="chart-header"><span class="chart-title">CORRELATION MATRIX</span></div>
+            <div id="pfCorrelation"></div>
+          </div>
+        </div>
+
+        <!-- Strategy List (add/remove) -->
+        <div class="chart-panel">
+          <div class="chart-header"><span class="chart-title">STRATEGIES</span></div>
+          <div id="pfStrategyList" class="pf-strategy-list"></div>
+        </div>
+      </div>
+
+      <!-- Algo Recommendations (always visible when reports exist) -->
+      <div class="chart-panel" id="pfAlgoPanel" style="display:none;margin-top:12px">
+        <div class="chart-header">
+          <span class="chart-title">OPTIMAL PORTFOLIO RECOMMENDATIONS</span>
+          <button class="chart-toggle active" id="pfAlgoRunBtn" onclick="PORTFOLIO_SYSTEM.runAlgo()">COMPUTE</button>
+        </div>
+        <div id="pfAlgoResults" style="font-family:var(--mono);font-size:10px;color:var(--t2);line-height:1.6;padding:4px 0">
+          <span style="color:var(--t3)">Click COMPUTE to find optimal strategy combinations</span>
         </div>
       </div>
     </div>
@@ -1623,7 +1791,7 @@ const TAB_SYSTEM = {
     });
     // Show/hide panes
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-    const paneMap = { overview:'paneOverview', reports:'paneReports', detail:'paneDetail', compare:'paneCompare', performance:'panePerformance' };
+    const paneMap = { overview:'paneOverview', reports:'paneReports', detail:'paneDetail', compare:'paneCompare', performance:'panePerformance', portfolio:'panePortfolio' };
     const pane = document.getElementById(paneMap[name]);
     if (pane) pane.classList.add('active');
     // Render active tab
@@ -1637,6 +1805,7 @@ const TAB_SYSTEM = {
       case 'detail': renderDetail(); break;
       case 'compare': renderCompare(); break;
       case 'performance': renderPerformance(); break;
+      case 'portfolio': PORTFOLIO_SYSTEM.render(); break;
     }
   }
 };
@@ -2095,6 +2264,31 @@ function renderOverview() {
   const grid = document.getElementById('overviewGrid');
   const empty = document.getElementById('overviewEmpty');
 
+  // Portfolio banner in overview
+  const pfBanner = document.getElementById('overviewPortfolioBanner');
+  if (PORTFOLIO_SYSTEM.portfolios.size > 0) {
+    let bestPf = null, bestPnl = -Infinity;
+    for (const [id, pf] of PORTFOLIO_SYSTEM.portfolios) {
+      if (pf.reportIds.length >= 2) {
+        const m = PORTFOLIO_SYSTEM.computePortfolioMetrics(pf.reportIds);
+        if (m && m.netProfit > bestPnl) { bestPnl = m.netProfit; bestPf = { pf, m }; }
+      }
+    }
+    if (bestPf) {
+      const m = bestPf.m;
+      pfBanner.style.display = '';
+      pfBanner.innerHTML = '<div class="chart-panel" style="margin:0;padding:12px 16px;border-color:var(--neon);border-width:1px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">' +
+        '<div><span style="font-family:var(--mono);font-size:9px;color:var(--neon);font-weight:700;letter-spacing:0.08em">BEST PORTFOLIO: ' + bestPf.pf.name.toUpperCase() + '</span>' +
+        '<span style="font-family:var(--mono);font-size:8px;color:var(--t3);margin-left:8px">' + bestPf.pf.reportIds.length + ' strategies</span></div>' +
+        '<div style="display:flex;gap:16px">' +
+        '<span style="font-family:var(--mono);font-size:10px;color:' + (m.netProfit >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">P&L: $' + Math.round(m.netProfit).toLocaleString() + '</span>' +
+        '<span style="font-family:var(--mono);font-size:10px;color:var(--crimson)">DD: ' + m.maxDD.toFixed(1) + '%</span>' +
+        '<span style="font-family:var(--mono);font-size:10px;color:var(--t2)">DIV: ' + (m.divRatio * 100).toFixed(0) + '%</span>' +
+        '</div></div></div>';
+    } else { pfBanner.style.display = 'none'; }
+  } else { pfBanner.style.display = 'none'; }
+
   if (store.size === 0) {
     grid.classList.add('hidden');
     empty.classList.remove('hidden');
@@ -2406,6 +2600,9 @@ function renderDetail() {
   } else {
     document.getElementById('monthlyReturnsPanel').classList.add('hidden');
   }
+
+  // Monte Carlo section
+  MONTE_CARLO.renderSection(r);
 
   // Metrics grid
   const metricsData = [
@@ -3468,6 +3665,814 @@ function buildDDCompareChart() {
   });
 }
 
+// ─── MONTE CARLO SIMULATION ENGINE ───
+const MONTE_CARLO = {
+  cache: new Map(), // reportId -> results
+  chartInstances: { fan: null, ddHist: null, retHist: null },
+
+  // Run simulation with chunked async to avoid UI freeze
+  async run(report, numSims, confidencePct) {
+    const deals = (report.deals || []).filter(d => d.profit !== 0 && d.balance > 0);
+    if (deals.length < 10) return null;
+
+    const profits = deals.map(d => d.profit);
+    const N = profits.length;
+    const initBal = parseFloat(R(report, 'initialDeposit') || report.settings?.initialDeposit) || 100000;
+
+    // Run sims in chunks for UI responsiveness
+    const paths = []; // each path = array of cumulative equity values
+    const finalEquities = [];
+    const maxDDs = [];
+    const CHUNK = 200;
+    const totalChunks = Math.ceil(numSims / CHUNK);
+
+    for (let chunk = 0; chunk < totalChunks; chunk++) {
+      const start = chunk * CHUNK;
+      const end = Math.min(start + CHUNK, numSims);
+
+      for (let s = start; s < end; s++) {
+        const equity = [initBal];
+        let peak = initBal, maxDD = 0;
+
+        for (let t = 0; t < N; t++) {
+          const idx = Math.floor(Math.random() * N);
+          const newBal = equity[t] + profits[idx];
+          equity.push(newBal);
+          if (newBal > peak) peak = newBal;
+          const dd = peak > 0 ? ((peak - newBal) / peak) * 100 : 0;
+          if (dd > maxDD) maxDD = dd;
+        }
+
+        paths.push(equity);
+        finalEquities.push(equity[N]);
+        maxDDs.push(maxDD);
+      }
+
+      // Update progress
+      const pct = Math.round(((chunk + 1) / totalChunks) * 100);
+      document.getElementById('mcProgressFill').style.width = pct + '%';
+      document.getElementById('mcProgressText').textContent = pct + '%';
+      // Yield to UI
+      await new Promise(r => setTimeout(r, 0));
+    }
+
+    // Compute percentile bands at each trade index
+    const levels = [5, 10, 25, 50, 75, 90, 95];
+    const percentiles = {};
+    levels.forEach(l => percentiles['P' + l] = []);
+
+    for (let t = 0; t <= N; t++) {
+      const vals = paths.map(p => p[t]).sort((a, b) => a - b);
+      levels.forEach(l => {
+        const idx = Math.floor((l / 100) * vals.length);
+        percentiles['P' + l].push(vals[Math.min(idx, vals.length - 1)]);
+      });
+    }
+
+    // Sort distributions
+    finalEquities.sort((a, b) => a - b);
+    maxDDs.sort((a, b) => a - b);
+
+    // Risk metrics
+    const medianReturn = finalEquities[Math.floor(finalEquities.length * 0.5)] - initBal;
+    const p10Return = finalEquities[Math.floor(finalEquities.length * 0.1)] - initBal;
+    const p90Return = finalEquities[Math.floor(finalEquities.length * 0.9)] - initBal;
+    const medianDD = maxDDs[Math.floor(maxDDs.length * 0.5)];
+    const worstDD = maxDDs[maxDDs.length - 1];
+    const bestDD = maxDDs[0];
+
+    // Probability of ruin (equity drops below X% of initial at any point)
+    const ruinThreshold = initBal * 0.5; // 50% loss
+    let ruinCount = 0;
+    for (const path of paths) {
+      for (let t = 0; t <= N; t++) {
+        if (path[t] < ruinThreshold) { ruinCount++; break; }
+      }
+    }
+    const probRuin = (ruinCount / numSims) * 100;
+
+    // Sharpe from median path
+    const medianReturns = [];
+    for (let t = 1; t <= N; t++) {
+      medianReturns.push(percentiles.P50[t] - percentiles.P50[t - 1]);
+    }
+    const meanRet = medianReturns.reduce((s, v) => s + v, 0) / medianReturns.length;
+    const stdRet = Math.sqrt(medianReturns.reduce((s, v) => s + (v - meanRet) ** 2, 0) / medianReturns.length);
+    const medianSharpe = stdRet > 0 ? (meanRet / stdRet) * Math.sqrt(252) : 0;
+
+    return {
+      percentiles,
+      finalEquities,
+      maxDDs,
+      initBal,
+      numTrades: N,
+      numSims,
+      metrics: {
+        medianReturn, p10Return, p90Return,
+        medianDD, worstDD, bestDD,
+        probRuin, medianSharpe
+      }
+    };
+  },
+
+  destroyCharts() {
+    ['fan', 'ddHist', 'retHist'].forEach(k => {
+      if (this.chartInstances[k]) { this.chartInstances[k].destroy(); this.chartInstances[k] = null; }
+    });
+  },
+
+  buildFanChart(result, originalCurve) {
+    const ctx = document.getElementById('mcFanChart');
+    if (!ctx) return;
+    if (this.chartInstances.fan) this.chartInstances.fan.destroy();
+
+    const labels = Array.from({ length: result.numTrades + 1 }, (_, i) => i);
+    const datasets = [];
+
+    // P5-P95 band (outer)
+    datasets.push({
+      label: 'P5-P95',
+      data: result.percentiles.P95,
+      borderColor: 'transparent', backgroundColor: 'rgba(0,255,136,0.06)',
+      fill: '+1', pointRadius: 0, borderWidth: 0,
+    });
+    datasets.push({
+      label: 'P5',
+      data: result.percentiles.P5,
+      borderColor: 'rgba(0,255,136,0.15)', backgroundColor: 'transparent',
+      fill: false, pointRadius: 0, borderWidth: 1,
+    });
+
+    // P25-P75 band (inner)
+    datasets.push({
+      label: 'P25-P75',
+      data: result.percentiles.P75,
+      borderColor: 'transparent', backgroundColor: 'rgba(0,255,136,0.12)',
+      fill: '+1', pointRadius: 0, borderWidth: 0,
+    });
+    datasets.push({
+      label: 'P25',
+      data: result.percentiles.P25,
+      borderColor: 'rgba(0,255,136,0.25)', backgroundColor: 'transparent',
+      fill: false, pointRadius: 0, borderWidth: 1,
+    });
+
+    // P50 median (bold)
+    datasets.push({
+      label: 'MEDIAN (P50)',
+      data: result.percentiles.P50,
+      borderColor: '#00ff88', backgroundColor: 'transparent',
+      fill: false, pointRadius: 0, borderWidth: 2,
+    });
+
+    // Original equity curve
+    if (originalCurve && originalCurve.length > 0) {
+      datasets.push({
+        label: 'ORIGINAL',
+        data: originalCurve.map(p => p.balance),
+        borderColor: '#ffffff', backgroundColor: 'transparent',
+        fill: false, pointRadius: 0, borderWidth: 1.5, borderDash: [6, 3],
+      });
+    }
+
+    this.chartInstances.fan = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'top', labels: { color: '#888', font: { family: "'JetBrains Mono',monospace", size: 8 }, boxWidth: 12, padding: 8,
+            filter: (item) => ['MEDIAN (P50)', 'ORIGINAL', 'P5-P95', 'P25-P75'].includes(item.text)
+          }},
+          tooltip: { enabled: true, mode: 'index', intersect: false,
+            callbacks: { label: ctx => ctx.dataset.label + ': $' + Math.round(ctx.parsed.y).toLocaleString() }
+          }
+        },
+        scales: {
+          x: { display: true, title: { display: true, text: 'TRADE #', color: '#555', font: { family: "'JetBrains Mono',monospace", size: 8 } },
+            ticks: { color: '#555', font: { size: 7 }, maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+          y: { display: true, title: { display: true, text: 'EQUITY ($)', color: '#555', font: { family: "'JetBrains Mono',monospace", size: 8 } },
+            ticks: { color: '#555', font: { size: 8 }, callback: v => '$' + Math.round(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.03)' } }
+        },
+        interaction: { mode: 'nearest', axis: 'x', intersect: false }
+      }
+    });
+  },
+
+  buildDDHistChart(result) {
+    const ctx = document.getElementById('mcDDHistChart');
+    if (!ctx) return;
+    if (this.chartInstances.ddHist) this.chartInstances.ddHist.destroy();
+
+    // Bin drawdowns into 5% buckets
+    const binSize = 5;
+    const maxBin = Math.ceil(Math.max(...result.maxDDs) / binSize) * binSize;
+    const bins = [];
+    const labels = [];
+    for (let b = 0; b <= maxBin; b += binSize) {
+      labels.push(b + '-' + (b + binSize) + '%');
+      bins.push(result.maxDDs.filter(d => d >= b && d < b + binSize).length);
+    }
+
+    // Original DD marker
+    const origDD = parseFloat(R(MONTE_CARLO._currentReport, 'maxDDPct')) || 0;
+
+    this.chartInstances.ddHist = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          data: bins,
+          backgroundColor: bins.map((_, i) => {
+            const midPct = i * binSize + binSize / 2;
+            return midPct > 30 ? 'rgba(255,59,48,0.7)' : midPct > 15 ? 'rgba(255,149,0,0.6)' : 'rgba(0,255,136,0.5)';
+          }),
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ctx.parsed.y + ' sims (' + ((ctx.parsed.y / result.numSims) * 100).toFixed(1) + '%)' } },
+          annotation: origDD > 0 ? {
+            annotations: {
+              origLine: { type: 'line', xMin: origDD / binSize, xMax: origDD / binSize, borderColor: '#fff', borderWidth: 1.5, borderDash: [4, 2],
+                label: { display: true, content: 'ORIGINAL', color: '#fff', font: { size: 7 }, position: 'start' } }
+            }
+          } : undefined
+        },
+        scales: {
+          x: { ticks: { color: '#555', font: { size: 7 }, maxRotation: 45 }, grid: { display: false } },
+          y: { ticks: { color: '#555', font: { size: 7 } }, grid: { color: 'rgba(255,255,255,0.03)' } }
+        }
+      }
+    });
+  },
+
+  buildReturnHistChart(result) {
+    const ctx = document.getElementById('mcReturnHistChart');
+    if (!ctx) return;
+    if (this.chartInstances.retHist) this.chartInstances.retHist.destroy();
+
+    const returns = result.finalEquities.map(e => ((e - result.initBal) / result.initBal) * 100);
+    const binSize = 10;
+    const minBin = Math.floor(Math.min(...returns) / binSize) * binSize;
+    const maxBin = Math.ceil(Math.max(...returns) / binSize) * binSize;
+    const bins = [];
+    const labels = [];
+    for (let b = minBin; b <= maxBin; b += binSize) {
+      labels.push(b + '%');
+      bins.push(returns.filter(r => r >= b && r < b + binSize).length);
+    }
+
+    this.chartInstances.retHist = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          data: bins,
+          backgroundColor: labels.map(l => parseInt(l) >= 0 ? 'rgba(0,255,136,0.5)' : 'rgba(255,59,48,0.6)'),
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ctx.parsed.y + ' sims (' + ((ctx.parsed.y / result.numSims) * 100).toFixed(1) + '%)' } }
+        },
+        scales: {
+          x: { ticks: { color: '#555', font: { size: 7 }, maxRotation: 45 }, grid: { display: false } },
+          y: { ticks: { color: '#555', font: { size: 7 } }, grid: { color: 'rgba(255,255,255,0.03)' } }
+        }
+      }
+    });
+  },
+
+  renderMetrics(result) {
+    const grid = document.getElementById('mcMetricsGrid');
+    if (!grid) return;
+    const m = result.metrics;
+    const fmt = (v, prefix = '$') => {
+      const sign = v >= 0 ? '+' : '';
+      return sign + prefix + Math.abs(Math.round(v)).toLocaleString();
+    };
+    const cls = v => v >= 0 ? 'positive' : 'negative';
+
+    grid.innerHTML = [
+      { label: 'MEDIAN RETURN', value: fmt(m.medianReturn), cls: cls(m.medianReturn) },
+      { label: 'P10 RETURN (WORST 10%)', value: fmt(m.p10Return), cls: cls(m.p10Return) },
+      { label: 'P90 RETURN (BEST 10%)', value: fmt(m.p90Return), cls: cls(m.p90Return) },
+      { label: 'PROB. OF RUIN (50% LOSS)', value: m.probRuin.toFixed(1) + '%', cls: m.probRuin > 10 ? 'negative' : 'positive' },
+      { label: 'MEDIAN MAX DRAWDOWN', value: '-' + m.medianDD.toFixed(1) + '%', cls: 'negative' },
+      { label: 'WORST MAX DRAWDOWN', value: '-' + m.worstDD.toFixed(1) + '%', cls: 'negative' },
+      { label: 'BEST MAX DRAWDOWN', value: '-' + m.bestDD.toFixed(1) + '%', cls: m.bestDD < 10 ? 'positive' : 'negative' },
+      { label: 'MEDIAN SHARPE RATIO', value: m.medianSharpe.toFixed(2), cls: m.medianSharpe >= 1 ? 'positive' : m.medianSharpe < 0 ? 'negative' : '' },
+    ].map(item =>
+      '<div class="mc-metric"><div class="mc-metric-label">' + item.label + '</div>' +
+      '<div class="mc-metric-value ' + item.cls + '">' + item.value + '</div></div>'
+    ).join('');
+  },
+
+  _currentReport: null,
+
+  async renderSection(report) {
+    const section = document.getElementById('monteCarloSection');
+    if (!section) return;
+
+    const deals = (report.deals || []).filter(d => d.profit !== 0 && d.balance > 0);
+    if (deals.length < 10) {
+      section.style.display = 'none';
+      return;
+    }
+
+    section.style.display = '';
+    this._currentReport = report;
+
+    // Check cache
+    const cached = this.cache.get(report.id);
+    if (cached) {
+      document.getElementById('mcResults').style.display = '';
+      document.getElementById('mcEmpty').style.display = 'none';
+      document.getElementById('mcProgress').style.display = 'none';
+      this.buildFanChart(cached, getBalanceCurve(report));
+      this.buildDDHistChart(cached);
+      this.buildReturnHistChart(cached);
+      this.renderMetrics(cached);
+    } else {
+      document.getElementById('mcResults').style.display = 'none';
+      document.getElementById('mcEmpty').style.display = '';
+      document.getElementById('mcProgress').style.display = 'none';
+      this.destroyCharts();
+    }
+
+    // Wire run button
+    const btn = document.getElementById('mcRunBtn');
+    btn.onclick = async () => {
+      const numSims = parseInt(document.getElementById('mcSimCount').value) || 5000;
+      const conf = parseInt(document.getElementById('mcConfidence').value) || 90;
+      btn.disabled = true;
+      btn.textContent = 'RUNNING...';
+      document.getElementById('mcProgress').style.display = 'flex';
+      document.getElementById('mcResults').style.display = 'none';
+      document.getElementById('mcEmpty').style.display = 'none';
+
+      try {
+        const result = await MONTE_CARLO.run(report, numSims, conf);
+        if (result) {
+          MONTE_CARLO.cache.set(report.id, result);
+          document.getElementById('mcResults').style.display = '';
+          MONTE_CARLO.buildFanChart(result, getBalanceCurve(report));
+          MONTE_CARLO.buildDDHistChart(result);
+          MONTE_CARLO.buildReturnHistChart(result);
+          MONTE_CARLO.renderMetrics(result);
+        }
+      } catch (e) {
+        console.error('Monte Carlo error:', e);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'RUN SIMULATION';
+        document.getElementById('mcProgress').style.display = 'none';
+      }
+    };
+  }
+};
+
+
+// ─── PORTFOLIO SYSTEM ───
+const PORTFOLIO_SYSTEM = {
+  portfolios: new Map(),
+  activeId: null,
+  chartInstance: null,
+
+  // Persistence
+  save() {
+    const data = { portfolios: [], activeId: this.activeId };
+    for (const [id, pf] of this.portfolios) data.portfolios.push(pf);
+    try { localStorage.setItem('dv_portfolios', JSON.stringify(data)); } catch(e) {}
+  },
+  load() {
+    try {
+      const raw = localStorage.getItem('dv_portfolios');
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      this.portfolios.clear();
+      (data.portfolios || []).forEach(pf => this.portfolios.set(pf.id, pf));
+      this.activeId = data.activeId || null;
+    } catch(e) {}
+  },
+
+  create(name) {
+    const id = 'pf_' + Date.now();
+    const colors = ['#00ff88','#ff9500','#00d4ff','#ff3b30','#af52de','#ffcc00'];
+    const pf = { id, name: name || 'Portfolio ' + (this.portfolios.size + 1), reportIds: [], created: new Date().toISOString(), color: colors[this.portfolios.size % colors.length] };
+    this.portfolios.set(id, pf);
+    this.activeId = id;
+    this.save();
+    this.render();
+  },
+
+  deleteActive() {
+    if (!this.activeId) return;
+    this.portfolios.delete(this.activeId);
+    this.activeId = this.portfolios.size > 0 ? [...this.portfolios.keys()][0] : null;
+    this.save();
+    this.render();
+  },
+
+  toggleReport(reportId) {
+    const pf = this.portfolios.get(this.activeId);
+    if (!pf) return;
+    const idx = pf.reportIds.indexOf(reportId);
+    if (idx >= 0) pf.reportIds.splice(idx, 1);
+    else pf.reportIds.push(reportId);
+    this.save();
+    this.render();
+  },
+
+  // Compute combined equity curve (normalized: each starts at equal weight of initial deposit)
+  computeCombined(reportIds) {
+    const curves = reportIds.map(id => {
+      const r = store.get(id);
+      if (!r) return null;
+      const bc = getBalanceCurve(r);
+      if (!bc || bc.length < 2) return null;
+      return { id, curve: bc, initBal: bc[0].balance || 100000 };
+    }).filter(Boolean);
+
+    if (curves.length === 0) return { combined: [], individual: curves };
+
+    // Normalize all curves to % return, then combine
+    const maxLen = Math.max(...curves.map(c => c.curve.length));
+    const combined = [];
+    const perStrategy = 100000; // $100k per strategy
+    const totalInit = perStrategy * curves.length;
+
+    for (let i = 0; i < maxLen; i++) {
+      let totalBal = 0;
+      for (const c of curves) {
+        const idx = Math.min(i, c.curve.length - 1);
+        const pctReturn = (c.curve[idx].balance - c.initBal) / c.initBal;
+        totalBal += perStrategy * (1 + pctReturn);
+      }
+      const time = curves[0].curve[Math.min(i, curves[0].curve.length - 1)].time || '';
+      combined.push({ time, balance: totalBal });
+    }
+
+    return { combined, individual: curves, totalInit };
+  },
+
+  // Pearson correlation between two balance curve return series
+  pearsonCorrelation(curveA, curveB) {
+    const minLen = Math.min(curveA.length, curveB.length);
+    if (minLen < 10) return 0;
+    const retA = [], retB = [];
+    for (let i = 1; i < minLen; i++) {
+      retA.push((curveA[i].balance - curveA[i-1].balance) / (curveA[i-1].balance || 1));
+      retB.push((curveB[i].balance - curveB[i-1].balance) / (curveB[i-1].balance || 1));
+    }
+    const n = retA.length;
+    const meanA = retA.reduce((s,v) => s+v, 0) / n;
+    const meanB = retB.reduce((s,v) => s+v, 0) / n;
+    let cov = 0, varA = 0, varB = 0;
+    for (let i = 0; i < n; i++) {
+      const dA = retA[i] - meanA, dB = retB[i] - meanB;
+      cov += dA * dB; varA += dA * dA; varB += dB * dB;
+    }
+    const denom = Math.sqrt(varA * varB);
+    return denom > 0 ? cov / denom : 0;
+  },
+
+  computeCorrelationMatrix(reportIds) {
+    const curves = reportIds.map(id => {
+      const r = store.get(id);
+      return r ? getBalanceCurve(r) : [];
+    });
+    const n = reportIds.length;
+    const matrix = Array.from({length: n}, () => Array(n).fill(0));
+    for (let i = 0; i < n; i++) {
+      matrix[i][i] = 1;
+      for (let j = i + 1; j < n; j++) {
+        const corr = this.pearsonCorrelation(curves[i], curves[j]);
+        matrix[i][j] = corr;
+        matrix[j][i] = corr;
+      }
+    }
+    return matrix;
+  },
+
+  computePortfolioMetrics(reportIds) {
+    const { combined, totalInit } = this.computeCombined(reportIds);
+    if (combined.length === 0) return null;
+
+    const netProfit = combined[combined.length - 1].balance - totalInit;
+    const returnPct = (netProfit / totalInit) * 100;
+
+    // Max drawdown of combined curve
+    let peak = 0, maxDD = 0;
+    for (const p of combined) {
+      if (p.balance > peak) peak = p.balance;
+      const dd = peak > 0 ? ((peak - p.balance) / peak) * 100 : 0;
+      if (dd > maxDD) maxDD = dd;
+    }
+
+    // Avg metrics from individual reports
+    let sumPF = 0, sumSharpe = 0, sumWin = 0, cnt = 0;
+    for (const id of reportIds) {
+      const r = store.get(id);
+      if (!r) continue;
+      sumPF += parseFloat(R(r, 'profitFactor')) || 0;
+      sumSharpe += parseFloat(R(r, 'sharpeRatio')) || 0;
+      sumWin += parseFloat(R(r, 'winRate')) || 0;
+      cnt++;
+    }
+
+    // Diversification ratio (avg correlation from matrix)
+    const matrix = this.computeCorrelationMatrix(reportIds);
+    let corrSum = 0, corrCnt = 0;
+    for (let i = 0; i < matrix.length; i++) {
+      for (let j = i + 1; j < matrix.length; j++) {
+        corrSum += Math.abs(matrix[i][j]);
+        corrCnt++;
+      }
+    }
+    const avgCorr = corrCnt > 0 ? corrSum / corrCnt : 0;
+    const divRatio = 1 - avgCorr; // 1 = fully diversified, 0 = fully correlated
+
+    return {
+      netProfit, returnPct, maxDD,
+      avgPF: cnt > 0 ? sumPF / cnt : 0,
+      avgSharpe: cnt > 0 ? sumSharpe / cnt : 0,
+      avgWinRate: cnt > 0 ? sumWin / cnt : 0,
+      divRatio, avgCorr
+    };
+  },
+
+  // Algo: find best combinations
+  runAlgo() {
+    const results = document.getElementById('pfAlgoResults');
+    if (!results) return;
+
+    const allReports = [...store.values()].filter(r => {
+      const bc = getBalanceCurve(r);
+      return bc && bc.length > 10;
+    });
+
+    if (allReports.length < 2) {
+      results.innerHTML = '<span style="color:var(--t3)">Need at least 2 reports with equity curves</span>';
+      return;
+    }
+
+    results.innerHTML = '<span style="color:var(--amber)">Computing optimal combinations...</span>';
+
+    setTimeout(() => {
+      const recommendations = [];
+      const sizes = [2, 3, 4, 5].filter(n => n <= allReports.length);
+
+      for (const size of sizes) {
+        const combos = this._getCombinations(allReports.map(r => r.id), size);
+        let best = null, bestScore = -Infinity;
+
+        for (const combo of combos) {
+          const metrics = this.computePortfolioMetrics(combo);
+          if (!metrics) continue;
+          // Score: prioritize high return, low DD, low correlation
+          const score = (metrics.avgSharpe * metrics.divRatio) / (1 + metrics.maxDD / 100);
+          if (score > bestScore) { bestScore = score; best = { combo, metrics, score }; }
+        }
+
+        if (best) {
+          const names = best.combo.map(id => {
+            const r = store.get(id);
+            return r ? getSymbol(r) : id;
+          });
+          recommendations.push({
+            size,
+            names,
+            combo: best.combo,
+            metrics: best.metrics,
+            score: best.score
+          });
+        }
+      }
+
+      if (recommendations.length === 0) {
+        results.innerHTML = '<span style="color:var(--t3)">Could not compute recommendations</span>';
+        return;
+      }
+
+      results.innerHTML = recommendations.map(rec => {
+        const m = rec.metrics;
+        return '<div class="pf-algo-rec">' +
+          '<div class="pf-algo-title">BEST ' + rec.size + '-STRATEGY PORTFOLIO</div>' +
+          '<div class="pf-algo-detail">' + rec.names.join(' + ') + '</div>' +
+          '<div class="pf-algo-detail">' +
+          'P&L: <span style="color:' + (m.netProfit >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + Math.round(m.netProfit).toLocaleString() + '</span> · ' +
+          'DD: <span style="color:var(--crimson)">' + m.maxDD.toFixed(1) + '%</span> · ' +
+          'Avg PF: ' + m.avgPF.toFixed(2) + ' · ' +
+          'Div: ' + (m.divRatio * 100).toFixed(0) + '% · ' +
+          'Sharpe: ' + m.avgSharpe.toFixed(2) +
+          '</div>' +
+          '<div class="pf-algo-score">SCORE: ' + rec.score.toFixed(3) + '</div>' +
+          '<button class="action-btn" style="font-size:8px;padding:3px 10px;margin-top:4px" onclick="PORTFOLIO_SYSTEM.createFromAlgo(\'' + rec.combo.join(',') + '\',\'' + rec.names.join(' + ') + '\')">CREATE THIS PORTFOLIO</button>' +
+          '</div>';
+      }).join('');
+    }, 50);
+  },
+
+  createFromAlgo(comboStr, name) {
+    const ids = comboStr.split(',');
+    const id = 'pf_' + Date.now();
+    const colors = ['#00ff88','#ff9500','#00d4ff','#ff3b30','#af52de','#ffcc00'];
+    const pf = { id, name: name || 'Algo Portfolio', reportIds: ids, created: new Date().toISOString(), color: colors[this.portfolios.size % colors.length] };
+    this.portfolios.set(id, pf);
+    this.activeId = id;
+    this.save();
+    this.render();
+  },
+
+  _getCombinations(arr, size) {
+    const result = [];
+    const maxCombos = 10000; // cap for performance
+
+    function combine(start, combo) {
+      if (result.length >= maxCombos) return;
+      if (combo.length === size) { result.push([...combo]); return; }
+      for (let i = start; i < arr.length; i++) {
+        combo.push(arr[i]);
+        combine(i + 1, combo);
+        combo.pop();
+      }
+    }
+    combine(0, []);
+    return result;
+  },
+
+  // Build the combined equity chart
+  buildEquityChart(reportIds) {
+    const canvas = document.getElementById('pfEquityChart');
+    if (!canvas) return;
+    if (this.chartInstance) this.chartInstance.destroy();
+
+    const { combined, individual, totalInit } = this.computeCombined(reportIds);
+    if (combined.length === 0) return;
+
+    const labels = combined.map((_, i) => i);
+    const datasets = [];
+
+    // Individual curves (thin, semi-transparent)
+    for (const c of individual) {
+      const r = store.get(c.id);
+      const sym = r ? getSymbol(r) : c.id;
+      datasets.push({
+        label: sym,
+        data: c.curve.map(p => p.balance),
+        borderColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: 'transparent',
+        fill: false, pointRadius: 0, borderWidth: 1,
+      });
+    }
+
+    // Combined curve (bold)
+    datasets.push({
+      label: 'COMBINED',
+      data: combined.map(p => p.balance),
+      borderColor: '#00ff88',
+      backgroundColor: 'transparent',
+      fill: false, pointRadius: 0, borderWidth: 2.5,
+    });
+
+    this.chartInstance = new Chart(canvas, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'top', labels: { color: '#888', font: { family: "'JetBrains Mono',monospace", size: 8 }, boxWidth: 10, padding: 6 } },
+          tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => ctx.dataset.label + ': $' + Math.round(ctx.parsed.y).toLocaleString() } }
+        },
+        scales: {
+          x: { display: true, ticks: { color: '#555', font: { size: 7 }, maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+          y: { display: true, ticks: { color: '#555', font: { size: 8 }, callback: v => '$' + Math.round(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.03)' } }
+        },
+        interaction: { mode: 'nearest', axis: 'x', intersect: false }
+      }
+    });
+  },
+
+  // Main render
+  render() {
+    const empty = document.getElementById('pfEmpty');
+    const content = document.getElementById('pfContent');
+    const selector = document.getElementById('pfSelector');
+    const algoPanel = document.getElementById('pfAlgoPanel');
+
+    // Show algo panel if reports exist
+    if (store.size >= 2 && algoPanel) algoPanel.style.display = '';
+    else if (algoPanel) algoPanel.style.display = 'none';
+
+    // Build selector pills
+    selector.innerHTML = '';
+    for (const [id, pf] of this.portfolios) {
+      const pill = document.createElement('div');
+      pill.className = 'pf-pill' + (id === this.activeId ? ' active' : '');
+      pill.textContent = pf.name + ' (' + pf.reportIds.length + ')';
+      pill.onclick = () => { this.activeId = id; this.save(); this.render(); };
+      selector.appendChild(pill);
+    }
+
+    if (!this.activeId || !this.portfolios.has(this.activeId)) {
+      empty.style.display = '';
+      content.style.display = 'none';
+      return;
+    }
+
+    empty.style.display = 'none';
+    content.style.display = '';
+
+    const pf = this.portfolios.get(this.activeId);
+    const validIds = pf.reportIds.filter(id => store.has(id));
+
+    // KPIs
+    const kpis = document.getElementById('pfKPIs');
+    if (validIds.length >= 2) {
+      const metrics = this.computePortfolioMetrics(validIds);
+      if (metrics) {
+        kpis.innerHTML = [
+          { label: 'NET P&L', value: '$' + Math.round(metrics.netProfit).toLocaleString(), cls: metrics.netProfit >= 0 ? 'positive' : 'negative' },
+          { label: 'AVG PROFIT FACTOR', value: metrics.avgPF.toFixed(2), cls: '' },
+          { label: 'PORTFOLIO DD%', value: metrics.maxDD.toFixed(1) + '%', cls: 'negative' },
+          { label: 'AVG SHARPE', value: metrics.avgSharpe.toFixed(2), cls: '' },
+          { label: 'DIVERSIFICATION', value: (metrics.divRatio * 100).toFixed(0) + '%', cls: metrics.divRatio > 0.5 ? 'positive' : '' },
+        ].map(k => '<div class="pf-kpi"><div class="pf-kpi-label">' + k.label + '</div><div class="pf-kpi-value" style="color:' + (k.cls === 'positive' ? 'var(--neon)' : k.cls === 'negative' ? 'var(--crimson)' : 'var(--acc)') + '">' + k.value + '</div></div>').join('');
+      }
+
+      // Equity chart
+      this.buildEquityChart(validIds);
+
+      // Correlation matrix
+      const corrDiv = document.getElementById('pfCorrelation');
+      const matrix = this.computeCorrelationMatrix(validIds);
+      const symbols = validIds.map(id => { const r = store.get(id); return r ? getSymbol(r) : id; });
+      let corrHtml = '<table class="pf-corr-table"><thead><tr><th></th>' + symbols.map(s => '<th>' + s.slice(0, 8) + '</th>').join('') + '</tr></thead><tbody>';
+      for (let i = 0; i < matrix.length; i++) {
+        corrHtml += '<tr><th>' + symbols[i].slice(0, 8) + '</th>';
+        for (let j = 0; j < matrix[i].length; j++) {
+          const v = matrix[i][j];
+          const bg = i === j ? 'var(--g600)' : v > 0.5 ? 'rgba(255,59,48,0.2)' : v > 0 ? 'rgba(255,149,0,0.1)' : v > -0.5 ? 'rgba(0,255,136,0.1)' : 'rgba(0,255,136,0.25)';
+          corrHtml += '<td style="background:' + bg + '">' + v.toFixed(2) + '</td>';
+        }
+        corrHtml += '</tr>';
+      }
+      corrHtml += '</tbody></table>';
+      corrDiv.innerHTML = corrHtml;
+
+      // Allocation
+      const allocDiv = document.getElementById('pfAllocation');
+      const pct = (100 / validIds.length).toFixed(0);
+      allocDiv.innerHTML = validIds.map(id => {
+        const r = store.get(id);
+        const sym = r ? getSymbol(r) : id;
+        const pnl = r ? parseFloat(R(r, 'netProfit')) || 0 : 0;
+        return '<div class="pf-alloc-row"><span class="pf-strat-name">' + sym + '</span><div class="pf-alloc-bar" style="width:' + pct + '%"></div><span style="font-family:var(--mono);font-size:9px;color:var(--t3)">' + pct + '%</span><span style="font-family:var(--mono);font-size:9px;color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + ';min-width:60px;text-align:right">$' + Math.round(pnl).toLocaleString() + '</span></div>';
+      }).join('');
+
+    } else {
+      kpis.innerHTML = '<div style="grid-column:1/-1;text-align:center;font-family:var(--mono);font-size:10px;color:var(--t3);padding:12px">Add at least 2 strategies to see portfolio metrics</div>';
+      if (this.chartInstance) { this.chartInstance.destroy(); this.chartInstance = null; }
+      document.getElementById('pfCorrelation').innerHTML = '';
+      document.getElementById('pfAllocation').innerHTML = '';
+    }
+
+    // Strategy list (all reports with checkboxes)
+    const listDiv = document.getElementById('pfStrategyList');
+    let listHtml = '';
+    for (const [id, r] of store) {
+      const checked = pf.reportIds.includes(id) ? 'checked' : '';
+      const sym = getSymbol(r);
+      const pnl = parseFloat(R(r, 'netProfit')) || 0;
+      listHtml += '<div class="pf-strat-row" onclick="PORTFOLIO_SYSTEM.toggleReport(\'' + id + '\')">' +
+        '<input type="checkbox" ' + checked + ' onclick="event.stopPropagation();PORTFOLIO_SYSTEM.toggleReport(\'' + id + '\')">' +
+        '<span class="pf-strat-name">' + sym + ' — ' + (r.expert || r.filename || '') + '</span>' +
+        '<span class="pf-strat-pnl" style="color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + Math.round(pnl).toLocaleString() + '</span>' +
+        '</div>';
+    }
+    listDiv.innerHTML = listHtml;
+  }
+};
+
+// Wire portfolio buttons
+document.getElementById('pfNewBtn').addEventListener('click', () => {
+  const name = prompt('Portfolio name:');
+  if (name) PORTFOLIO_SYSTEM.create(name);
+});
+document.getElementById('pfDeleteBtn').addEventListener('click', () => {
+  if (PORTFOLIO_SYSTEM.activeId && confirm('Delete this portfolio?')) PORTFOLIO_SYSTEM.deleteActive();
+});
+PORTFOLIO_SYSTEM.load();
+
+
 // ─── QUANTLAB ANALYST ENGINE (Advanced Algorithm) ───
 function runQuantAnalyst() {
   const reports = getDateFilteredReports();
@@ -3889,23 +4894,63 @@ async function syncFromDrive() {
             }));
           }
         }
-      } catch(e) { console.warn('Balance curve parse error:', e); }
+      } catch(e) {
+        console.warn('Balance curve parse error (possible truncation):', e);
+        report._curveTruncated = true;
+      }
+
+      // Detect truncated curves: if the period mentions a year beyond the last curve point, flag for re-fetch
+      if (report.balanceCurve.length > 0 && report.period) {
+        const lastPt = report.balanceCurve[report.balanceCurve.length - 1];
+        const periodMatch = report.period.match(/(\d{4})[.\-/](\d{2})[.\-/](\d{2})\s*$/);
+        if (periodMatch && lastPt.time) {
+          const periodEnd = new Date(parseInt(periodMatch[1]), parseInt(periodMatch[2]) - 1, parseInt(periodMatch[3]));
+          const lastTime = DATE_FILTER.parseTime(lastPt.time);
+          // If last curve point is more than 60 days before the period end, curve is truncated
+          if (lastTime && periodEnd && (periodEnd - lastTime) > 60 * 86400000) {
+            console.warn('Curve truncated for ' + report.filename + ': last=' + lastPt.time + ' periodEnd=' + periodMatch[0]);
+            report._curveTruncated = true;
+          }
+        }
+      }
 
       store.set(id, report);
       autoDetectTags(report);
       newCount++;
     });
 
+    // ── RECONCILIATION: Remove Drive reports no longer in the sheet ──
+    const driveIds = new Set();
+    rows.forEach(row => {
+      const id = (row['Symbol'] || 'UNK') + '_' + (row['Filename'] || row['File ID'] || '');
+      if (id) driveIds.add(id);
+    });
+    let removedCount = 0;
+    for (const [id, r] of store) {
+      if (r.source === 'drive' && !driveIds.has(id)) {
+        store.delete(id);
+        removedCount++;
+        console.log('Removed stale Drive report:', id);
+      }
+    }
+    if (removedCount > 0) {
+      console.log('Reconciliation: removed ' + removedCount + ' stale Drive reports');
+    }
+
     DRIVE_SYNC.lastSync = new Date();
     const timeStr = DRIVE_SYNC.lastSync.toTimeString().slice(0,5);
-    if (newCount > 0) {
-      setDriveStatus(rows.length + ' REPORTS · +' + newCount + ' NEW · ' + timeStr, 'var(--t2)');
+    if (newCount > 0 || removedCount > 0) {
+      let statusParts = [rows.length + ' REPORTS'];
+      if (newCount > 0) statusParts.push('+' + newCount + ' NEW');
+      if (removedCount > 0) statusParts.push('-' + removedCount + ' REMOVED');
+      statusParts.push(timeStr);
+      setDriveStatus(statusParts.join(' · '), 'var(--t2)');
       DATE_FILTER.buildPills();
       DATE_FILTER.updateSummary();
       updateKPIs();
       TAB_SYSTEM.renderActiveTab();
 
-      // For reports missing balance curves, fetch the original HTML from Drive and parse client-side
+      // For reports missing or truncated balance curves, fetch the original HTML from Drive
       fetchDriveBalanceCurves();
     } else {
       setDriveStatus(rows.length + ' REPORTS · ' + timeStr, 'var(--t3)');
@@ -3929,7 +4974,7 @@ document.getElementById('btnSyncDrive').addEventListener('click', syncFromDrive)
 async function fetchDriveBalanceCurves() {
   const missing = [];
   for (const [id, r] of store) {
-    if (r.source === 'drive' && r.driveFileId && (!r.balanceCurve || r.balanceCurve.length === 0)) {
+    if (r.source === 'drive' && r.driveFileId && (!r.balanceCurve || r.balanceCurve.length === 0 || r._curveTruncated)) {
       missing.push(r);
     }
   }
