@@ -1438,10 +1438,20 @@ table.portfolio tr.selected td { color: var(--t1); }
               <div class="sim-legend">&lt;0.15 independent · 0.15–0.30 moderate · &gt;0.30 synchronized</div>
             </div>
             <div>
+              <div class="sim-panel-label">DRAWDOWN SYNCHRONIZATION</div>
+              <div id="pfMatrixDDSync" style="overflow-x:auto"></div>
+              <div class="sim-legend">&lt;0.20 independent · 0.20–0.40 moderate · &gt;0.40 synchronized</div>
+            </div>
+            <div style="grid-column:1/-1">
               <div class="sim-panel-label">DIVERSIFICATION SCORE</div>
               <div id="pfMatrixDivScore" style="overflow-x:auto"></div>
-              <div class="sim-legend">higher = better · &gt;0.50 strong · 0.30–0.50 moderate · &lt;0.30 weak</div>
+              <div class="sim-legend">higher = better · &gt;0.50 strong · 0.30–0.50 moderate · &lt;0.30 weak · formula: 1 − (0.25 × overlap + 0.25 × |corr| + 0.25 × concurrency + 0.25 × ddSync)</div>
             </div>
+          </div>
+          <!-- Regime Equity Curves -->
+          <div style="margin-top:16px">
+            <div class="sim-panel-label">EQUITY CURVES BY REGIME</div>
+            <div id="pfRegimeEquityWrap" style="height:280px;position:relative"><canvas id="pfRegimeEquityChart"></canvas></div>
           </div>
         </div>
 
@@ -4932,13 +4942,62 @@ const PORTFOLIO_SYSTEM = {
     return matrix;
   },
 
-  computeDiversificationScore(overlap, corr, concur) {
+  // Drawdown Synchronization: how often regimes draw down at the same time
+  // Uses rolling drawdown series from combined equity curves, measures correlation
+  // of drawdown periods (when DD > threshold, both regimes are "in drawdown")
+  computeDDSync(regimes, names) {
+    const n = names.length;
+    const matrix = Array.from({length: n}, () => Array(n).fill(0));
+    const ddThreshold = 0.02; // 2% drawdown = "in drawdown"
+
+    // Build drawdown indicator series per regime
+    const ddSeries = {};
+    for (const name of names) {
+      const ids = regimes[name] || [];
+      if (ids.length === 0) { ddSeries[name] = []; continue; }
+      try {
+        const { combined } = this.computeCombined(ids);
+        // Compute rolling drawdown from peak
+        let peak = combined[0].balance;
+        const series = [];
+        for (const pt of combined) {
+          if (pt.balance > peak) peak = pt.balance;
+          const dd = peak > 0 ? (peak - pt.balance) / peak : 0;
+          series.push(dd >= ddThreshold ? 1 : 0); // 1 = in drawdown, 0 = not
+        }
+        ddSeries[name] = series;
+      } catch(e) { ddSeries[name] = []; }
+    }
+
+    for (let i = 0; i < n; i++) {
+      matrix[i][i] = 1;
+      for (let j = i + 1; j < n; j++) {
+        const si = ddSeries[names[i]], sj = ddSeries[names[j]];
+        const minLen = Math.min(si.length, sj.length);
+        if (minLen < 10) { matrix[i][j] = 0; matrix[j][i] = 0; continue; }
+
+        // Count how often both are in drawdown simultaneously
+        let bothDD = 0, eitherDD = 0;
+        for (let k = 0; k < minLen; k++) {
+          if (si[k] === 1 && sj[k] === 1) bothDD++;
+          if (si[k] === 1 || sj[k] === 1) eitherDD++;
+        }
+        // Jaccard-style: intersection / union of drawdown periods
+        const v = eitherDD > 0 ? bothDD / eitherDD : 0;
+        matrix[i][j] = v; matrix[j][i] = v;
+      }
+    }
+    return matrix;
+  },
+
+  computeDiversificationScore(overlap, corr, concur, ddSync) {
     const n = overlap.length;
     const matrix = Array.from({length: n}, () => Array(n).fill(0));
     for (let i = 0; i < n; i++) {
       matrix[i][i] = 1;
       for (let j = i + 1; j < n; j++) {
-        const score = 1 - (0.3 * overlap[i][j] + 0.3 * Math.abs(corr[i][j]) + 0.4 * concur[i][j]);
+        const dd = ddSync ? ddSync[i][j] : 0;
+        const score = 1 - (0.25 * overlap[i][j] + 0.25 * Math.abs(corr[i][j]) + 0.25 * concur[i][j] + 0.25 * dd);
         const v = Math.max(0, Math.min(1, score));
         matrix[i][j] = v; matrix[j][i] = v;
       }
@@ -4965,6 +5024,9 @@ const PORTFOLIO_SYSTEM = {
         } else if (type === 'concur') {
           bg = v < 0.15 ? 'rgba(0,255,136,0.15)' : v < 0.30 ? 'rgba(255,149,0,0.15)' : 'rgba(255,59,48,0.15)';
           tc = v < 0.15 ? '#00ff88' : v < 0.30 ? '#ff9500' : '#ff3b30';
+        } else if (type === 'ddsync') {
+          bg = v < 0.20 ? 'rgba(0,255,136,0.15)' : v < 0.40 ? 'rgba(255,149,0,0.15)' : 'rgba(255,59,48,0.15)';
+          tc = v < 0.20 ? '#00ff88' : v < 0.40 ? '#ff9500' : '#ff3b30';
         } else { // divscore — higher is better
           bg = v > 0.50 ? 'rgba(0,255,136,0.15)' : v > 0.30 ? 'rgba(255,149,0,0.15)' : 'rgba(255,59,48,0.15)';
           tc = v > 0.50 ? '#00ff88' : v > 0.30 ? '#ff9500' : '#ff3b30';
@@ -4987,12 +5049,76 @@ const PORTFOLIO_SYSTEM = {
     const overlap = this.computeTradeOverlap(regimes, names);
     const corr = this.computeRegimeReturnCorrelation(regimes, names);
     const concur = this.computeSignalConcurrency(regimes, names);
-    const divScore = this.computeDiversificationScore(overlap, corr, concur);
+    const ddSync = this.computeDDSync(regimes, names);
+    const divScore = this.computeDiversificationScore(overlap, corr, concur, ddSync);
 
     document.getElementById('pfMatrixOverlap').innerHTML = this.renderInteractionMatrix(overlap, names, 'overlap');
     document.getElementById('pfMatrixCorr').innerHTML = this.renderInteractionMatrix(corr, names, 'corr');
     document.getElementById('pfMatrixConcur').innerHTML = this.renderInteractionMatrix(concur, names, 'concur');
+    document.getElementById('pfMatrixDDSync').innerHTML = this.renderInteractionMatrix(ddSync, names, 'ddsync');
     document.getElementById('pfMatrixDivScore').innerHTML = this.renderInteractionMatrix(divScore, names, 'divscore');
+
+    // Regime Equity Curves chart
+    this._buildRegimeEquityChart(regimes, names);
+  },
+
+  _regimeEquityChart: null,
+
+  _buildRegimeEquityChart(regimes, names) {
+    if (this._regimeEquityChart) { this._regimeEquityChart.destroy(); this._regimeEquityChart = null; }
+    const canvas = document.getElementById('pfRegimeEquityChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const regimeColors = ['#00ff88', '#00d4ff', '#ff9500', '#a78bfa', '#ff3b30', '#ffcc00'];
+    const datasets = [];
+    let maxLen = 0;
+    const curvesMap = {};
+
+    // Build combined curve per regime, normalize to % return
+    for (let idx = 0; idx < names.length; idx++) {
+      const name = names[idx];
+      const ids = regimes[name] || [];
+      if (ids.length === 0) continue;
+      try {
+        const { combined } = this.computeCombined(ids);
+        if (combined.length < 2) continue;
+        curvesMap[name] = combined;
+        if (combined.length > maxLen) maxLen = combined.length;
+        const init = combined[0].balance || 1;
+        datasets.push({
+          label: name.replace('MICRO-', ''),
+          data: combined.map(p => ((p.balance - init) / init) * 100),
+          borderColor: regimeColors[idx % regimeColors.length],
+          backgroundColor: 'transparent',
+          fill: false, pointRadius: 0, borderWidth: 2
+        });
+      } catch(e) { /* skip */ }
+    }
+
+    if (datasets.length === 0) return;
+
+    // Use longest curve's time labels
+    const longestName = names.reduce((a, b) => (curvesMap[a]||[]).length >= (curvesMap[b]||[]).length ? a : b);
+    const labels = (curvesMap[longestName] || []).map(p => p.time || '');
+
+    this._regimeEquityChart = new Chart(ctx, {
+      type: 'line', data: { labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
+        plugins: {
+          legend: { display: true, position: 'top', labels: { color: '#888', font: { family: "'JetBrains Mono',monospace", size: 9 }, boxWidth: 12, padding: 8 } },
+          tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(2) + '%' } },
+          zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: false }, pinch: { enabled: true },
+            drag: { enabled: true, backgroundColor: 'rgba(0,255,136,0.08)', borderColor: 'rgba(0,255,136,0.3)', borderWidth: 1 }, mode: 'x' } }
+        },
+        scales: {
+          x: { display: true, ticks: { color: '#555', font: { family: "'JetBrains Mono',monospace", size: 7 }, maxTicksLimit: 10, maxRotation: 0 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+          y: { display: true, ticks: { color: '#555', font: { family: "'JetBrains Mono',monospace", size: 8 }, callback: v => v.toFixed(1) + '%' }, grid: { color: 'rgba(255,255,255,0.03)' } }
+        },
+        interaction: { mode: 'nearest', axis: 'x', intersect: false }
+      }
+    });
   },
 
   computePortfolioMetrics(reportIds) {
