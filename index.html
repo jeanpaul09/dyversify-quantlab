@@ -4802,29 +4802,25 @@ const PORTFOLIO_SYSTEM = {
   _getTradeIntervals(reportId) {
     const r = store.get(reportId);
     if (!r || !r.deals) return [];
-    const orderMap = {};
-    let inCount = 0, outCount = 0, noOrder = 0, noDir = 0;
-    for (const d of r.deals) {
-      if (!d.order) { noOrder++; continue; }
-      if (!d.direction) { noDir++; continue; }
-      if (!orderMap[d.order]) orderMap[d.order] = {};
-      if (d.direction === 'in') { orderMap[d.order].inDeal = d; inCount++; }
-      else if (d.direction === 'out') { orderMap[d.order].outDeal = d; outCount++; }
-    }
+    // MT5 entry/exit deals have DIFFERENT order numbers.
+    // Match by symbol: pair consecutive "in" → "out" deals per symbol in time order.
+    const openBySymbol = {}; // symbol → [openTime, ...]
     const intervals = [];
-    let matched = 0, unmatched = 0;
-    for (const key in orderMap) {
-      const { inDeal, outDeal } = orderMap[key];
-      if (inDeal && outDeal) {
-        const open = this._parseTime(inDeal.time);
-        const close = this._parseTime(outDeal.time);
-        if (open && close && close > open) { intervals.push({ open: open.getTime(), close: close.getTime() }); matched++; }
-        else unmatched++;
-      } else { unmatched++; }
-    }
-    console.log('[SIM] _getTradeIntervals', reportId, 'deals:', (r.deals||[]).length, 'in:', inCount, 'out:', outCount, 'noOrder:', noOrder, 'noDir:', noDir, 'matched:', matched, 'unmatched:', unmatched, 'intervals:', intervals.length);
-    if (intervals.length === 0 && r.deals && r.deals.length > 0) {
-      console.log('[SIM] Sample deals:', r.deals.slice(0, 5).map(d => ({ time: d.time, direction: d.direction, order: d.order, type: d.type, deal: d.deal })));
+    for (const d of r.deals) {
+      if (!d.direction || !d.time) continue;
+      const sym = d.symbol || '_';
+      const t = this._parseTime(d.time);
+      if (!t) continue;
+      const ms = t.getTime();
+      if (d.direction === 'in') {
+        if (!openBySymbol[sym]) openBySymbol[sym] = [];
+        openBySymbol[sym].push(ms);
+      } else if (d.direction === 'out') {
+        if (openBySymbol[sym] && openBySymbol[sym].length > 0) {
+          const openMs = openBySymbol[sym].shift(); // FIFO: oldest open first
+          if (ms > openMs) intervals.push({ open: openMs, close: ms });
+        }
+      }
     }
     return intervals;
   },
@@ -4856,26 +4852,27 @@ const PORTFOLIO_SYSTEM = {
     const n = names.length;
     const matrix = Array.from({length: n}, () => Array(n).fill(0));
     const intervals = {};
-    for (const name of names) {
-      intervals[name] = this._getRegimeIntervals(regimes, name);
-      console.log('[SIM] Regime', name, 'total intervals:', intervals[name].length);
-    }
+    for (const name of names) intervals[name] = this._getRegimeIntervals(regimes, name);
 
     for (let i = 0; i < n; i++) {
       matrix[i][i] = 1;
       for (let j = i + 1; j < n; j++) {
         const ti = intervals[names[i]], tj = intervals[names[j]];
         if (ti.length === 0 || tj.length === 0) { matrix[i][j] = 0; matrix[j][i] = 0; continue; }
-        let overlapMs = 0, totalMs = 0;
+        // Compute overlap from both perspectives and average
+        let overlapMs = 0, totalI = 0, totalJ = 0;
+        for (const a of ti) totalI += a.close - a.open;
+        for (const b of tj) totalJ += b.close - b.open;
         for (const a of ti) {
-          totalMs += a.close - a.open;
           for (const b of tj) {
             if (b.open >= a.close) break;
             if (b.close <= a.open) continue;
             overlapMs += Math.min(a.close, b.close) - Math.max(a.open, b.open);
           }
         }
-        const v = totalMs > 0 ? Math.min(overlapMs / totalMs, 1) : 0;
+        const pctI = totalI > 0 ? overlapMs / totalI : 0;
+        const pctJ = totalJ > 0 ? overlapMs / totalJ : 0;
+        const v = Math.min((pctI + pctJ) / 2, 1);
         matrix[i][j] = v; matrix[j][i] = v;
       }
     }
@@ -4915,18 +4912,20 @@ const PORTFOLIO_SYSTEM = {
       for (let j = i + 1; j < n; j++) {
         const ei = entries[names[i]], ej = entries[names[j]];
         if (ei.length === 0 || ej.length === 0) { matrix[i][j] = 0; matrix[j][i] = 0; continue; }
-        let concurrent = 0;
-        let jPtr = 0;
+        // Count from i's perspective
+        let concI = 0, lo1 = 0;
         for (const tI of ei) {
-          while (jPtr > 0 && ej[jPtr] > tI - windowMs) jPtr--;
-          let found = false;
-          for (let k = jPtr; k < ej.length; k++) {
-            if (ej[k] > tI + windowMs) break;
-            if (Math.abs(tI - ej[k]) <= windowMs) { found = true; break; }
-          }
-          if (found) concurrent++;
+          while (lo1 < ej.length && ej[lo1] < tI - windowMs) lo1++;
+          if (lo1 < ej.length && ej[lo1] <= tI + windowMs) concI++;
         }
-        const v = Math.min(concurrent / ei.length, 1);
+        // Count from j's perspective
+        let concJ = 0, lo2 = 0;
+        for (const tJ of ej) {
+          while (lo2 < ei.length && ei[lo2] < tJ - windowMs) lo2++;
+          if (lo2 < ei.length && ei[lo2] <= tJ + windowMs) concJ++;
+        }
+        // Symmetric average
+        const v = Math.min(((concI / ei.length) + (concJ / ej.length)) / 2, 1);
         matrix[i][j] = v; matrix[j][i] = v;
       }
     }
