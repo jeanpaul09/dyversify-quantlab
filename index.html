@@ -4803,20 +4803,28 @@ const PORTFOLIO_SYSTEM = {
     const r = store.get(reportId);
     if (!r || !r.deals) return [];
     const orderMap = {};
+    let inCount = 0, outCount = 0, noOrder = 0, noDir = 0;
     for (const d of r.deals) {
-      if (!d.order || !d.direction) continue;
+      if (!d.order) { noOrder++; continue; }
+      if (!d.direction) { noDir++; continue; }
       if (!orderMap[d.order]) orderMap[d.order] = {};
-      if (d.direction === 'in') orderMap[d.order].inDeal = d;
-      else if (d.direction === 'out') orderMap[d.order].outDeal = d;
+      if (d.direction === 'in') { orderMap[d.order].inDeal = d; inCount++; }
+      else if (d.direction === 'out') { orderMap[d.order].outDeal = d; outCount++; }
     }
     const intervals = [];
+    let matched = 0, unmatched = 0;
     for (const key in orderMap) {
       const { inDeal, outDeal } = orderMap[key];
       if (inDeal && outDeal) {
         const open = this._parseTime(inDeal.time);
         const close = this._parseTime(outDeal.time);
-        if (open && close && close > open) intervals.push({ open: open.getTime(), close: close.getTime() });
-      }
+        if (open && close && close > open) { intervals.push({ open: open.getTime(), close: close.getTime() }); matched++; }
+        else unmatched++;
+      } else { unmatched++; }
+    }
+    console.log('[SIM] _getTradeIntervals', reportId, 'deals:', (r.deals||[]).length, 'in:', inCount, 'out:', outCount, 'noOrder:', noOrder, 'noDir:', noDir, 'matched:', matched, 'unmatched:', unmatched, 'intervals:', intervals.length);
+    if (intervals.length === 0 && r.deals && r.deals.length > 0) {
+      console.log('[SIM] Sample deals:', r.deals.slice(0, 5).map(d => ({ time: d.time, direction: d.direction, order: d.order, type: d.type, deal: d.deal })));
     }
     return intervals;
   },
@@ -4848,7 +4856,10 @@ const PORTFOLIO_SYSTEM = {
     const n = names.length;
     const matrix = Array.from({length: n}, () => Array(n).fill(0));
     const intervals = {};
-    for (const name of names) intervals[name] = this._getRegimeIntervals(regimes, name);
+    for (const name of names) {
+      intervals[name] = this._getRegimeIntervals(regimes, name);
+      console.log('[SIM] Regime', name, 'total intervals:', intervals[name].length);
+    }
 
     for (let i = 0; i < n; i++) {
       matrix[i][i] = 1;
