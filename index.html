@@ -438,6 +438,13 @@ table.portfolio tr.selected td { color: var(--t1); }
 .pf-corr-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 8px; }
 .pf-corr-table th, .pf-corr-table td { padding: 4px 6px; text-align: center; border: 1px solid var(--g600); }
 .pf-corr-table th { color: var(--t3); font-weight: 400; font-size: 7px; }
+.sim-matrix { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 9px; }
+.sim-matrix th, .sim-matrix td { padding: 6px 8px; text-align: center; border: 1px solid var(--g600); }
+.sim-matrix th { color: var(--t3); font-weight: 400; font-size: 7px; background: var(--g700); white-space: nowrap; }
+.sim-matrix td { font-variant-numeric: tabular-nums; }
+#pfMatricesGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.sim-panel-label { font-family: var(--mono); font-size: 8px; color: var(--t3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+.sim-legend { font-family: var(--mono); font-size: 7px; color: var(--t4); margin-top: 6px; line-height: 1.5; }
 .pf-alloc-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; font-family: var(--mono); font-size: 10px; color: var(--t2); }
 .pf-alloc-bar { height: 8px; background: var(--neon); min-width: 2px; }
 .pf-algo-rec { background: var(--g700); border: 1px solid var(--g400); padding: 12px 16px; margin-bottom: 8px; }
@@ -830,6 +837,9 @@ table.portfolio tr.selected td { color: var(--t1); }
   .pf-corr-table th, .pf-corr-table td { padding: 3px 4px; }
   .pf-param-htable { font-size: 8px; }
   .pf-param-htable th, .pf-param-htable td { padding: 4px 6px; }
+  #pfMatricesGrid { grid-template-columns: 1fr; }
+  .sim-matrix { font-size: 7px; }
+  .sim-matrix th, .sim-matrix td { padding: 4px 3px; }
 }
 
 /* Correlation Matrix */
@@ -1405,6 +1415,33 @@ table.portfolio tr.selected td { color: var(--t1); }
           <div class="chart-panel">
             <div class="chart-header"><span class="chart-title">CORRELATION MATRIX</span></div>
             <div id="pfCorrelation" style="overflow-x:auto"></div>
+          </div>
+        </div>
+
+        <!-- Strategy Interaction Matrices -->
+        <div class="chart-panel" id="pfInteractionPanel" style="display:none">
+          <div class="chart-header"><span class="chart-title">STRATEGY INTERACTION MATRICES</span></div>
+          <div id="pfMatricesGrid">
+            <div>
+              <div class="sim-panel-label">TRADE OVERLAP %</div>
+              <div id="pfMatrixOverlap" style="overflow-x:auto"></div>
+              <div class="sim-legend">&lt;0.20 good · 0.20–0.40 moderate · &gt;0.40 redundant</div>
+            </div>
+            <div>
+              <div class="sim-panel-label">RETURN CORRELATION</div>
+              <div id="pfMatrixCorr" style="overflow-x:auto"></div>
+              <div class="sim-legend">&lt;0.30 diversified · 0.30–0.60 moderate · &gt;0.60 same signal</div>
+            </div>
+            <div>
+              <div class="sim-panel-label">SIGNAL CONCURRENCY (5 MIN)</div>
+              <div id="pfMatrixConcur" style="overflow-x:auto"></div>
+              <div class="sim-legend">&lt;0.15 independent · 0.15–0.30 moderate · &gt;0.30 synchronized</div>
+            </div>
+            <div>
+              <div class="sim-panel-label">DIVERSIFICATION SCORE</div>
+              <div id="pfMatrixDivScore" style="overflow-x:auto"></div>
+              <div class="sim-legend">higher = better · &gt;0.50 strong · 0.30–0.50 moderate · &lt;0.30 weak</div>
+            </div>
           </div>
         </div>
 
@@ -4754,6 +4791,200 @@ const PORTFOLIO_SYSTEM = {
     return matrix;
   },
 
+  // ─── STRATEGY INTERACTION MATRICES ─────────────────────────────
+  _parseTime(timeStr) {
+    if (!timeStr) return null;
+    const parts = timeStr.replace(/\./g, '-').split(' ');
+    if (parts.length < 2) return null;
+    return new Date(parts[0] + 'T' + parts[1] + 'Z');
+  },
+
+  _getTradeIntervals(reportId) {
+    const r = store.get(reportId);
+    if (!r || !r.deals) return [];
+    const orderMap = {};
+    for (const d of r.deals) {
+      if (!d.order || !d.direction) continue;
+      if (!orderMap[d.order]) orderMap[d.order] = {};
+      if (d.direction === 'in') orderMap[d.order].inDeal = d;
+      else if (d.direction === 'out') orderMap[d.order].outDeal = d;
+    }
+    const intervals = [];
+    for (const key in orderMap) {
+      const { inDeal, outDeal } = orderMap[key];
+      if (inDeal && outDeal) {
+        const open = this._parseTime(inDeal.time);
+        const close = this._parseTime(outDeal.time);
+        if (open && close && close > open) intervals.push({ open: open.getTime(), close: close.getTime() });
+      }
+    }
+    return intervals;
+  },
+
+  _getRegimeIntervals(regimes, regimeName) {
+    const ids = regimes[regimeName] || [];
+    const all = [];
+    for (const id of ids) all.push(...this._getTradeIntervals(id));
+    return all.sort((a, b) => a.open - b.open);
+  },
+
+  _getRegimeEntries(regimes, regimeName) {
+    const ids = regimes[regimeName] || [];
+    const times = [];
+    for (const id of ids) {
+      const r = store.get(id);
+      if (!r || !r.deals) continue;
+      for (const d of r.deals) {
+        if (d.direction === 'in') {
+          const t = this._parseTime(d.time);
+          if (t) times.push(t.getTime());
+        }
+      }
+    }
+    return times.sort((a, b) => a - b);
+  },
+
+  computeTradeOverlap(regimes, names) {
+    const n = names.length;
+    const matrix = Array.from({length: n}, () => Array(n).fill(0));
+    const intervals = {};
+    for (const name of names) intervals[name] = this._getRegimeIntervals(regimes, name);
+
+    for (let i = 0; i < n; i++) {
+      matrix[i][i] = 1;
+      for (let j = i + 1; j < n; j++) {
+        const ti = intervals[names[i]], tj = intervals[names[j]];
+        if (ti.length === 0 || tj.length === 0) { matrix[i][j] = 0; matrix[j][i] = 0; continue; }
+        let overlapMs = 0, totalMs = 0;
+        for (const a of ti) {
+          totalMs += a.close - a.open;
+          for (const b of tj) {
+            if (b.open >= a.close) break;
+            if (b.close <= a.open) continue;
+            overlapMs += Math.min(a.close, b.close) - Math.max(a.open, b.open);
+          }
+        }
+        const v = totalMs > 0 ? Math.min(overlapMs / totalMs, 1) : 0;
+        matrix[i][j] = v; matrix[j][i] = v;
+      }
+    }
+    return matrix;
+  },
+
+  computeRegimeReturnCorrelation(regimes, names) {
+    const n = names.length;
+    const matrix = Array.from({length: n}, () => Array(n).fill(0));
+    const curves = {};
+    for (const name of names) {
+      const ids = regimes[name] || [];
+      if (ids.length === 0) { curves[name] = []; continue; }
+      try { curves[name] = this.computeCombined(ids).combined; }
+      catch(e) { curves[name] = []; }
+    }
+    for (let i = 0; i < n; i++) {
+      matrix[i][i] = 1;
+      for (let j = i + 1; j < n; j++) {
+        if (curves[names[i]].length < 10 || curves[names[j]].length < 10) { matrix[i][j] = 0; matrix[j][i] = 0; continue; }
+        const corr = this.pearsonCorrelation(curves[names[i]], curves[names[j]]);
+        matrix[i][j] = corr; matrix[j][i] = corr;
+      }
+    }
+    return matrix;
+  },
+
+  computeSignalConcurrency(regimes, names, windowMs) {
+    if (!windowMs) windowMs = 300000; // 5 min default
+    const n = names.length;
+    const matrix = Array.from({length: n}, () => Array(n).fill(0));
+    const entries = {};
+    for (const name of names) entries[name] = this._getRegimeEntries(regimes, name);
+
+    for (let i = 0; i < n; i++) {
+      matrix[i][i] = 1;
+      for (let j = i + 1; j < n; j++) {
+        const ei = entries[names[i]], ej = entries[names[j]];
+        if (ei.length === 0 || ej.length === 0) { matrix[i][j] = 0; matrix[j][i] = 0; continue; }
+        let concurrent = 0;
+        let jPtr = 0;
+        for (const tI of ei) {
+          while (jPtr > 0 && ej[jPtr] > tI - windowMs) jPtr--;
+          let found = false;
+          for (let k = jPtr; k < ej.length; k++) {
+            if (ej[k] > tI + windowMs) break;
+            if (Math.abs(tI - ej[k]) <= windowMs) { found = true; break; }
+          }
+          if (found) concurrent++;
+        }
+        const v = Math.min(concurrent / ei.length, 1);
+        matrix[i][j] = v; matrix[j][i] = v;
+      }
+    }
+    return matrix;
+  },
+
+  computeDiversificationScore(overlap, corr, concur) {
+    const n = overlap.length;
+    const matrix = Array.from({length: n}, () => Array(n).fill(0));
+    for (let i = 0; i < n; i++) {
+      matrix[i][i] = 1;
+      for (let j = i + 1; j < n; j++) {
+        const score = 1 - (0.3 * overlap[i][j] + 0.3 * Math.abs(corr[i][j]) + 0.4 * concur[i][j]);
+        const v = Math.max(0, Math.min(1, score));
+        matrix[i][j] = v; matrix[j][i] = v;
+      }
+    }
+    return matrix;
+  },
+
+  renderInteractionMatrix(data, names, type) {
+    const short = names.map(n => n.replace('MICRO-', ''));
+    let html = '<table class="sim-matrix"><thead><tr><th></th>' + short.map(s => '<th>' + s + '</th>').join('') + '</tr></thead><tbody>';
+    for (let i = 0; i < data.length; i++) {
+      html += '<tr><th>' + short[i] + '</th>';
+      for (let j = 0; j < data[i].length; j++) {
+        const v = data[i][j];
+        if (i === j) { html += '<td style="background:var(--g600);color:var(--t4)">—</td>'; continue; }
+        let bg, tc;
+        if (type === 'overlap') {
+          bg = v < 0.20 ? 'rgba(0,255,136,0.15)' : v < 0.40 ? 'rgba(255,149,0,0.15)' : 'rgba(255,59,48,0.15)';
+          tc = v < 0.20 ? '#00ff88' : v < 0.40 ? '#ff9500' : '#ff3b30';
+        } else if (type === 'corr') {
+          const a = Math.abs(v);
+          bg = a < 0.30 ? 'rgba(0,255,136,0.15)' : a < 0.60 ? 'rgba(255,149,0,0.15)' : 'rgba(255,59,48,0.15)';
+          tc = a < 0.30 ? '#00ff88' : a < 0.60 ? '#ff9500' : '#ff3b30';
+        } else if (type === 'concur') {
+          bg = v < 0.15 ? 'rgba(0,255,136,0.15)' : v < 0.30 ? 'rgba(255,149,0,0.15)' : 'rgba(255,59,48,0.15)';
+          tc = v < 0.15 ? '#00ff88' : v < 0.30 ? '#ff9500' : '#ff3b30';
+        } else { // divscore — higher is better
+          bg = v > 0.50 ? 'rgba(0,255,136,0.15)' : v > 0.30 ? 'rgba(255,149,0,0.15)' : 'rgba(255,59,48,0.15)';
+          tc = v > 0.50 ? '#00ff88' : v > 0.30 ? '#ff9500' : '#ff3b30';
+        }
+        html += '<td style="background:' + bg + ';color:' + tc + ';font-weight:500">' + v.toFixed(2) + '</td>';
+      }
+      html += '</tr>';
+    }
+    return html + '</tbody></table>';
+  },
+
+  renderInteractionMatrices() {
+    const panel = document.getElementById('pfInteractionPanel');
+    if (!panel) return;
+    const regimes = this.getRegimePortfolios();
+    const names = Object.keys(regimes).sort();
+    if (names.length < 2) { panel.style.display = 'none'; return; }
+
+    panel.style.display = '';
+    const overlap = this.computeTradeOverlap(regimes, names);
+    const corr = this.computeRegimeReturnCorrelation(regimes, names);
+    const concur = this.computeSignalConcurrency(regimes, names);
+    const divScore = this.computeDiversificationScore(overlap, corr, concur);
+
+    document.getElementById('pfMatrixOverlap').innerHTML = this.renderInteractionMatrix(overlap, names, 'overlap');
+    document.getElementById('pfMatrixCorr').innerHTML = this.renderInteractionMatrix(corr, names, 'corr');
+    document.getElementById('pfMatrixConcur').innerHTML = this.renderInteractionMatrix(concur, names, 'concur');
+    document.getElementById('pfMatrixDivScore').innerHTML = this.renderInteractionMatrix(divScore, names, 'divscore');
+  },
+
   computePortfolioMetrics(reportIds) {
     const validIds = reportIds.filter(id => store.has(id));
     if (validIds.length === 0) return null;
@@ -5107,6 +5338,9 @@ const PORTFOLIO_SYSTEM = {
           '<span style="font-family:var(--mono);font-size:9px;color:var(--t3)">' + pct + '%</span>' +
           '<span style="font-family:var(--mono);font-size:9px;color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + pnl.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span></div>';
       }).join('');
+
+      // Strategy Interaction Matrices (regime vs regime)
+      this.renderInteractionMatrices();
 
       // Pairs list
       const pairsDiv = document.getElementById('pfPairsList');
