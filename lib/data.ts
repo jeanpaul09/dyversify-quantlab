@@ -44,7 +44,8 @@ export const backtests: Backtest[] = [
       maxDrawdown: -12.4,
       trades: 142 // More realistic trade count
     },
-    equityCurve: generateEquityCurve(10000, 0.015, 0.003, 90)
+    equityCurve: generateEquityCurve(10000, 0.015, 0.003, 90),
+    trades: [],
   },
   {
     id: 'BT-002',
@@ -62,7 +63,8 @@ export const backtests: Backtest[] = [
       maxDrawdown: -22.1,
       trades: 350
     },
-    equityCurve: generateEquityCurve(10000, 0.02, 0.001, 90)
+    equityCurve: generateEquityCurve(10000, 0.02, 0.001, 90),
+    trades: [],
   },
   {
     id: 'BT-003',
@@ -80,7 +82,8 @@ export const backtests: Backtest[] = [
       maxDrawdown: -18.5,
       trades: 42
     },
-    equityCurve: generateEquityCurve(10000, 0.015, -0.001, 90)
+    equityCurve: generateEquityCurve(10000, 0.015, -0.001, 90),
+    trades: [],
   },
   {
     id: 'BT-004',
@@ -98,6 +101,7 @@ export const backtests: Backtest[] = [
       maxDrawdown: -15.0,
       trades: 28
     },
-    equityCurve: generateEquityCurve(10000, 0.01, 0.002, 90)
+    equityCurve: generateEquityCurve(10000, 0.01, 0.002, 90),
+    trades: [],
   }
 ];
