@@ -1687,6 +1687,44 @@ function getBalanceCurve(r) {
 function getInputs(r) { return r.inputs || {}; }
 function isDriveSource(r) { return r.source === 'drive'; }
 
+// ─── PARTNER-DEFINED PARAMETER GROUPS ───
+const PARAM_GROUPS = {
+  'RSI': ['LongRSIMinValue','LongRSIMaxValue','ShortRSIMinValue','ShortRSIMaxValue'],
+  'EMA': ['FastEMAPeriod','SlowEMAPeriod','MA_Timeframe','MaxTrades'],
+  'B. Bands': ['BolingerPeriod','MinWidthBandsInPips','MaxWidthBandsInPips','BBandsDeviation'],
+  'Trading Hours': ['StartTradingHour','StopTradingHour','CloseAllHour'],
+  'SL TP & Risk': ['StopLossPips','SL_TakeProfit_Ratio','ATR_Multiplier_SL','Start Lot','RiskPercent'],
+  'ADX': ['ADX_Period','ADX_MinValue','ADX_MaxValue'],
+  'ATR': ['ADX_PlusMinus_Conf','ATRPeriod','MinATRForEntryPoints','MaxATRForEntryPoints'],
+  'Trailing': ['TrailStartPercent','TrailStepPercent','TrailDistancePercent','RemoveTPOnTrailing'],
+  'Step Settings': ['MartingaleCheckTimeFrame','MartingaleGridDistancePips','MartingaleFactor','MaxMartingaleOrders','MartingaleProfitPercent','MartingaleLossPercent'],
+  'BigCandle': ['BigCandlePercent','StopTradingMinAfterBigCandle'],
+  'HTF Filter': ['HTF_EMA','HTF_EMA_TimeFrame','HTF_MinSlopePerct','HTF_EMA_BarsSlope'],
+  'Daily Goal': ['UseDailyGoal','DGType','DGAmount','DGLoss'],
+  'Months': ['Months not Trading'],
+  'Partials': ['ClosePartialAtPctProfit','ClosePartialPercent'],
+  'DXY': ['DollarIndexPair','DollarIndexTimeFrame','DollarIndexMinATR','DollarIndexMaxATR'],
+  'VIX': ['VollatilityIndexPair','VollatilityIndexTimeFrame','VollatilityIndexMin','VollatilityIndexMax'],
+  'News': ['InpUseNewsFilter','InpCountries','InpPreMinutes','InpPostMinutes','InpMinImpactLevel','CloseTradesBeforeNewsMinutes']
+};
+const _PARAM_LOOKUP = {};
+for (const [g, keys] of Object.entries(PARAM_GROUPS)) { for (const k of keys) _PARAM_LOOKUP[k] = g; }
+
+function buildParamGroups(allKeys) {
+  const groups = {};
+  const ungrouped = [];
+  for (const key of allKeys) {
+    if (key.match(/^_\d/)) continue;
+    const g = _PARAM_LOOKUP[key];
+    if (g) { if (!groups[g]) groups[g] = []; groups[g].push(key); }
+    else ungrouped.push(key);
+  }
+  const ordered = {};
+  for (const g of Object.keys(PARAM_GROUPS)) { if (groups[g]) ordered[g] = groups[g]; }
+  if (ungrouped.length) ordered['OTHER'] = ungrouped;
+  return ordered;
+}
+
 // ─── MT5 HTML PARSER ───
 function parseMT5Report(text, filename) {
   if (text.charCodeAt(0) === 0xFEFF) text = text.substring(1);
@@ -2819,15 +2857,11 @@ function renderDetail() {
 
   // Input parameters
   const inputs = getInputs(r);
+  const rawKeys = Object.keys(inputs).filter(k => !k.match(/^_\d/) && !(inputs[k] && inputs[k].includes && inputs[k].includes('======')));
+  const grouped = buildParamGroups(rawKeys);
   const paramGroups = {};
-  let currentGroup = 'GENERAL';
-  for (const [k, v] of Object.entries(inputs)) {
-    if (k.match(/^_\d/) || (v && v.includes && v.includes('======'))) {
-      currentGroup = (v || '').replace(/[=_\s]/g, ' ').trim() || k;
-      continue;
-    }
-    if (!paramGroups[currentGroup]) paramGroups[currentGroup] = [];
-    paramGroups[currentGroup].push({ key: k, val: v });
+  for (const [g, keys] of Object.entries(grouped)) {
+    paramGroups[g] = keys.map(k => ({ key: k, val: inputs[k] || '\u2014' }));
   }
 
   const container = document.getElementById('paramsContainer');
@@ -3375,7 +3409,7 @@ const COMPARE_SYSTEM = {
   },
 
   toggleParamGroup(group) {
-    this._paramToggles[group] = !this._paramToggles[group];
+    this._paramToggles[group] = this._paramToggles[group] === false ? undefined : false;
     this._renderParamSection();
   },
 
@@ -3392,40 +3426,15 @@ const COMPARE_SYSTEM = {
       const inputs = getInputs(rep.r || rep);
       for (const k of Object.keys(inputs)) allInputs[k] = true;
     });
-
-    const paramGroups = {};
-    let currentGroup = 'GENERAL';
-    for (const key of Object.keys(allInputs)) {
-      const sampleRep = reports.find(rep => {
-        const inputs = getInputs(rep.r || rep);
-        return inputs[key];
-      });
-      const sampleVal = sampleRep ? (getInputs(sampleRep.r || sampleRep))[key] || '' : '';
-      if (key.match(/^_\d/) || (sampleVal && sampleVal.includes && sampleVal.includes('======'))) {
-        currentGroup = sampleVal.replace(/[=_\s]/g, ' ').trim() || key;
-        continue;
-      }
-      if (!paramGroups[currentGroup]) paramGroups[currentGroup] = [];
-      paramGroups[currentGroup].push(key);
-    }
-    return paramGroups;
-  },
-
-  // Hidden param keys (individual parameter toggle)
-  _hiddenParams: new Set(),
-
-  toggleParam(key) {
-    if (this._hiddenParams.has(key)) this._hiddenParams.delete(key);
-    else this._hiddenParams.add(key);
-    this._renderParamSection();
+    return buildParamGroups(Object.keys(allInputs));
   },
 
   showAllParams() {
-    this._hiddenParams.clear();
+    this._paramToggles = {};
     this._renderParamSection();
   },
 
-  // Render param table: ROWS = pairs/reports, COLS = parameters (click param header to hide)
+  // Render param table: ROWS = pairs/reports, COLS = parameters, toggles = group-level
   _renderParamSection() {
     const togglesDiv = document.getElementById('cmpParamToggles');
     const thead = document.getElementById('cmpParamHHead');
@@ -3441,39 +3450,37 @@ const COMPARE_SYSTEM = {
       reports = selected.map(r => ({ r, sym: getSymbol(r), id: r.id }));
       getReportInputs = rep => getInputs(rep.r);
     } else {
-      // Portfolio mode — skip param section entirely, handled separately
       section.style.display = 'none';
       return;
     }
 
     section.style.display = '';
     const paramGroups = this._getParamGroups(reports);
+    const groupNames = Object.keys(paramGroups);
+    const activeCount = groupNames.filter(g => this._paramToggles[g] !== false).length;
 
-    // Collect all visible param keys
-    const allParams = [];
+    // Collect visible param keys (only from active groups)
+    const visibleParams = [];
     for (const [group, keys] of Object.entries(paramGroups)) {
       if (this._paramToggles[group] === false) continue;
-      for (const key of keys) allParams.push({ key, group });
+      for (const key of keys) visibleParams.push({ key, group });
     }
-    const visibleParams = allParams.filter(p => !this._hiddenParams.has(p.key));
-    const hiddenParams = allParams.filter(p => this._hiddenParams.has(p.key));
 
-    // Render group toggles (to hide whole groups) + hidden param pills (to re-show)
-    let toggleHtml = Object.keys(paramGroups).map(g => {
+    // Render group toggle buttons
+    let toggleHtml = '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">';
+    toggleHtml += groupNames.map(g => {
       const active = this._paramToggles[g] !== false;
-      return '<span class="pf-param-toggle ' + (active ? 'active' : '') + '" onclick="COMPARE_SYSTEM.toggleParamGroup(\'' + g.replace(/'/g, "\\'") + '\')">' + g + ' (' + paramGroups[g].length + ')</span>';
+      return '<span class="pf-param-toggle ' + (active ? 'active' : '') + '" onclick="COMPARE_SYSTEM.toggleParamGroup(\'' + g.replace(/'/g, "\\'") + '\')">' + g + ' <span style="font-size:7px;opacity:0.6">(' + paramGroups[g].length + ')</span></span>';
     }).join('');
-    if (hiddenParams.length > 0) {
+    if (activeCount < groupNames.length) {
       toggleHtml += '<span class="pf-param-toggle active" style="font-size:7px;margin-left:8px;background:var(--g500);color:var(--neon);border-color:var(--neon)" onclick="COMPARE_SYSTEM.showAllParams()">SHOW ALL</span>';
-      toggleHtml += '<span style="color:var(--t4);font-family:var(--mono);font-size:7px;margin-left:4px">HIDDEN: </span>';
-      toggleHtml += hiddenParams.map(p => '<span class="pf-param-toggle" style="font-size:7px;opacity:0.5" onclick="COMPARE_SYSTEM.toggleParam(\'' + p.key.replace(/'/g, "\\'") + '\')">' + p.key + '</span>').join('');
     }
+    toggleHtml += '</div>';
     togglesDiv.innerHTML = toggleHtml;
 
-    // Render table: ROWS = pairs, COLS = parameters
-    // Header row: first col = PAIR, then each visible param as a column header (clickable to hide)
+    // Header row
     thead.innerHTML = '<tr><th style="text-align:left;position:sticky;left:0;background:var(--g700);z-index:1">PAIR</th>' +
-      visibleParams.map(p => '<th style="cursor:pointer;white-space:nowrap" title="Click to hide ' + p.key + '" onclick="COMPARE_SYSTEM.toggleParam(\'' + p.key.replace(/'/g, "\\'") + '\')">' + p.key + '</th>').join('') + '</tr>';
+      visibleParams.map(p => '<th style="white-space:nowrap">' + p.key + '</th>').join('') + '</tr>';
 
     // Body: one row per pair/report
     let bodyHtml = '';
@@ -3482,7 +3489,6 @@ const COMPARE_SYSTEM = {
       bodyHtml += '<tr><td style="color:var(--t1);text-align:left;position:sticky;left:0;background:var(--g700);z-index:1;white-space:nowrap">' + rep.sym + '</td>';
       for (const p of visibleParams) {
         const v = inputs[p.key] || '\u2014';
-        // Check if this value differs from other reports
         const allVals = reports.map(r => (getReportInputs(r))[p.key] || '\u2014');
         const allSame = allVals.every(val => val === allVals[0]);
         const highlight = !allSame && v !== '\u2014' ? 'color:var(--acc)' : '';
@@ -5302,20 +5308,12 @@ const PORTFOLIO_SYSTEM = {
   },
 
   toggleParamGroup(group) {
-    this._paramToggles[group] = !this._paramToggles[group];
-    this._renderParamTable();
-  },
-
-  _hiddenParams: new Set(),
-
-  toggleParam(key) {
-    if (this._hiddenParams.has(key)) this._hiddenParams.delete(key);
-    else this._hiddenParams.add(key);
+    this._paramToggles[group] = this._paramToggles[group] === false ? undefined : false;
     this._renderParamTable();
   },
 
   showAllParams() {
-    this._hiddenParams.clear();
+    this._paramToggles = {};
     this._renderParamTable();
   },
 
@@ -5333,51 +5331,38 @@ const PORTFOLIO_SYSTEM = {
       return { id, r, inputs, sym: getSymbol(r) };
     });
 
-    // Group parameters
-    const paramGroups = {};
-    let currentGroup = 'GENERAL';
-    for (const key of Object.keys(allInputs)) {
-      const sampleVal = reports.find(r => r.inputs[key])?.inputs[key] || '';
-      if (key.match(/^_\d/) || (sampleVal && sampleVal.includes && sampleVal.includes('======'))) {
-        currentGroup = sampleVal.replace(/[=_\s]/g, ' ').trim() || key;
-        continue;
-      }
-      if (!paramGroups[currentGroup]) paramGroups[currentGroup] = [];
-      paramGroups[currentGroup].push(key);
-    }
+    // Group parameters using partner-defined groups
+    const paramGroups = buildParamGroups(Object.keys(allInputs));
 
-    // Collect visible/hidden params
-    const allParams = [];
+    // Collect visible params (only from active groups)
+    const visibleParams = [];
     for (const [group, keys] of Object.entries(paramGroups)) {
       if (this._paramToggles[group] === false) continue;
-      for (const key of keys) allParams.push({ key, group });
+      for (const key of keys) visibleParams.push({ key, group });
     }
-    const visibleParams = allParams.filter(p => !this._hiddenParams.has(p.key));
-    const hiddenParams = allParams.filter(p => this._hiddenParams.has(p.key));
 
-    // Render toggles — group toggles + hidden param pills
+    // Render group toggle buttons
     const togglesDiv = document.getElementById('pfParamToggles');
     const groupNames = Object.keys(paramGroups);
-    let toggleHtml = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">' +
-      groupNames.map(g => {
-        const active = this._paramToggles[g] !== false;
-        const count = paramGroups[g].length;
-        return '<button class="pf-param-toggle ' + (active ? 'active' : '') + '" onclick="PORTFOLIO_SYSTEM.toggleParamGroup(\'' + g.replace(/'/g, "\\'") + '\')" style="display:inline-flex;align-items:center;gap:4px">' +
-          '<span>' + g + '</span><span style="font-size:7px;opacity:0.6">(' + count + ')</span></button>';
-      }).join('');
-    if (hiddenParams.length > 0) {
+    const activeCount = groupNames.filter(g => this._paramToggles[g] !== false).length;
+    let toggleHtml = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;align-items:center">';
+    toggleHtml += groupNames.map(g => {
+      const active = this._paramToggles[g] !== false;
+      const count = paramGroups[g].length;
+      return '<button class="pf-param-toggle ' + (active ? 'active' : '') + '" onclick="PORTFOLIO_SYSTEM.toggleParamGroup(\'' + g.replace(/'/g, "\\'") + '\')" style="display:inline-flex;align-items:center;gap:4px">' +
+        '<span>' + g + '</span><span style="font-size:7px;opacity:0.6">(' + count + ')</span></button>';
+    }).join('');
+    if (activeCount < groupNames.length) {
       toggleHtml += '<span class="pf-param-toggle active" style="font-size:7px;margin-left:8px;background:var(--g500);color:var(--neon);border-color:var(--neon)" onclick="PORTFOLIO_SYSTEM.showAllParams()">SHOW ALL</span>';
-      toggleHtml += '<span style="color:var(--t4);font-family:var(--mono);font-size:7px;margin-left:4px;display:flex;align-items:center">HIDDEN: </span>';
-      toggleHtml += hiddenParams.map(p => '<span class="pf-param-toggle" style="font-size:7px;opacity:0.5" onclick="PORTFOLIO_SYSTEM.toggleParam(\'' + p.key.replace(/'/g, "\\'") + '\')">' + p.key + '</span>').join('');
     }
     toggleHtml += '</div>';
     togglesDiv.innerHTML = toggleHtml;
 
-    // FLIPPED table: ROWS = pairs, COLS = parameters (click param header to hide)
+    // Table: ROWS = pairs, COLS = parameters
     const tableDiv = document.getElementById('pfParamTable');
     let html = '<table class="pf-param-htable"><thead><tr><th style="text-align:left;min-width:120px;position:sticky;left:0;background:var(--g700);z-index:1">PAIR</th>';
     for (const p of visibleParams) {
-      html += '<th style="cursor:pointer;white-space:nowrap" title="Click to hide" onclick="PORTFOLIO_SYSTEM.toggleParam(\'' + p.key.replace(/'/g, "\\'") + '\')">' + p.key + '</th>';
+      html += '<th style="white-space:nowrap">' + p.key + '</th>';
     }
     html += '</tr></thead><tbody>';
 
