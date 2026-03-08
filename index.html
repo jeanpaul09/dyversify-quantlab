@@ -1503,10 +1503,11 @@ table.portfolio tr.selected td { color: var(--t1); }
       </div>
       <div class="perf-grid">
         <div class="chart-panel perf-full">
-          <div class="chart-header">
-            <span class="chart-title">ALL EQUITY CURVES (% RETURN)</span>
+          <div class="chart-header"><span class="chart-title">ALL EQUITY CURVES (% RETURN)</span></div>
+          <!-- Strategy toggle strip (synced across equity & DD) -->
+          <div id="analyticsToggleStrip" style="display:flex;flex-wrap:wrap;gap:4px;padding:4px 0;margin-bottom:4px;align-items:center;">
+            <span style="font:600 8px/1 'JetBrains Mono';color:var(--t3);text-transform:uppercase;margin-right:4px;letter-spacing:.5px">Strategies:</span>
           </div>
-          <div id="analyticsToggleStrip" style="display:flex;flex-wrap:wrap;gap:4px;padding:0 0 8px 0;align-items:center;"></div>
           <div class="chart-canvas-wrap"><canvas id="analyticsAllEquity"></canvas></div>
         </div>
         <div class="chart-panel perf-full">
@@ -1623,6 +1624,34 @@ const STATE = {
     sortDir: -1
   }
 };
+
+// ─── GLOW DOT PLUGIN ───
+const glowDotPlugin = {
+  id: 'glowDot',
+  afterDatasetsDraw(chart) {
+    const ctx = chart.ctx;
+    chart.data.datasets.forEach((dataset, i) => {
+      if (!dataset.data || !dataset._sym) return;
+      const meta = chart.getDatasetMeta(i);
+      if (meta.hidden) return;
+      const color = dataset.borderColor || '#00ff88';
+      const glowColor = color + '40';
+      dataset.data.forEach((val, idx) => {
+        if (val === null || val === undefined) return;
+        const point = meta.data[idx];
+        if (!point || point.skip) return;
+        const x = point.x, y = point.y;
+        if (!isFinite(x) || !isFinite(y)) return;
+        // Draw glow circle
+        ctx.fillStyle = glowColor;
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    });
+  }
+};
+Chart.register(glowDotPlugin);
 
 const CHARTS = {
   equity: null,
@@ -3455,7 +3484,7 @@ function computeCombinedByDate(reports) {
     const bc = getBalanceCurve(r);
     if (!bc || bc.length < 2) continue;
     const initBal = bc[0].balance;
-    if (!initBal || initBal <= 0) continue; // skip — no real starting balance
+    if (!initBal || initBal <= 0) continue;
     const dateMap = {};
     for (const p of bc) {
       const d = (p.time || '').split(' ')[0]; // YYYY.MM.DD
@@ -3470,8 +3499,7 @@ function computeCombinedByDate(reports) {
   for (const c of curveData) for (const d of c.dates) allDatesSet.add(d);
   const allDates = [...allDatesSet].sort();
 
-  // Build combined curve: equal-weight using each strategy's REAL initial balance
-  // Each strategy contributes its own initBal; combined starts at sum of all initBals
+  // Build combined curve: for each date, sum actual balances forward-filled per strategy
   const combined = [];
   const lastKnown = curveData.map(c => c.initBal);
   for (const date of allDates) {
@@ -3479,7 +3507,7 @@ function computeCombinedByDate(reports) {
     for (let i = 0; i < curveData.length; i++) {
       const c = curveData[i];
       if (c.dateMap[date] !== undefined) lastKnown[i] = c.dateMap[date];
-      totalBal += lastKnown[i]; // actual balance, no normalization to fake number
+      totalBal += lastKnown[i];
     }
     combined.push({ time: date, balance: totalBal });
   }
@@ -3538,13 +3566,18 @@ const ANALYTICS_STATE = {
       const sym = pill.dataset.sym;
       const hidden = this.hiddenStrategies.has(sym);
       const meta = this.strategyMeta.find(s => s.sym === sym);
-      const color = meta ? meta.color : V.t2;
-      pill.style.opacity = hidden ? '0.4' : '1';
-      pill.style.borderColor = hidden ? V.g400 : color + '55';
-      pill.style.background = hidden ? 'transparent' : color + '0d';
-      pill.style.color = hidden ? V.t3 : color;
-      const dot = pill.querySelector('span');
-      if (dot) dot.style.opacity = hidden ? '0.3' : '1';
+      if (!meta) return;
+      if (hidden) {
+        pill.style.borderColor = 'rgba(255,255,255,0.2)';
+        pill.style.backgroundColor = 'rgba(255,255,255,0.05)';
+        pill.style.color = 'var(--t4)';
+        pill.style.opacity = '0.4';
+      } else {
+        pill.style.borderColor = meta.color + '66';
+        pill.style.backgroundColor = meta.color + '15';
+        pill.style.color = meta.color;
+        pill.style.opacity = '1';
+      }
     });
   }
 };
@@ -3553,28 +3586,40 @@ function _buildToggleStrip(strategyMeta) {
   ANALYTICS_STATE.strategyMeta = strategyMeta;
   const strip = document.getElementById('analyticsToggleStrip');
   if (!strip) return;
-  strip.innerHTML = '';
+  // Keep the label, remove old pills
+  strip.querySelectorAll('.an-toggle-pill,.an-toggle-action').forEach(el => el.remove());
   strategyMeta.forEach(s => {
     const pill = document.createElement('span');
     pill.className = 'an-toggle-pill';
     pill.dataset.sym = s.sym;
-    const hidden = ANALYTICS_STATE.hiddenStrategies.has(s.sym);
-    pill.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid ' + (hidden ? V.g400 : s.color + '55') + ';background:' + (hidden ? 'transparent' : s.color + '0d') + ';color:' + (hidden ? V.t3 : s.color) + ';font:600 8px/1 "JetBrains Mono";cursor:pointer;letter-spacing:.3px;transition:all .2s;user-select:none;opacity:' + (hidden ? '0.4' : '1');
+    const isHidden = ANALYTICS_STATE.hiddenStrategies.has(s.sym);
+    const baseStyle = 'display:inline-flex;align-items:center;gap:3px;padding:4px 8px;border:1px solid;border-radius:4px;font:600 8px/1 "JetBrains Mono";cursor:pointer;letter-spacing:.3px;transition:all .15s;user-select:none';
+    pill.style.cssText = baseStyle;
+    if (isHidden) {
+      pill.style.borderColor = 'rgba(255,255,255,0.2)';
+      pill.style.backgroundColor = 'rgba(255,255,255,0.05)';
+      pill.style.color = 'var(--t4)';
+      pill.style.opacity = '0.4';
+    } else {
+      pill.style.borderColor = s.color + '66';
+      pill.style.backgroundColor = s.color + '15';
+      pill.style.color = s.color;
+    }
     const dot = document.createElement('span');
-    dot.style.cssText = 'width:5px;height:5px;border-radius:50%;background:' + s.color + ';box-shadow:0 0 4px ' + s.color + '66;transition:opacity .2s;opacity:' + (hidden ? '0.3' : '1');
+    dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:' + s.color + ';box-shadow:0 0 6px ' + s.color + '80';
     pill.appendChild(dot);
     pill.appendChild(document.createTextNode(s.sym));
     pill.onclick = () => ANALYTICS_STATE.toggle(s.sym);
     strip.appendChild(pill);
   });
-  // Action buttons
+  // Show All / Hide All buttons
   const makeBtn = (label, fn) => {
     const b = document.createElement('span');
     b.className = 'an-toggle-action';
     b.textContent = label;
-    b.style.cssText = 'padding:3px 8px;border:1px solid ' + V.g400 + ';color:' + V.t3 + ';font:600 7px/1 "JetBrains Mono";cursor:pointer;letter-spacing:.4px;text-transform:uppercase;transition:all .2s';
-    b.onmouseenter = () => { b.style.color = V.t1; b.style.borderColor = V.t2; };
-    b.onmouseleave = () => { b.style.color = V.t3; b.style.borderColor = V.g400; };
+    b.style.cssText = 'padding:4px 8px;border:1px solid var(--t4);border-radius:4px;color:var(--t3);font:600 8px/1 "JetBrains Mono";cursor:pointer;letter-spacing:.3px;text-transform:uppercase;transition:all .15s';
+    b.onmouseenter = () => { b.style.color = 'var(--t1)'; b.style.borderColor = 'var(--t3)'; };
+    b.onmouseleave = () => { b.style.color = 'var(--t3)'; b.style.borderColor = 'var(--t4)'; };
     b.onclick = fn;
     return b;
   };
@@ -3665,107 +3710,29 @@ function renderAnalytics() {
   buildAnalyticsMonthly(portfolio);
 }
 
-// ─── GLOW DOT PLUGIN ───
-// Draws a glowing radial light at the last data point of each visible line.
-// Static glow (no animation loop) — drawn once per chart render, zero CPU overhead.
-const glowDotPlugin = {
-  id: 'glowDot',
-  afterDatasetsDraw(chart) {
-    if (!chart.options.plugins.glowDot) return;
-    const ctx = chart.ctx;
-    ctx.save();
-    chart.data.datasets.forEach((ds, i) => {
-      if (ds.hidden) return;
-      const meta = chart.getDatasetMeta(i);
-      if (!meta.visible) return;
-      // Find last non-null data point
-      let lastIdx = -1;
-      for (let j = ds.data.length - 1; j >= 0; j--) {
-        if (ds.data[j] !== null && ds.data[j] !== undefined) { lastIdx = j; break; }
-      }
-      if (lastIdx < 0) return;
-      const pt = meta.data[lastIdx];
-      if (!pt) return;
-      const x = pt.x, y = pt.y;
-      const color = ds.borderColor || '#ffffff';
-
-      // Outer glow — large soft radial gradient
-      const glow = ctx.createRadialGradient(x, y, 0, x, y, 30);
-      glow.addColorStop(0, color + '40');
-      glow.addColorStop(0.25, color + '1a');
-      glow.addColorStop(0.6, color + '08');
-      glow.addColorStop(1, 'transparent');
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(x, y, 30, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Mid bloom — tighter intensity
-      const mid = ctx.createRadialGradient(x, y, 0, x, y, 12);
-      mid.addColorStop(0, color + '66');
-      mid.addColorStop(0.5, color + '22');
-      mid.addColorStop(1, 'transparent');
-      ctx.fillStyle = mid;
-      ctx.beginPath();
-      ctx.arc(x, y, 12, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Core dot — bright solid center with shadow glow
-      ctx.fillStyle = color;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 10;
-      ctx.beginPath();
-      ctx.arc(x, y, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    });
-    ctx.restore();
-  }
-};
-Chart.register(glowDotPlugin);
-
 function _analyticsChartOpts(yCallback, isMultiStrategy) {
-  return {
-    responsive: true, maintainAspectRatio: false,
-    animation: { duration: 300, easing: 'easeOutQuart' },
-    spanGaps: false,
-    layout: { padding: { top: 4, right: 20, bottom: 0, left: 0 } },
+  const opts = {
+    responsive: true, maintainAspectRatio: false, animation: { duration: 200, easing: 'easeOutQuart' },
+    spanGaps: false, // null values create gaps (no false data)
     scales: {
-      x: {
-        display: true,
-        border: { display: false },
-        grid: { color: 'rgba(255,255,255,0.03)', lineWidth: 1 },
-        ticks: { font: { family: "'JetBrains Mono'", size: 8, weight: '400' }, color: V.t3 + 'aa', maxTicksLimit: 10, maxRotation: 0, padding: 6 }
-      },
-      y: {
-        display: true,
-        border: { display: false },
-        grid: { color: 'rgba(255,255,255,0.03)', lineWidth: 1 },
-        ticks: { font: { family: "'JetBrains Mono'", size: 8, weight: '400' }, color: V.t3 + 'aa', callback: yCallback, padding: 8 }
-      }
+      x: { display: true, grid: { color: 'rgba(255,255,255,0.03)', lineWidth: 0.5 }, ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, maxTicksLimit: 12, maxRotation: 0 }, border: { display: false } },
+      y: { display: true, grid: { color: 'rgba(255,255,255,0.03)', lineWidth: 0.5 }, ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, callback: yCallback }, border: { display: false } }
     },
     plugins: {
-      legend: { display: false },
-      glowDot: true,
+      legend: { display: false }, // toggles handled by our custom strip
       tooltip: {
-        backgroundColor: 'rgba(8,8,16,0.92)', titleFont: { family: "'JetBrains Mono'", size: 9, weight: '600' }, bodyFont: { family: "'JetBrains Mono'", size: 9 },
-        titleColor: V.t2, bodyColor: V.t1, borderColor: 'rgba(255,255,255,0.08)', borderWidth: 1,
-        cornerRadius: 0, padding: { top: 8, bottom: 8, left: 10, right: 10 },
-        displayColors: isMultiStrategy, boxWidth: 6, boxHeight: 6, boxPadding: 4,
-        filter: item => item.parsed.y !== null,
-        callbacks: {
-          label: c => {
-            const v = c.parsed.y;
-            if (v === null || v === undefined) return null;
-            return c.dataset.label + '  ' + (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
-          }
-        }
+        backgroundColor: 'rgba(8,8,16,0.92)', titleFont: { family: "'JetBrains Mono'", size: 9 }, bodyFont: { family: "'JetBrains Mono'", size: 8 },
+        titleColor: V.t1, bodyColor: V.t1, borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, padding: 6, displayColors: isMultiStrategy,
+        filter: item => item.parsed.y !== null, // skip null (pre-trade) values
+        callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y.toFixed(2) + '%' }
       },
-      zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: false }, pinch: { enabled: true }, drag: { enabled: true, backgroundColor: 'rgba(0,255,136,0.04)', borderColor: 'rgba(0,255,136,0.2)', borderWidth: 1 }, mode: 'x' } }
+      glowDot: true,
+      zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: false }, pinch: { enabled: true }, drag: { enabled: true, backgroundColor: 'rgba(0,255,136,0.08)', borderColor: 'rgba(0,255,136,0.3)', borderWidth: 1 }, mode: 'x' } }
     },
-    interaction: { mode: 'index', intersect: false },
-    hover: { mode: 'index', intersect: false }
+    interaction: { mode: 'index', intersect: false }
   };
+  opts.layout = { padding: { right: 20 } };
+  return opts;
 }
 
 // Build date-aligned data for a strategy with null before first trade date
@@ -3784,8 +3751,7 @@ function _buildDateAlignedData(dateMap, allDates, firstDate) {
 
 function buildAnalyticsAllEquity(reports) {
   if (CHARTS.analyticsAllEquity) CHARTS.analyticsAllEquity.destroy();
-  const canvas = document.getElementById('analyticsAllEquity');
-  const ctx = canvas.getContext('2d');
+  const ctx = document.getElementById('analyticsAllEquity').getContext('2d');
   const allDatesSet = new Set();
   const strategyData = [];
   for (let i = 0; i < reports.length; i++) {
@@ -3809,52 +3775,47 @@ function buildAnalyticsAllEquity(reports) {
   const datasets = strategyData.map(s => {
     const data = _buildDateAlignedData(s.dateMap, allDates, s.firstDate);
     const color = COMPARE_COLORS[s.idx % COMPARE_COLORS.length];
-    // Subtle gradient fill per strategy
-    const grad = ctx.createLinearGradient(0, 0, 0, canvas.parentElement.offsetHeight || 320);
-    grad.addColorStop(0, color + '18');
+    const grad = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+    grad.addColorStop(0, color + '40');
     grad.addColorStop(1, color + '00');
     return {
       label: s.sym, _sym: s.sym, data,
       borderColor: color, backgroundColor: grad, borderWidth: 1.5,
-      fill: true, pointRadius: 0, pointHoverRadius: 3, pointHoverBackgroundColor: color,
-      tension: 0.2, spanGaps: true,
+      fill: true, pointRadius: 0, pointHoverRadius: 4, tension: 0.2, spanGaps: true,
       hidden: ANALYTICS_STATE.hiddenStrategies.has(s.sym)
     };
   });
   const opts = _analyticsChartOpts(v => v.toFixed(1) + '%', true);
   CHARTS.analyticsAllEquity = new Chart(ctx, { type: 'line', data: { labels: allDates, datasets }, options: opts });
-  canvas.ondblclick = () => { if (CHARTS.analyticsAllEquity) CHARTS.analyticsAllEquity.resetZoom(); };
+  document.getElementById('analyticsAllEquity').ondblclick = () => { if (CHARTS.analyticsAllEquity) CHARTS.analyticsAllEquity.resetZoom(); };
 }
 
 function buildAnalyticsCombinedEquity(portfolio) {
   if (CHARTS.analyticsCombinedEquity) CHARTS.analyticsCombinedEquity.destroy();
-  const canvas = document.getElementById('analyticsCombinedEquity');
-  const ctx = canvas.getContext('2d');
+  const ctx = document.getElementById('analyticsCombinedEquity').getContext('2d');
   const { combined, labels } = portfolio;
   if (combined.length < 2) return;
   const init = combined[0].balance;
   const data = combined.map(p => ((p.balance - init) / init) * 100);
-  const grad = ctx.createLinearGradient(0, 0, 0, canvas.parentElement.offsetHeight || 320);
-  grad.addColorStop(0, V.neon + '22');
-  grad.addColorStop(0.6, V.neon + '08');
-  grad.addColorStop(1, 'transparent');
+  const grad = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+  grad.addColorStop(0, 'rgba(0,255,136,0.35)');
+  grad.addColorStop(1, 'rgba(0,255,136,0.02)');
   const opts = _analyticsChartOpts(v => v.toFixed(1) + '%', false);
-  opts.plugins.tooltip.callbacks.label = c => 'Return  ' + (c.parsed.y >= 0 ? '+' : '') + c.parsed.y.toFixed(2) + '%';
+  opts.plugins.tooltip.callbacks.label = c => 'Return: ' + c.parsed.y.toFixed(2) + '%';
   opts.plugins.tooltip.bodyColor = V.neon;
   CHARTS.analyticsCombinedEquity = new Chart(ctx, {
     type: 'line', data: { labels, datasets: [{
       label: 'Combined Portfolio', data,
       borderColor: V.neon, backgroundColor: grad,
-      borderWidth: 1.5, fill: true, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: V.neon, tension: 0.2, spanGaps: true
+      borderWidth: 2, fill: true, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: V.neon, tension: 0.2, spanGaps: true
     }] }, options: opts
   });
-  canvas.ondblclick = () => { if (CHARTS.analyticsCombinedEquity) CHARTS.analyticsCombinedEquity.resetZoom(); };
+  document.getElementById('analyticsCombinedEquity').ondblclick = () => { if (CHARTS.analyticsCombinedEquity) CHARTS.analyticsCombinedEquity.resetZoom(); };
 }
 
 function buildAnalyticsAllDD(reports) {
   if (CHARTS.analyticsAllDD) CHARTS.analyticsAllDD.destroy();
-  const canvas = document.getElementById('analyticsAllDD');
-  const ctx = canvas.getContext('2d');
+  const ctx = document.getElementById('analyticsAllDD').getContext('2d');
   const allDatesSet = new Set();
   const strategyData = [];
   for (let i = 0; i < reports.length; i++) {
@@ -3882,52 +3843,39 @@ function buildAnalyticsAllDD(reports) {
     return {
       label: s.sym, _sym: s.sym, data,
       borderColor: color, backgroundColor: 'transparent', borderWidth: 1.5,
-      fill: false, pointRadius: 0, pointHoverRadius: 3, pointHoverBackgroundColor: color,
-      tension: 0.2, spanGaps: true,
+      fill: false, pointRadius: 0, pointHoverRadius: 4, tension: 0.2, spanGaps: true,
       hidden: ANALYTICS_STATE.hiddenStrategies.has(s.sym)
     };
   });
   const opts = _analyticsChartOpts(v => v.toFixed(1) + '%', true);
   opts.scales.y.max = 0;
-  // DD tooltip: 0.00% means strategy is at its equity peak — clarify that
-  opts.plugins.tooltip.callbacks.label = c => {
-    const v = c.parsed.y;
-    if (v === null || v === undefined) return null;
-    const suffix = v === 0 ? '  (at peak)' : '';
-    return c.dataset.label + '  ' + v.toFixed(2) + '%' + suffix;
-  };
   CHARTS.analyticsAllDD = new Chart(ctx, { type: 'line', data: { labels: allDates, datasets }, options: opts });
-  canvas.ondblclick = () => { if (CHARTS.analyticsAllDD) CHARTS.analyticsAllDD.resetZoom(); };
+  document.getElementById('analyticsAllDD').ondblclick = () => { if (CHARTS.analyticsAllDD) CHARTS.analyticsAllDD.resetZoom(); };
 }
 
 function buildAnalyticsCombinedDD(portfolio) {
   if (CHARTS.analyticsCombinedDD) CHARTS.analyticsCombinedDD.destroy();
-  const canvas = document.getElementById('analyticsCombinedDD');
-  const ctx = canvas.getContext('2d');
+  const ctx = document.getElementById('analyticsCombinedDD').getContext('2d');
   const { combined, labels } = portfolio;
   if (combined.length < 2) return;
   const bals = combined.map(p => p.balance);
   let peak = bals[0];
   const dd = bals.map(b => { if (b > peak) peak = b; return ((b - peak) / peak) * 100; });
-  const grad = ctx.createLinearGradient(0, 0, 0, canvas.parentElement.offsetHeight || 320);
-  grad.addColorStop(0, V.crimson + '04');
-  grad.addColorStop(0.5, V.crimson + '15');
-  grad.addColorStop(1, V.crimson + '22');
+  const grad = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+  grad.addColorStop(0, 'rgba(220,20,60,0.25)');
+  grad.addColorStop(1, 'rgba(220,20,60,0.02)');
   const opts = _analyticsChartOpts(v => v.toFixed(1) + '%', false);
   opts.scales.y.max = 0;
-  opts.plugins.tooltip.callbacks.label = c => {
-    const v = c.parsed.y;
-    return 'Drawdown  ' + v.toFixed(2) + '%' + (v === 0 ? '  (at peak)' : '');
-  };
+  opts.plugins.tooltip.callbacks.label = c => 'Drawdown (at peak): ' + c.parsed.y.toFixed(2) + '%';
   opts.plugins.tooltip.bodyColor = V.crimson;
   CHARTS.analyticsCombinedDD = new Chart(ctx, {
     type: 'line', data: { labels, datasets: [{
       label: 'Combined Drawdown', data: dd,
       borderColor: V.crimson, backgroundColor: grad,
-      borderWidth: 1.5, fill: true, pointRadius: 0, pointHoverRadius: 3, pointHoverBackgroundColor: V.crimson, tension: 0.2, spanGaps: true
+      borderWidth: 1.5, fill: true, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: V.crimson, tension: 0.2, spanGaps: true
     }] }, options: opts
   });
-  canvas.ondblclick = () => { if (CHARTS.analyticsCombinedDD) CHARTS.analyticsCombinedDD.resetZoom(); };
+  document.getElementById('analyticsCombinedDD').ondblclick = () => { if (CHARTS.analyticsCombinedDD) CHARTS.analyticsCombinedDD.resetZoom(); };
 }
 
 function buildAnalyticsMonthly(portfolio) {
@@ -3941,26 +3889,17 @@ function buildAnalyticsMonthly(portfolio) {
   CHARTS.analyticsMonthly = new Chart(ctx, {
     type: 'bar', data: { labels: monthLabels, datasets: [{
       label: 'Monthly Return %', data: monthData,
-      backgroundColor: colors.map(c => c + '44'), borderColor: colors.map(c => c + 'aa'),
-      borderWidth: 1, borderRadius: 0, barPercentage: 0.85
+      backgroundColor: colors.map(c => c + '55'), borderColor: colors, borderWidth: 0
     }] },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      animation: { duration: 300, easing: 'easeOutQuart' },
-      layout: { padding: { top: 4, right: 8, bottom: 0, left: 0 } },
+      responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
       scales: {
-        x: { border: { display: false }, grid: { color: 'rgba(255,255,255,0.02)' }, ticks: { font: { family: "'JetBrains Mono'", size: 7 }, color: V.t3 + 'aa', maxRotation: 45, maxTicksLimit: 24, padding: 4 } },
-        y: { border: { display: false }, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3 + 'aa', callback: v => v.toFixed(1) + '%', padding: 6 } }
+        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { font: { family: "'JetBrains Mono'", size: 7 }, color: V.t3, maxRotation: 45, maxTicksLimit: 24 }, border: { display: false } },
+        y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, callback: v => v.toFixed(1) + '%' }, border: { display: false } }
       },
       plugins: {
         legend: { display: false },
-        tooltip: {
-          backgroundColor: 'rgba(8,8,16,0.92)', titleFont: { family: "'JetBrains Mono'", size: 9, weight: '600' },
-          bodyFont: { family: "'JetBrains Mono'", size: 10 }, titleColor: V.t2, bodyColor: V.t1,
-          borderColor: 'rgba(255,255,255,0.08)', borderWidth: 1, cornerRadius: 0,
-          padding: { top: 8, bottom: 8, left: 10, right: 10 },
-          callbacks: { label: c => (c.parsed.y >= 0 ? '+' : '') + c.parsed.y.toFixed(2) + '%' }
-        }
+        tooltip: { backgroundColor: 'rgba(8,8,16,0.92)', titleFont: { family: "'JetBrains Mono'", size: 9 }, bodyFont: { family: "'JetBrains Mono'", size: 10 }, titleColor: V.t1, bodyColor: V.t1, borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, callbacks: { label: c => 'Return: ' + c.parsed.y.toFixed(2) + '%' } }
       }
     }
   });
@@ -4414,14 +4353,14 @@ function buildHistogramChart() {
   const ctx = document.getElementById('histogramChart').getContext('2d');
   const reports = getDateFilteredReports();
 
-  // Calculate % return for each report using REAL initial deposit only
+  // Calculate % return for each report
   const returns = reports.map(r => {
-    const dep = (r.settings && r.settings.initialDeposit) || r.initialDeposit || (getBalanceCurve(r)[0] && getBalanceCurve(r)[0].balance);
-    if (!dep || dep <= 0) return null;
+    const dep = (r.settings && r.settings.initialDeposit) || r.initialDeposit || (getBalanceCurve(r) && getBalanceCurve(r)[0] && getBalanceCurve(r)[0].balance) || 0;
     return (R(r, 'netProfit') / dep) * 100;
-  }).filter(v => v !== null);
+  });
 
-  if (returns.length === 0) return; // no valid data — skip chart
+  if (returns.length === 0) return;
+
   // Build histogram bins (5% intervals)
   const minR = Math.floor(Math.min(...returns) / 5) * 5;
   const maxR = Math.ceil(Math.max(...returns) / 5) * 5;
@@ -4758,8 +4697,9 @@ const MONTE_CARLO = {
 
     const profits = deals.map(d => d.profit);
     const N = profits.length;
-    const initBal = parseFloat(R(report, 'initialDeposit') || report.settings?.initialDeposit) || (getBalanceCurve(report)[0] && getBalanceCurve(report)[0].balance) || 0;
-    if (initBal <= 0) return null; // no real initial balance — refuse to simulate
+    const bc = getBalanceCurve(report);
+    const initBal = parseFloat(R(report, 'initialDeposit') || report.settings?.initialDeposit) || (bc && bc[0] && bc[0].balance) || 0;
+    if (!initBal || initBal <= 0) return null; // no real starting balance
 
     // Determine block length
     const effectiveBlock = blockSize === 'auto' ? this._autoBlockLength(profits) : parseInt(blockSize) || 10;
@@ -5118,7 +5058,7 @@ const MONTE_CARLO = {
     if (this.chartInstances.retHist) this.chartInstances.retHist.destroy();
 
     const returns = result.returns || result.finalEquities.map(e => ((e - result.initBal) / result.initBal) * 100);
-    if (!returns || returns.length === 0) return;
+    if (returns.length === 0) return;
     const binSize = 10;
     const minBin = Math.floor(Math.min(...returns) / binSize) * binSize;
     const maxBin = Math.ceil(Math.max(...returns) / binSize) * binSize;
@@ -5323,23 +5263,25 @@ const PORTFOLIO_SYSTEM = {
       const bc = getBalanceCurve(r);
       if (!bc || bc.length < 2) return null;
       const ib = bc[0].balance;
-      if (!ib || ib <= 0) return null; // skip — no real starting balance
       return { id, curve: bc, initBal: ib };
     }).filter(Boolean);
 
     if (curves.length === 0) return { combined: [], individual: curves, totalInit: 0 };
 
-    const maxLen = Math.max(...curves.map(c => c.curve.length));
+    const validCurves = curves.filter(c => c.initBal && c.initBal > 0);
+    if (validCurves.length === 0) return { combined: [], individual: curves, totalInit: 0 };
+    const totalInit = validCurves.reduce((s, c) => s + c.initBal, 0);
+    const maxLen = Math.max(...validCurves.map(c => c.curve.length));
     const combined = [];
-    const totalInit = curves.reduce((s, c) => s + c.initBal, 0); // sum of REAL deposits
 
     for (let i = 0; i < maxLen; i++) {
       let totalBal = 0;
-      for (const c of curves) {
+      for (const c of validCurves) {
         const idx = Math.min(i, c.curve.length - 1);
-        totalBal += c.curve[idx].balance; // actual balance, not normalized
+        const currentBal = c.curve[idx].balance;
+        totalBal += currentBal;
       }
-      const time = curves[0].curve[Math.min(i, curves[0].curve.length - 1)].time || '';
+      const time = validCurves[0].curve[Math.min(i, validCurves[0].curve.length - 1)].time || '';
       combined.push({ time, balance: totalBal });
     }
     return { combined, individual: curves, totalInit };
@@ -6120,7 +6062,7 @@ function runQuantAnalyst() {
     sharpe: R(r,'sharpeRatio')||0, dd: Math.abs(R(r,'maxDDPct')||0),
     wr: R(r,'winRate')||0, trades: R(r,'totalTrades')||0,
     recovery: R(r,'recoveryFactor')||0,
-    dep: (r.settings&&r.settings.initialDeposit)||r.initialDeposit||(getBalanceCurve(r)[0]&&getBalanceCurve(r)[0].balance)||0
+    dep: (r.settings&&r.settings.initialDeposit)||r.initialDeposit||(getBalanceCurve(r)&&getBalanceCurve(r)[0]&&getBalanceCurve(r)[0].balance)||0
   }));
 
   // ─── SCORING ENGINE ───
