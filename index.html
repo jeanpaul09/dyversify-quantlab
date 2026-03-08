@@ -1894,7 +1894,7 @@ function setSession(id, val) { setTag(id, 'session', val); }
 function getStyle(id) { return getTag(id, 'style'); }
 function setStyle(id, val) { setTag(id, 'style', val); }
 
-// Currency pair detection — these are symbols, NOT trading styles
+// Currency pair detection
 const _PAIR_RE = /^(EUR|GBP|USD|JPY|AUD|NZD|CAD|CHF|XAU|XAG|BTC|ETH|US30|NAS|SPX|USTEC|USDX)(USD|EUR|GBP|JPY|AUD|NZD|CAD|CHF|HKD|SGD|NOK|SEK|TRY|ZAR|MXN|PLN|CZK|HUF)?$/i;
 function _isCurrencyPair(s) { return _PAIR_RE.test((s || '').replace(/[^A-Za-z0-9]/g, '')); }
 
@@ -1902,81 +1902,86 @@ function _isCurrencyPair(s) { return _PAIR_RE.test((s || '').replace(/[^A-Za-z0-
 const _SESSION_NAMES = ['LONDON','ASIA','NY','NEW YORK','NEWYORK','SYDNEY','TOKYO'];
 function _isSessionName(s) { return _SESSION_NAMES.includes((s || '').trim().toUpperCase()); }
 
-// Known trading style patterns → canonical name
-const _KNOWN_STYLES = [
-  { patterns: ['MICRO-IMPULSE','MICRO_IMPULSE','MICROIMPULSE','MICRO IMPULSE'], style: 'MICRO-IMPULSE' },
-  { patterns: ['MICRO-TREND','MICRO_TREND','MICROTREND','MICRO TREND'], style: 'MICRO-TREND' },
-  { patterns: ['MICRO-DRIFT','MICRO_DRIFT','MICRODRIFT','MICRO DRIFT'], style: 'MICRO-DRIFT' },
-  { patterns: ['MICRO-ABSORPTION','MICRO_ABSORPTION','MICROABSORPTION','MICRO ABSORPTION'], style: 'MICRO-ABSORPTION' },
-  { patterns: ['MICRO-INTRADAY','MICRO_INTRADAY','MICROINTRADAY','MICRO INTRADAY'], style: 'MICRO-INTRADAY' }
-];
+// ─── FILENAME-BASED TAG DETECTION ───
+// Filename format: "Report <PAIR> <STYLE WORDS...> <SESSION>"
+// Examples: "Report EURUSD Micro Trend NY", "Report EURUSD Micro Pullback London"
+// Strategy: split filename into words, identify pair + session, everything in between = style
+function _parseFilename(filename) {
+  if (!filename) return { style: null, session: null };
+  // Strip extension and leading "Report" prefix
+  let name = filename.replace(/\.(html?|htm|txt)$/i, '').trim();
+  name = name.replace(/^report\s+/i, '').trim();
+  // Split into words
+  const words = name.split(/[\s_-]+/).filter(w => w.length > 0);
+  if (words.length === 0) return { style: null, session: null };
 
-// Scan a text string for any known style pattern
-function _detectStyleFromText(text) {
-  const t = text.toUpperCase();
-  // Priority 1: exact known styles
-  for (const k of _KNOWN_STYLES) {
-    if (k.patterns.some(p => t.includes(p))) return k.style;
+  let pairEnd = 0;   // index after the pair word(s)
+  let sessionStart = words.length; // index where session begins
+
+  // Find and skip leading currency pair (could be 1 word like "EURUSD" or 2 like "EUR USD")
+  if (words.length > 0 && _isCurrencyPair(words[0])) {
+    pairEnd = 1;
+  } else if (words.length > 1 && _isCurrencyPair(words[0] + words[1])) {
+    pairEnd = 2;
   }
-  // Priority 2: generic MICRO-<WORD> pattern (catch future styles automatically)
-  const microMatch = t.match(/MICRO[-_\s]([A-Z]{3,})/);
-  if (microMatch) return 'MICRO-' + microMatch[1];
-  return null;
+
+  // Find trailing session name (last word)
+  if (words.length > pairEnd) {
+    const lastWord = words[words.length - 1].toUpperCase();
+    if (_isSessionName(lastWord)) {
+      sessionStart = words.length - 1;
+    }
+  }
+
+  // Everything between pair and session = trading style
+  const styleWords = words.slice(pairEnd, sessionStart);
+  const style = styleWords.length > 0
+    ? styleWords.join('-').toUpperCase()
+    : null;
+  const session = sessionStart < words.length
+    ? words[sessionStart].toUpperCase()
+    : null;
+
+  return { style, session };
 }
 
-// Auto-detect session & style from all available data
+// Auto-detect session & style from filename
+// Format: "Report PAIR STYLE SESSION" — parse directly, no guessing
 function autoDetectTags(r) {
   const tags = loadTags();
   const id = r.id;
   if (!tags[id]) tags[id] = {};
   let changed = false;
 
-  // Build a combined search string from ALL available sources
-  const parts = [
-    r.filename || '',
-    r.id || '',
-    (r.settings && r.settings.expert) || '',
-    r.sourceFolder || ''
-  ];
-  const src = parts.join(' ').toUpperCase();
+  // Parse the filename — single source of truth
+  const parsed = _parseFilename(r.filename);
 
-  // Auto-detect session (only if not already set)
-  if (!tags[id].session) {
+  // Always re-evaluate: overwrite bad legacy tags
+  // Session
+  if (parsed.session && tags[id].session !== parsed.session) {
+    tags[id].session = parsed.session;
+    changed = true;
+  } else if (!parsed.session && !tags[id].session) {
+    // Fallback: scan all sources for session keywords
+    const src = [r.filename || '', r.id || '', (r.settings && r.settings.expert) || '', r.sourceFolder || ''].join(' ').toUpperCase();
     if (src.includes('LONDON')) { tags[id].session = 'LONDON'; changed = true; }
     else if (src.includes('ASIA')) { tags[id].session = 'ASIA'; changed = true; }
     else if (/ NY|_NY|-NY/.test(src) || src.endsWith('NY')) { tags[id].session = 'NY'; changed = true; }
   }
 
-  // Auto-detect trading style
-  // Re-evaluate if: no style set, OR current style is a currency pair, OR it starts with a pair prefix (malformed compound like "EURUSD---MICRO-INTRADAY")
+  // Style — always trust filename parse; clean up bad legacy values
   const currentStyle = tags[id].style || '';
-  const _pairPrefix = /^(EUR|GBP|USD|JPY|AUD|NZD|CAD|CHF|XAU|XAG|BTC|ETH|US30|NAS|SPX|USTEC|USDX)(USD|EUR|GBP|JPY|AUD|NZD|CAD|CHF)?[-_\s]/i;
-  const needsStyle = !currentStyle || _isCurrencyPair(currentStyle) || _pairPrefix.test(currentStyle) || _isSessionName(currentStyle);
+  const isBadStyle = !currentStyle || _isCurrencyPair(currentStyle) || _isSessionName(currentStyle) ||
+    /^(EUR|GBP|USD|JPY|AUD|NZD|CAD|CHF|XAU|XAG|BTC|ETH|US30|NAS|SPX|USTEC|USDX)/i.test(currentStyle);
 
-  if (needsStyle) {
-    let detected = null;
-
-    // Priority 1: Scan ALL sources for known style patterns
-    detected = _detectStyleFromText(src);
-
-    // Priority 2: Source folder name (if not a pair and not generic)
-    if (!detected) {
-      const folder = (r.sourceFolder || '').trim().toUpperCase();
-      if (folder && folder !== 'ROOT' && folder.length > 1) {
-        let candidate = folder.replace(/\s*(REPORTS?|RESULTS?|BACKTESTS?|DATA)\s*/gi, '').trim();
-        if (candidate) candidate = candidate.replace(/[_\s]+/g, '-').toUpperCase();
-        if (candidate && !_isCurrencyPair(candidate) && !_isSessionName(candidate)) detected = candidate;
-      }
-    }
-
-    if (detected) {
-      tags[id].style = detected;
-      changed = true;
-    } else if (currentStyle && (_isCurrencyPair(currentStyle) || _pairPrefix.test(currentStyle) || _isSessionName(currentStyle))) {
-      // Remove the bad pair-based, malformed, or session-name style entirely
-      delete tags[id].style;
+  if (parsed.style) {
+    if (tags[id].style !== parsed.style) {
+      tags[id].style = parsed.style;
       changed = true;
     }
+  } else if (isBadStyle && currentStyle) {
+    delete tags[id].style;
+    changed = true;
   }
 
   if (changed) {
