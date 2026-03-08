@@ -1,8 +1,19 @@
 'use client';
 
-import { NexusShell } from '@/components/nexus/NexusShell';
+import { NexusShell } from 'A/components/nexus/NexusShell';
+import { useAuth } from 'A/lib/hooks/useAuth';
 
 export default function NexusPage() {
+  const { user, loading } = useAuth()
+
+  if (loading || !user) {
+    return (
+      <div className="flex items-center justify-center h-screen w-full bg-[var(--void)]">
+        <div className="w-5 h-5 border border-[var(--neon)] border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
   return (
     <div
       className="h-screen flex flex-col"
@@ -71,7 +82,7 @@ export default function NexusPage() {
               className="w-1.5 h-1.5 rounded-full"
               style={{
                 background: 'var(--neon)',
-                boxShadow: '0 0 4px var(--neon), 0 0 8px var(--neon)',
+                boxShadow: '0 0 4px var(--neon), 0 0 8px var(--neon)] 
                 animation: 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               }}
             />
@@ -135,5 +146,4 @@ export default function NexusPage() {
         }}
       />
     </div>
-  );
-}
+  
