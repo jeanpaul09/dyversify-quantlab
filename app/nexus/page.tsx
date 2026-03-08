@@ -1,7 +1,7 @@
-'use client';
+use client';
 
-import { NexusShell } from 'A/components/nexus/NexusShell';
-import { useAuth } from 'A/lib/hooks/useAuth';
+import { NexusShell } from '@/components/nexus/NexusShell';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 export default function NexusPage() {
   const { user, loading } = useAuth()
@@ -82,7 +82,7 @@ export default function NexusPage() {
               className="w-1.5 h-1.5 rounded-full"
               style={{
                 background: 'var(--neon)',
-                boxShadow: '0 0 4px var(--neon), 0 0 8px var(--neon)] 
+                boxShadow: '0 0 4px var(--neon), 0 0 8px var(--neon)',
                 animation: 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               }}
             />
@@ -146,4 +146,5 @@ export default function NexusPage() {
         }}
       />
     </div>
-  
+  );
+}
