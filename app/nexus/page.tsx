@@ -1,4 +1,4 @@
-use client';
+'use client';
 
 import { NexusShell } from '@/components/nexus/NexusShell';
 import { useAuth } from '@/lib/hooks/useAuth';
