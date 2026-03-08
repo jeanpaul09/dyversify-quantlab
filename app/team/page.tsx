@@ -1,6 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/hooks/useAuth'
 import { Header } from '@/components/neural/Header'
 import { useEffect, useState } from 'react'
 
@@ -23,6 +24,7 @@ interface TeamInvite {
 }
 
 export default function TeamPage() {
+  const { user, loading: authLoading } = useAuth()
   const [members, setMembers] = useState<TeamMember[]>([])
   const [invites, setInvites] = useState<TeamInvite[]>([])
   const [inviteEmail, setInviteEmail] = useState('')
