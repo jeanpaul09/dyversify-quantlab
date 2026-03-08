@@ -1913,36 +1913,35 @@ function autoDetectTags(r) {
   }
 
   // Auto-detect trading style (only if not already set)
-  // Priority 1: Source folder name from Drive (most reliable — user organizes files into style folders)
-  // Priority 2: Filename / expert name pattern matching
+  // Priority 1: Known pattern matching (filename + expert)
+  // Priority 2: Source folder name from Drive
+  // Currency pairs are NEVER styles — they get filtered out
   if (!tags[id].style) {
     let detected = null;
 
-    // Try known patterns first (filename + expert)
+    // Currency pairs to exclude from style detection
+    const PAIRS = /^(EUR|GBP|USD|JPY|AUD|NZD|CAD|CHF|XAU|XAG|BTC|ETH|US30|NAS|SPX|USTEC|USDX)(USD|EUR|GBP|JPY|AUD|NZD|CAD|CHF|HKD|SGD|NOK|SEK|TRY|ZAR|MXN|PLN|CZK|HUF)?$/i;
+    function isCurrencyPair(s) { return PAIRS.test(s.replace(/[^A-Za-z0-9]/g, '')); }
+
+    // Try known patterns first (filename + expert + folder)
+    const src = folder + ' ' + name;
     const knownStyles = [
-      { patterns: ['MICRO-IMPULSE','MICRO_IMPULSE','MICROIMPULSE'], style: 'MICRO-IMPULSE' },
-      { patterns: ['MICRO-TREND','MICRO_TREND','MICROTREND'], style: 'MICRO-TREND' },
-      { patterns: ['MICRO-DRIFT','MICRO_DRIFT','MICRODRIFT'], style: 'MICRO-DRIFT' },
-      { patterns: ['MICRO-ABSORPTION','MICRO_ABSORPTION','MICROABSORPTION'], style: 'MICRO-ABSORPTION' }
+      { patterns: ['MICRO-IMPULSE','MICRO_IMPULSE','MICROIMPULSE','MICRO IMPULSE'], style: 'MICRO-IMPULSE' },
+      { patterns: ['MICRO-TREND','MICRO_TREND','MICROTREND','MICRO TREND'], style: 'MICRO-TREND' },
+      { patterns: ['MICRO-DRIFT','MICRO_DRIFT','MICRODRIFT','MICRO DRIFT'], style: 'MICRO-DRIFT' },
+      { patterns: ['MICRO-ABSORPTION','MICRO_ABSORPTION','MICROABSORPTION','MICRO ABSORPTION'], style: 'MICRO-ABSORPTION' },
+      { patterns: ['MICRO-INTRADAY','MICRO_INTRADAY','MICROINTRADAY','MICRO INTRADAY'], style: 'MICRO-INTRADAY' }
     ];
     for (const k of knownStyles) {
-      if (k.patterns.some(p => name.includes(p))) { detected = k.style; break; }
+      if (k.patterns.some(p => src.includes(p))) { detected = k.style; break; }
     }
 
     // If no known pattern matched, derive style from Drive source folder
-    // The folder name IS the category (e.g. "Micro-Drift Reports" → "MICRO-DRIFT REPORTS")
     if (!detected && folder && folder !== 'ROOT' && folder.length > 1) {
-      detected = folder.replace(/\s*(REPORTS?|RESULTS?|BACKTESTS?|DATA)\s*/gi, '').trim();
-      // Normalize: uppercase, collapse separators
-      if (detected) detected = detected.replace(/[_\s]+/g, '-').toUpperCase();
-    }
-
-    // Last resort: derive from expert name if it looks like a strategy
-    if (!detected && r.settings && r.settings.expert) {
-      const expert = r.settings.expert.toUpperCase().trim();
-      if (expert && expert.length > 2 && !expert.includes('EXPERT') && expert !== 'EA') {
-        detected = expert.replace(/[_\s]+/g, '-').replace(/\.EX[45]$/i, '');
-      }
+      let candidate = folder.replace(/\s*(REPORTS?|RESULTS?|BACKTESTS?|DATA)\s*/gi, '').trim();
+      if (candidate) candidate = candidate.replace(/[_\s]+/g, '-').toUpperCase();
+      // Only use if it's NOT a currency pair
+      if (candidate && !isCurrencyPair(candidate)) detected = candidate;
     }
 
     if (detected) {
