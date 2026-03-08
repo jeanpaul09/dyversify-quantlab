@@ -1894,58 +1894,79 @@ function setSession(id, val) { setTag(id, 'session', val); }
 function getStyle(id) { return getTag(id, 'style'); }
 function setStyle(id, val) { setTag(id, 'style', val); }
 
-// Auto-detect session & style from filename/id
+// Currency pair detection — these are symbols, NOT trading styles
+const _PAIR_RE = /^(EUR|GBP|USD|JPY|AUD|NZD|CAD|CHF|XAU|XAG|BTC|ETH|US30|NAS|SPX|USTEC|USDX)(USD|EUR|GBP|JPY|AUD|NZD|CAD|CHF|HKD|SGD|NOK|SEK|TRY|ZAR|MXN|PLN|CZK|HUF)?$/i;
+function _isCurrencyPair(s) { return _PAIR_RE.test((s || '').replace(/[^A-Za-z0-9]/g, '')); }
+
+// Known trading style patterns → canonical name
+const _KNOWN_STYLES = [
+  { patterns: ['MICRO-IMPULSE','MICRO_IMPULSE','MICROIMPULSE','MICRO IMPULSE'], style: 'MICRO-IMPULSE' },
+  { patterns: ['MICRO-TREND','MICRO_TREND','MICROTREND','MICRO TREND'], style: 'MICRO-TREND' },
+  { patterns: ['MICRO-DRIFT','MICRO_DRIFT','MICRODRIFT','MICRO DRIFT'], style: 'MICRO-DRIFT' },
+  { patterns: ['MICRO-ABSORPTION','MICRO_ABSORPTION','MICROABSORPTION','MICRO ABSORPTION'], style: 'MICRO-ABSORPTION' },
+  { patterns: ['MICRO-INTRADAY','MICRO_INTRADAY','MICROINTRADAY','MICRO INTRADAY'], style: 'MICRO-INTRADAY' }
+];
+
+// Scan a text string for any known style pattern
+function _detectStyleFromText(text) {
+  const t = text.toUpperCase();
+  for (const k of _KNOWN_STYLES) {
+    if (k.patterns.some(p => t.includes(p))) return k.style;
+  }
+  return null;
+}
+
+// Auto-detect session & style from all available data
 function autoDetectTags(r) {
-  const name = ((r.filename || r.id) + ' ' + ((r.settings && r.settings.expert) || '')).toUpperCase();
-  const folder = (r.sourceFolder || '').toUpperCase().trim();
   const tags = loadTags();
   const id = r.id;
   if (!tags[id]) tags[id] = {};
   let changed = false;
 
+  // Build a combined search string from ALL available sources
+  const parts = [
+    r.filename || '',
+    r.id || '',
+    (r.settings && r.settings.expert) || '',
+    r.sourceFolder || ''
+  ];
+  const src = parts.join(' ').toUpperCase();
+
   // Auto-detect session (only if not already set)
-  // Check folder name first, then filename/expert
   if (!tags[id].session) {
-    const src = folder + ' ' + name;
     if (src.includes('LONDON')) { tags[id].session = 'LONDON'; changed = true; }
     else if (src.includes('ASIA')) { tags[id].session = 'ASIA'; changed = true; }
-    else if (src.includes(' NY') || src.includes('_NY') || src.includes('-NY') || src.endsWith('NY')) { tags[id].session = 'NY'; changed = true; }
+    else if (/ NY|_NY|-NY/.test(src) || src.endsWith('NY')) { tags[id].session = 'NY'; changed = true; }
   }
 
-  // Auto-detect trading style (only if not already set)
-  // Priority 1: Known pattern matching (filename + expert)
-  // Priority 2: Source folder name from Drive
-  // Currency pairs are NEVER styles — they get filtered out
-  if (!tags[id].style) {
+  // Auto-detect trading style
+  // Re-evaluate if: no style set, OR current style is a currency pair, OR it starts with a pair prefix (malformed compound like "EURUSD---MICRO-INTRADAY")
+  const currentStyle = tags[id].style || '';
+  const _pairPrefix = /^(EUR|GBP|USD|JPY|AUD|NZD|CAD|CHF|XAU|XAG|BTC|ETH|US30|NAS|SPX|USTEC|USDX)(USD|EUR|GBP|JPY|AUD|NZD|CAD|CHF)?[-_\s]/i;
+  const needsStyle = !currentStyle || _isCurrencyPair(currentStyle) || _pairPrefix.test(currentStyle);
+
+  if (needsStyle) {
     let detected = null;
 
-    // Currency pairs to exclude from style detection
-    const PAIRS = /^(EUR|GBP|USD|JPY|AUD|NZD|CAD|CHF|XAU|XAG|BTC|ETH|US30|NAS|SPX|USTEC|USDX)(USD|EUR|GBP|JPY|AUD|NZD|CAD|CHF|HKD|SGD|NOK|SEK|TRY|ZAR|MXN|PLN|CZK|HUF)?$/i;
-    function isCurrencyPair(s) { return PAIRS.test(s.replace(/[^A-Za-z0-9]/g, '')); }
+    // Priority 1: Scan ALL sources for known style patterns
+    detected = _detectStyleFromText(src);
 
-    // Try known patterns first (filename + expert + folder)
-    const src = folder + ' ' + name;
-    const knownStyles = [
-      { patterns: ['MICRO-IMPULSE','MICRO_IMPULSE','MICROIMPULSE','MICRO IMPULSE'], style: 'MICRO-IMPULSE' },
-      { patterns: ['MICRO-TREND','MICRO_TREND','MICROTREND','MICRO TREND'], style: 'MICRO-TREND' },
-      { patterns: ['MICRO-DRIFT','MICRO_DRIFT','MICRODRIFT','MICRO DRIFT'], style: 'MICRO-DRIFT' },
-      { patterns: ['MICRO-ABSORPTION','MICRO_ABSORPTION','MICROABSORPTION','MICRO ABSORPTION'], style: 'MICRO-ABSORPTION' },
-      { patterns: ['MICRO-INTRADAY','MICRO_INTRADAY','MICROINTRADAY','MICRO INTRADAY'], style: 'MICRO-INTRADAY' }
-    ];
-    for (const k of knownStyles) {
-      if (k.patterns.some(p => src.includes(p))) { detected = k.style; break; }
-    }
-
-    // If no known pattern matched, derive style from Drive source folder
-    if (!detected && folder && folder !== 'ROOT' && folder.length > 1) {
-      let candidate = folder.replace(/\s*(REPORTS?|RESULTS?|BACKTESTS?|DATA)\s*/gi, '').trim();
-      if (candidate) candidate = candidate.replace(/[_\s]+/g, '-').toUpperCase();
-      // Only use if it's NOT a currency pair
-      if (candidate && !isCurrencyPair(candidate)) detected = candidate;
+    // Priority 2: Source folder name (if not a pair and not generic)
+    if (!detected) {
+      const folder = (r.sourceFolder || '').trim().toUpperCase();
+      if (folder && folder !== 'ROOT' && folder.length > 1) {
+        let candidate = folder.replace(/\s*(REPORTS?|RESULTS?|BACKTESTS?|DATA)\s*/gi, '').trim();
+        if (candidate) candidate = candidate.replace(/[_\s]+/g, '-').toUpperCase();
+        if (candidate && !_isCurrencyPair(candidate)) detected = candidate;
+      }
     }
 
     if (detected) {
       tags[id].style = detected;
+      changed = true;
+    } else if (currentStyle && (_isCurrencyPair(currentStyle) || _pairPrefix.test(currentStyle))) {
+      // Remove the bad pair-based or malformed style entirely
+      delete tags[id].style;
       changed = true;
     }
   }
