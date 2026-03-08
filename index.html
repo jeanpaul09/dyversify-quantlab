@@ -391,6 +391,7 @@ table.portfolio tr.selected td { color: var(--t1); }
 .chart-canvas-wrap { height: 320px; position: relative; }
 .chart-canvas-wrap canvas { width: 100% !important; height: 100% !important; }
 .chart-canvas-wrap.short { height: 180px; }
+.chart-canvas-wrap.tall { height: 480px; }
 
 /* Monte Carlo */
 .mc-section { margin-top: 12px; }
@@ -792,6 +793,7 @@ table.portfolio tr.selected td { color: var(--t1); }
   .chart-toggle { font-size: 7px; padding: 2px 6px; }
   .chart-canvas-wrap { height: 220px; }
   .chart-canvas-wrap.short { height: 140px; }
+  .chart-canvas-wrap.tall { height: 340px; }
   .metrics-grid { grid-template-columns: 1fr 1fr; gap: 4px; padding: 8px 10px; }
   .metric-cell { padding: 6px 8px; }
   .metric-label { font-size: 7px; }
@@ -1060,10 +1062,6 @@ table.portfolio tr.selected td { color: var(--t1); }
       </select>
       <select class="filter-select" id="filterStyle">
         <option value="">ALL STYLES</option>
-        <option value="MICRO-IMPULSE">MICRO-IMPULSE</option>
-        <option value="MICRO-TREND">MICRO-TREND</option>
-        <option value="MICRO-DRIFT">MICRO-DRIFT</option>
-        <option value="MICRO-ABSORPTION">MICRO-ABSORPTION</option>
       </select>
       <input class="search-input" id="searchInput" placeholder="SEARCH...">
       <div class="view-toggle">
@@ -1567,11 +1565,11 @@ table.portfolio tr.selected td { color: var(--t1); }
           <div id="analyticsToggleStrip" style="display:flex;flex-wrap:wrap;gap:6px;padding:4px 0 8px;align-items:center;">
             <span style="font:600 8px/1 'JetBrains Mono';color:var(--t3);text-transform:uppercase;margin-right:2px;letter-spacing:.5px">Strategies:</span>
           </div>
-          <div class="chart-canvas-wrap"><canvas id="analyticsAllEquity"></canvas></div>
+          <div class="chart-canvas-wrap tall"><canvas id="analyticsAllEquity"></canvas></div>
         </div>
         <div class="chart-panel perf-full">
           <div class="chart-header"><span class="chart-title">ALL DRAWDOWNS</span></div>
-          <div class="chart-canvas-wrap"><canvas id="analyticsAllDD"></canvas></div>
+          <div class="chart-canvas-wrap tall"><canvas id="analyticsAllDD"></canvas></div>
         </div>
         <div class="chart-panel">
           <div class="chart-header"><span class="chart-title">COMBINED PORTFOLIO EQUITY</span></div>
@@ -1667,19 +1665,7 @@ table.portfolio tr.selected td { color: var(--t1); }
   <div class="ctx-item" data-session="">
     <span class="ctx-dot" style="background:var(--t3)"></span> CLEAR SESSION
   </div>
-  <div class="ctx-section">TRADING STYLE</div>
-  <div class="ctx-item" data-style="MICRO-IMPULSE">
-    <span class="ctx-dot" style="background:#00bcd4"></span> MICRO-IMPULSE
-  </div>
-  <div class="ctx-item" data-style="MICRO-TREND">
-    <span class="ctx-dot" style="background:#00bcd4"></span> MICRO-TREND
-  </div>
-  <div class="ctx-item" data-style="MICRO-DRIFT">
-    <span class="ctx-dot" style="background:#00bcd4"></span> MICRO-DRIFT
-  </div>
-  <div class="ctx-item" data-style="MICRO-ABSORPTION">
-    <span class="ctx-dot" style="background:#00bcd4"></span> MICRO-ABSORPTION
-  </div>
+  <div class="ctx-section ctx-section-styles">TRADING STYLE</div>
   <div class="ctx-item" data-style="">
     <span class="ctx-dot" style="background:var(--t3)"></span> CLEAR STYLE
   </div>
@@ -1911,29 +1897,126 @@ function setStyle(id, val) { setTag(id, 'style', val); }
 // Auto-detect session & style from filename/id
 function autoDetectTags(r) {
   const name = ((r.filename || r.id) + ' ' + ((r.settings && r.settings.expert) || '')).toUpperCase();
+  const folder = (r.sourceFolder || '').toUpperCase().trim();
   const tags = loadTags();
   const id = r.id;
   if (!tags[id]) tags[id] = {};
   let changed = false;
 
   // Auto-detect session (only if not already set)
+  // Check folder name first, then filename/expert
   if (!tags[id].session) {
-    if (name.includes('LONDON')) { tags[id].session = 'LONDON'; changed = true; }
-    else if (name.includes('ASIA')) { tags[id].session = 'ASIA'; changed = true; }
-    else if (name.includes(' NY') || name.includes('_NY') || name.includes('-NY') || name.endsWith('NY')) { tags[id].session = 'NY'; changed = true; }
+    const src = folder + ' ' + name;
+    if (src.includes('LONDON')) { tags[id].session = 'LONDON'; changed = true; }
+    else if (src.includes('ASIA')) { tags[id].session = 'ASIA'; changed = true; }
+    else if (src.includes(' NY') || src.includes('_NY') || src.includes('-NY') || src.endsWith('NY')) { tags[id].session = 'NY'; changed = true; }
   }
 
   // Auto-detect trading style (only if not already set)
+  // Priority 1: Source folder name from Drive (most reliable — user organizes files into style folders)
+  // Priority 2: Filename / expert name pattern matching
   if (!tags[id].style) {
-    if (name.includes('MICRO-IMPULSE') || name.includes('MICRO_IMPULSE') || name.includes('MICROIMPULSE')) { tags[id].style = 'MICRO-IMPULSE'; changed = true; }
-    else if (name.includes('MICRO-TREND') || name.includes('MICRO_TREND') || name.includes('MICROTREND')) { tags[id].style = 'MICRO-TREND'; changed = true; }
-    else if (name.includes('MICRO-DRIFT') || name.includes('MICRO_DRIFT') || name.includes('MICRODRIFT')) { tags[id].style = 'MICRO-DRIFT'; changed = true; }
-    else if (name.includes('MICRO-ABSORPTION') || name.includes('MICRO_ABSORPTION') || name.includes('MICROABSORPTION')) { tags[id].style = 'MICRO-ABSORPTION'; changed = true; }
+    let detected = null;
+
+    // Try known patterns first (filename + expert)
+    const knownStyles = [
+      { patterns: ['MICRO-IMPULSE','MICRO_IMPULSE','MICROIMPULSE'], style: 'MICRO-IMPULSE' },
+      { patterns: ['MICRO-TREND','MICRO_TREND','MICROTREND'], style: 'MICRO-TREND' },
+      { patterns: ['MICRO-DRIFT','MICRO_DRIFT','MICRODRIFT'], style: 'MICRO-DRIFT' },
+      { patterns: ['MICRO-ABSORPTION','MICRO_ABSORPTION','MICROABSORPTION'], style: 'MICRO-ABSORPTION' }
+    ];
+    for (const k of knownStyles) {
+      if (k.patterns.some(p => name.includes(p))) { detected = k.style; break; }
+    }
+
+    // If no known pattern matched, derive style from Drive source folder
+    // The folder name IS the category (e.g. "Micro-Drift Reports" → "MICRO-DRIFT REPORTS")
+    if (!detected && folder && folder !== 'ROOT' && folder.length > 1) {
+      detected = folder.replace(/\s*(REPORTS?|RESULTS?|BACKTESTS?|DATA)\s*/gi, '').trim();
+      // Normalize: uppercase, collapse separators
+      if (detected) detected = detected.replace(/[_\s]+/g, '-').toUpperCase();
+    }
+
+    // Last resort: derive from expert name if it looks like a strategy
+    if (!detected && r.settings && r.settings.expert) {
+      const expert = r.settings.expert.toUpperCase().trim();
+      if (expert && expert.length > 2 && !expert.includes('EXPERT') && expert !== 'EA') {
+        detected = expert.replace(/[_\s]+/g, '-').replace(/\.EX[45]$/i, '');
+      }
+    }
+
+    if (detected) {
+      tags[id].style = detected;
+      changed = true;
+    }
   }
 
   if (changed) {
     if (Object.keys(tags[id]).length === 0) delete tags[id];
     saveTags(tags);
+  }
+}
+
+// Get all unique styles currently in use (for dynamic filters/menus)
+function getAllStyles() {
+  const styles = new Set();
+  const tags = loadTags();
+  for (const id in tags) { if (tags[id].style) styles.add(tags[id].style); }
+  return [...styles].sort();
+}
+
+// Get all unique sessions currently in use
+function getAllSessions() {
+  const sessions = new Set();
+  const tags = loadTags();
+  for (const id in tags) { if (tags[id].session) sessions.add(tags[id].session); }
+  return [...sessions].sort();
+}
+
+// Refresh dynamic filter dropdowns and context menu to include new styles/sessions
+function refreshDynamicFilters() {
+  // ── Style filter dropdown ──
+  const styleSelect = document.getElementById('filterStyle');
+  if (styleSelect) {
+    const currentVal = styleSelect.value;
+    const styles = getAllStyles();
+    styleSelect.innerHTML = '<option value="">ALL STYLES</option>' +
+      styles.map(s => `<option value="${s}">${s}</option>`).join('');
+    styleSelect.value = currentVal; // preserve selection
+  }
+
+  // ── Session filter dropdown ──
+  const sessionSelect = document.getElementById('filterSession');
+  if (sessionSelect) {
+    const currentVal = sessionSelect.value;
+    const sessions = getAllSessions();
+    sessionSelect.innerHTML = '<option value="">ALL SESSIONS</option>' +
+      sessions.map(s => `<option value="${s}">${s}</option>`).join('');
+    sessionSelect.value = currentVal;
+  }
+
+  // ── Context menu: dynamic style items ──
+  const ctxMenu = document.getElementById('ctxMenu');
+  if (ctxMenu) {
+    const styleSection = ctxMenu.querySelector('.ctx-section-styles');
+    if (styleSection) {
+      const styles = getAllStyles();
+      // Remove old dynamic items
+      while (styleSection.nextElementSibling && styleSection.nextElementSibling.dataset && styleSection.nextElementSibling.dataset.style !== undefined) {
+        styleSection.nextElementSibling.remove();
+      }
+      // Add current styles
+      const clearItem = document.querySelector('.ctx-item[data-style=""]');
+      const frag = document.createDocumentFragment();
+      styles.forEach(s => {
+        const div = document.createElement('div');
+        div.className = 'ctx-item';
+        div.dataset.style = s;
+        div.innerHTML = '<span class="ctx-dot" style="background:#00bcd4"></span> ' + s;
+        frag.appendChild(div);
+      });
+      if (clearItem) ctxMenu.insertBefore(frag, clearItem);
+    }
   }
 }
 
@@ -6482,6 +6565,7 @@ function handleFiles(files) {
   });
 
   Promise.all(promises).then(() => {
+    refreshDynamicFilters();
     DATE_FILTER.buildPills();
     DATE_FILTER.updateSummary();
     updateKPIs();
@@ -6566,6 +6650,7 @@ document.getElementById('jsonInput').addEventListener('change', e => {
           autoDetectTags(r);
         });
       }
+      refreshDynamicFilters();
       DATE_FILTER.buildPills();
       DATE_FILTER.updateSummary();
       updateKPIs();
@@ -6732,6 +6817,7 @@ async function syncFromDrive() {
       if (removedCount > 0) statusParts.push('-' + removedCount + ' REMOVED');
       statusParts.push(timeStr);
       setDriveStatus(statusParts.join(' · '), 'var(--t2)');
+      refreshDynamicFilters();
       DATE_FILTER.buildPills();
       DATE_FILTER.updateSummary();
       updateKPIs();
