@@ -905,6 +905,7 @@ table.portfolio tr.selected td { color: var(--t1); }
     <button class="tab-btn" data-tab="compare">COMPARE <span class="tab-badge" id="compareBadge"></span></button>
     <button class="tab-btn" data-tab="performance">PERFORMANCE</button>
     <button class="tab-btn" data-tab="portfolio">PORTFOLIO</button>
+    <button class="tab-btn" data-tab="analytics">ANALYTICS</button>
   </div>
 
   <!-- DATE PERIOD BAR -->
@@ -1484,6 +1485,47 @@ table.portfolio tr.selected td { color: var(--t1); }
     </div>
   </div>
 
+  <!-- ═══ ANALYTICS TAB ═══ -->
+  <div class="tab-pane" id="paneAnalytics">
+    <div class="empty-state" id="analyticsEmpty">
+      <div class="empty-icon">&#x1F4CA;</div>
+      <div class="empty-title">LOAD REPORTS FOR ANALYTICS</div>
+      <div class="empty-sub">Combined equity curves, drawdowns, and aggregate performance will appear here</div>
+    </div>
+    <div id="analyticsContent" class="hidden">
+      <div class="kpi-strip" id="analyticsKpiStrip">
+        <div class="kpi-card"><div class="kpi-label">STRATEGIES</div><div class="kpi-value" id="anKpiCount">0</div><div class="kpi-sub" id="anKpiProfitable">0 PROFITABLE</div></div>
+        <div class="kpi-card"><div class="kpi-label">COMBINED NET P&L</div><div class="kpi-value" id="anKpiPnl">&mdash;</div><div class="kpi-sub" id="anKpiAvgPnl">AVG &mdash;</div></div>
+        <div class="kpi-card"><div class="kpi-label">AVG PROFIT FACTOR</div><div class="kpi-value" id="anKpiPF">&mdash;</div><div class="kpi-sub" id="anKpiMedPF">MEDIAN &mdash;</div></div>
+        <div class="kpi-card"><div class="kpi-label">AVG SHARPE</div><div class="kpi-value" id="anKpiSharpe">&mdash;</div><div class="kpi-sub" id="anKpiMedSharpe">MEDIAN &mdash;</div></div>
+        <div class="kpi-card"><div class="kpi-label">AVG MAX DD</div><div class="kpi-value" id="anKpiDD">&mdash;</div><div class="kpi-sub" id="anKpiWorstDD">WORST &mdash;</div></div>
+        <div class="kpi-card"><div class="kpi-label">AVG WIN RATE</div><div class="kpi-value" id="anKpiWR">&mdash;</div><div class="kpi-sub" id="anKpiRecovery">RECOVERY &mdash;</div></div>
+      </div>
+      <div class="perf-grid">
+        <div class="chart-panel perf-full">
+          <div class="chart-header"><span class="chart-title">ALL EQUITY CURVES (% RETURN)</span></div>
+          <div class="chart-canvas-wrap"><canvas id="analyticsAllEquity"></canvas></div>
+        </div>
+        <div class="chart-panel">
+          <div class="chart-header"><span class="chart-title">COMBINED PORTFOLIO EQUITY</span></div>
+          <div class="chart-canvas-wrap"><canvas id="analyticsCombinedEquity"></canvas></div>
+        </div>
+        <div class="chart-panel">
+          <div class="chart-header"><span class="chart-title">ALL DRAWDOWNS</span></div>
+          <div class="chart-canvas-wrap"><canvas id="analyticsAllDD"></canvas></div>
+        </div>
+        <div class="chart-panel perf-full">
+          <div class="chart-header"><span class="chart-title">COMBINED PORTFOLIO DRAWDOWN</span></div>
+          <div class="chart-canvas-wrap"><canvas id="analyticsCombinedDD"></canvas></div>
+        </div>
+        <div class="chart-panel perf-full">
+          <div class="chart-header"><span class="chart-title">COMBINED MONTHLY RETURNS</span></div>
+          <div class="chart-canvas-wrap short"><canvas id="analyticsMonthly"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- STATUS BAR -->
   <div class="status-bar">
     <div class="status-left">
@@ -1590,7 +1632,12 @@ const CHARTS = {
   monthlyReturns: null,
   streak: null,
   riskReturn: null,
-  ddCompare: null
+  ddCompare: null,
+  analyticsAllEquity: null,
+  analyticsCombinedEquity: null,
+  analyticsAllDD: null,
+  analyticsCombinedDD: null,
+  analyticsMonthly: null
 };
 
 // ─── LABELS (persist in localStorage) ───
@@ -1941,7 +1988,7 @@ const TAB_SYSTEM = {
     });
     // Show/hide panes
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-    const paneMap = { overview:'paneOverview', reports:'paneReports', detail:'paneDetail', compare:'paneCompare', performance:'panePerformance', portfolio:'panePortfolio' };
+    const paneMap = { overview:'paneOverview', reports:'paneReports', detail:'paneDetail', compare:'paneCompare', performance:'panePerformance', portfolio:'panePortfolio', analytics:'paneAnalytics' };
     const pane = document.getElementById(paneMap[name]);
     if (pane) pane.classList.add('active');
     // Render active tab
@@ -1956,6 +2003,7 @@ const TAB_SYSTEM = {
       case 'compare': renderCompare(); break;
       case 'performance': renderPerformance(); break;
       case 'portfolio': PORTFOLIO_SYSTEM.render(); break;
+      case 'analytics': renderAnalytics(); break;
     }
   }
 };
@@ -3390,6 +3438,216 @@ function buildStreakChart(r) {
             }
           }
         }
+      }
+    }
+  });
+}
+
+// ─── ANALYTICS TAB ───
+function renderAnalytics() {
+  const empty = document.getElementById('analyticsEmpty');
+  const content = document.getElementById('analyticsContent');
+  if (store.size === 0) { empty.classList.remove('hidden'); content.classList.add('hidden'); return; }
+  empty.classList.add('hidden'); content.classList.remove('hidden');
+
+  const rawReports = Array.from(store.values());
+  const reports = DATE_FILTER.isActive() ? rawReports.map(r => DATE_FILTER.getView(r)).filter(Boolean) : rawReports;
+  const n = reports.length;
+  if (n === 0) { empty.classList.remove('hidden'); content.classList.add('hidden'); return; }
+
+  const pnls = reports.map(r => R(r,'netProfit')||0);
+  const pfs = reports.map(r => R(r,'profitFactor')||0);
+  const sharpes = reports.map(r => R(r,'sharpeRatio')||0);
+  const dds = reports.map(r => Math.abs(R(r,'maxDDPct')||0));
+  const wrs = reports.map(r => R(r,'winRate')||0);
+  const recs = reports.map(r => R(r,'recoveryFactor')||0);
+  const sum = arr => arr.reduce((a,b)=>a+b,0);
+  const avg = arr => arr.length ? sum(arr)/arr.length : 0;
+  const median = arr => { const s=[...arr].sort((a,b)=>a-b); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; };
+  const profCount = pnls.filter(p=>p>0).length;
+  const tp = sum(pnls);
+
+  document.getElementById('anKpiCount').textContent = n;
+  document.getElementById('anKpiProfitable').textContent = profCount + '/' + n + ' PROFITABLE';
+  const pnlEl = document.getElementById('anKpiPnl');
+  pnlEl.textContent = '$' + Math.abs(tp).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  pnlEl.className = 'kpi-value ' + (tp>=0?'pnl-pos':'pnl-neg');
+  document.getElementById('anKpiAvgPnl').textContent = 'AVG $' + Math.abs(avg(pnls)).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('anKpiPF').textContent = avg(pfs).toFixed(2);
+  document.getElementById('anKpiMedPF').textContent = 'MEDIAN ' + median(pfs).toFixed(2);
+  document.getElementById('anKpiSharpe').textContent = avg(sharpes).toFixed(2);
+  document.getElementById('anKpiMedSharpe').textContent = 'MEDIAN ' + median(sharpes).toFixed(2);
+  document.getElementById('anKpiDD').textContent = avg(dds).toFixed(2) + '%';
+  document.getElementById('anKpiWorstDD').textContent = 'WORST ' + Math.max(...dds).toFixed(2) + '%';
+  document.getElementById('anKpiWR').textContent = avg(wrs).toFixed(2) + '%';
+  document.getElementById('anKpiRecovery').textContent = 'RECOVERY ' + avg(recs).toFixed(2);
+
+  buildAnalyticsAllEquity(reports);
+  buildAnalyticsCombinedEquity(reports);
+  buildAnalyticsAllDD(reports);
+  buildAnalyticsCombinedDD(reports);
+  buildAnalyticsMonthly(reports);
+}
+
+function _analyticsChartOpts(yCallback, legendDisplay) {
+  return {
+    responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
+    scales: {
+      x: { display: true, grid: { color: 'rgba(42,42,42,0.5)', lineWidth: 0.5 }, ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, maxTicksLimit: 12, maxRotation: 0 } },
+      y: { display: true, grid: { color: 'rgba(42,42,42,0.5)', lineWidth: 0.5 }, ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, callback: yCallback } }
+    },
+    plugins: {
+      legend: legendDisplay ? { display: true, position: 'top', labels: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t2, boxWidth: 10, padding: 6, usePointStyle: true } } : { display: false },
+      tooltip: { backgroundColor: V.g700+'ee', titleFont: { family: "'JetBrains Mono'", size: 9 }, bodyFont: { family: "'JetBrains Mono'", size: 9 }, titleColor: V.t3, bodyColor: V.t1, borderColor: V.g400, borderWidth: 1, callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y.toFixed(2) + '%' } },
+      zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: false }, pinch: { enabled: true }, drag: { enabled: true, backgroundColor: 'rgba(0,255,136,0.08)', borderColor: 'rgba(0,255,136,0.3)', borderWidth: 1 }, mode: 'x' } }
+    },
+    interaction: { mode: 'index', intersect: false }
+  };
+}
+
+function _analyticsGetLongest(reports) {
+  let longest = reports[0];
+  for (const r of reports) { if (getBalanceCurve(r).length > getBalanceCurve(longest).length) longest = r; }
+  return longest;
+}
+
+function buildAnalyticsAllEquity(reports) {
+  if (CHARTS.analyticsAllEquity) CHARTS.analyticsAllEquity.destroy();
+  const ctx = document.getElementById('analyticsAllEquity').getContext('2d');
+  const datasets = [];
+  for (let i = 0; i < reports.length; i++) {
+    const r = reports[i];
+    const curve = getBalanceCurve(r);
+    if (curve.length < 2) continue;
+    const init = curve[0].balance;
+    datasets.push({
+      label: getSymbol(r),
+      data: curve.map(p => ((p.balance - init) / init) * 100),
+      borderColor: COMPARE_COLORS[i % COMPARE_COLORS.length],
+      backgroundColor: 'transparent',
+      borderWidth: 1.5, fill: false, pointRadius: 0, tension: 0.1
+    });
+  }
+  if (datasets.length === 0) return;
+  const labels = getBalanceCurve(_analyticsGetLongest(reports)).map(p => p.time.split(' ')[0]);
+  const opts = _analyticsChartOpts(v => v.toFixed(1) + '%', true);
+  CHARTS.analyticsAllEquity = new Chart(ctx, { type: 'line', data: { labels, datasets }, options: opts });
+  document.getElementById('analyticsAllEquity').ondblclick = () => { if (CHARTS.analyticsAllEquity) CHARTS.analyticsAllEquity.resetZoom(); };
+}
+
+function buildAnalyticsCombinedEquity(reports) {
+  if (CHARTS.analyticsCombinedEquity) CHARTS.analyticsCombinedEquity.destroy();
+  const ctx = document.getElementById('analyticsCombinedEquity').getContext('2d');
+  const ids = reports.map(r => r.id);
+  const { combined } = PORTFOLIO_SYSTEM.computeCombined(ids);
+  if (combined.length < 2) return;
+  const init = combined[0].balance;
+  const data = combined.map(p => ((p.balance - init) / init) * 100);
+  const labels = combined.map(p => (p.time || '').split(' ')[0]);
+  const opts = _analyticsChartOpts(v => v.toFixed(1) + '%', false);
+  opts.plugins.tooltip.callbacks.label = c => 'Return: ' + c.parsed.y.toFixed(2) + '%';
+  opts.plugins.tooltip.bodyColor = V.neon;
+  CHARTS.analyticsCombinedEquity = new Chart(ctx, {
+    type: 'line', data: { labels, datasets: [{
+      label: 'Combined Portfolio', data,
+      borderColor: V.neon, backgroundColor: V.neonBg,
+      borderWidth: 2, fill: true, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: V.neon, tension: 0.1
+    }] }, options: opts
+  });
+  document.getElementById('analyticsCombinedEquity').ondblclick = () => { if (CHARTS.analyticsCombinedEquity) CHARTS.analyticsCombinedEquity.resetZoom(); };
+}
+
+function buildAnalyticsAllDD(reports) {
+  if (CHARTS.analyticsAllDD) CHARTS.analyticsAllDD.destroy();
+  const ctx = document.getElementById('analyticsAllDD').getContext('2d');
+  const datasets = [];
+  for (let i = 0; i < reports.length; i++) {
+    const r = reports[i];
+    const curve = getBalanceCurve(r);
+    if (curve.length < 2) continue;
+    const bals = curve.map(p => p.balance);
+    let peak = bals[0];
+    const dd = bals.map(b => { if (b > peak) peak = b; return ((b - peak) / peak) * 100; });
+    datasets.push({
+      label: getSymbol(r),
+      data: dd,
+      borderColor: COMPARE_COLORS[i % COMPARE_COLORS.length],
+      backgroundColor: 'transparent',
+      borderWidth: 1.5, fill: false, pointRadius: 0, tension: 0.1
+    });
+  }
+  if (datasets.length === 0) return;
+  const labels = getBalanceCurve(_analyticsGetLongest(reports)).map(p => p.time.split(' ')[0]);
+  const opts = _analyticsChartOpts(v => v.toFixed(1) + '%', true);
+  opts.scales.y.max = 0;
+  CHARTS.analyticsAllDD = new Chart(ctx, { type: 'line', data: { labels, datasets }, options: opts });
+  document.getElementById('analyticsAllDD').ondblclick = () => { if (CHARTS.analyticsAllDD) CHARTS.analyticsAllDD.resetZoom(); };
+}
+
+function buildAnalyticsCombinedDD(reports) {
+  if (CHARTS.analyticsCombinedDD) CHARTS.analyticsCombinedDD.destroy();
+  const ctx = document.getElementById('analyticsCombinedDD').getContext('2d');
+  const ids = reports.map(r => r.id);
+  const { combined } = PORTFOLIO_SYSTEM.computeCombined(ids);
+  if (combined.length < 2) return;
+  const bals = combined.map(p => p.balance);
+  let peak = bals[0];
+  const dd = bals.map(b => { if (b > peak) peak = b; return ((b - peak) / peak) * 100; });
+  const labels = combined.map(p => (p.time || '').split(' ')[0]);
+  const opts = _analyticsChartOpts(v => v.toFixed(1) + '%', false);
+  opts.scales.y.max = 0;
+  opts.plugins.tooltip.callbacks.label = c => 'Drawdown: ' + c.parsed.y.toFixed(2) + '%';
+  opts.plugins.tooltip.bodyColor = V.crimson;
+  CHARTS.analyticsCombinedDD = new Chart(ctx, {
+    type: 'line', data: { labels, datasets: [{
+      label: 'Combined Drawdown', data: dd,
+      borderColor: V.crimson, backgroundColor: V.crimsonBg,
+      borderWidth: 1.5, fill: true, pointRadius: 0, pointHoverRadius: 3, pointHoverBackgroundColor: V.crimson, tension: 0.1
+    }] }, options: opts
+  });
+  document.getElementById('analyticsCombinedDD').ondblclick = () => { if (CHARTS.analyticsCombinedDD) CHARTS.analyticsCombinedDD.resetZoom(); };
+}
+
+function buildAnalyticsMonthly(reports) {
+  if (CHARTS.analyticsMonthly) CHARTS.analyticsMonthly.destroy();
+  const ctx = document.getElementById('analyticsMonthly').getContext('2d');
+  const ids = reports.map(r => r.id);
+  const { combined } = PORTFOLIO_SYSTEM.computeCombined(ids);
+  if (combined.length < 2) return;
+
+  // Group by month
+  const monthData = {};
+  for (const p of combined) {
+    const month = (p.time || '').substring(0, 7);
+    if (!month || month.length < 7) continue;
+    if (!monthData[month]) monthData[month] = { first: p.balance, last: p.balance };
+    monthData[month].last = p.balance;
+  }
+  const months = Object.keys(monthData).sort();
+  if (months.length < 2) return;
+  const monthReturns = [];
+  const monthLabels = [];
+  for (let i = 1; i < months.length; i++) {
+    const prev = monthData[months[i-1]].last;
+    const cur = monthData[months[i]].last;
+    monthReturns.push(((cur - prev) / prev) * 100);
+    monthLabels.push(months[i]);
+  }
+  const colors = monthReturns.map(r => r >= 0 ? V.neon : V.crimson);
+  CHARTS.analyticsMonthly = new Chart(ctx, {
+    type: 'bar', data: { labels: monthLabels, datasets: [{
+      label: 'Monthly Return %', data: monthReturns,
+      backgroundColor: colors.map(c => c + '55'), borderColor: colors, borderWidth: 1
+    }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
+      scales: {
+        x: { grid: { color: 'rgba(42,42,42,0.3)' }, ticks: { font: { family: "'JetBrains Mono'", size: 7 }, color: V.t3, maxRotation: 45, maxTicksLimit: 24 } },
+        y: { grid: { color: 'rgba(42,42,42,0.3)' }, ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, callback: v => v.toFixed(1) + '%' } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: V.g700+'ee', titleFont: { family: "'JetBrains Mono'", size: 9 }, bodyFont: { family: "'JetBrains Mono'", size: 10 }, titleColor: V.t3, bodyColor: V.t1, borderColor: V.g400, borderWidth: 1, callbacks: { label: c => 'Return: ' + c.parsed.y.toFixed(2) + '%' } }
       }
     }
   });
