@@ -3566,7 +3566,7 @@ function _buildToggleStrip(strategyMeta) {
     pill.className = 'an-toggle-pill';
     pill.dataset.sym = s.sym;
     const isHidden = ANALYTICS_STATE.hiddenStrategies.has(s.sym);
-    const baseStyle = 'display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border:1px solid;border-radius:100px;font:600 8px/1 "JetBrains Mono";cursor:pointer;letter-spacing:.3px;transition:all .2s;user-select:none';
+    const baseStyle = 'display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid;font:600 8px/1 "JetBrains Mono";cursor:pointer;letter-spacing:.3px;transition:all .15s;user-select:none';
     pill.style.cssText = baseStyle;
     if (isHidden) {
       pill.style.borderColor = 'rgba(255,255,255,0.2)';
@@ -3590,7 +3590,7 @@ function _buildToggleStrip(strategyMeta) {
     const b = document.createElement('span');
     b.className = 'an-toggle-action';
     b.textContent = label;
-    b.style.cssText = 'padding:4px 10px;border:1px solid var(--t4);border-radius:100px;color:var(--t3);font:600 8px/1 "JetBrains Mono";cursor:pointer;letter-spacing:.4px;text-transform:uppercase;transition:all .2s';
+    b.style.cssText = 'padding:3px 8px;border:1px solid var(--t4);color:var(--t3);font:600 8px/1 "JetBrains Mono";cursor:pointer;letter-spacing:.3px;text-transform:uppercase;transition:all .15s';
     b.onmouseenter = () => { b.style.color = 'var(--t1)'; b.style.borderColor = 'var(--t3)'; };
     b.onmouseleave = () => { b.style.color = 'var(--t3)'; b.style.borderColor = 'var(--t4)'; };
     b.onclick = fn;
