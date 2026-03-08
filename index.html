@@ -1495,11 +1495,11 @@ table.portfolio tr.selected td { color: var(--t1); }
     <div id="analyticsContent" class="hidden">
       <div class="kpi-strip" id="analyticsKpiStrip">
         <div class="kpi-card"><div class="kpi-label">STRATEGIES</div><div class="kpi-value" id="anKpiCount">0</div><div class="kpi-sub" id="anKpiProfitable">0 PROFITABLE</div></div>
-        <div class="kpi-card"><div class="kpi-label">COMBINED NET P&L</div><div class="kpi-value" id="anKpiPnl">&mdash;</div><div class="kpi-sub" id="anKpiAvgPnl">AVG &mdash;</div></div>
-        <div class="kpi-card"><div class="kpi-label">AVG PROFIT FACTOR</div><div class="kpi-value" id="anKpiPF">&mdash;</div><div class="kpi-sub" id="anKpiMedPF">MEDIAN &mdash;</div></div>
-        <div class="kpi-card"><div class="kpi-label">AVG SHARPE</div><div class="kpi-value" id="anKpiSharpe">&mdash;</div><div class="kpi-sub" id="anKpiMedSharpe">MEDIAN &mdash;</div></div>
-        <div class="kpi-card"><div class="kpi-label">AVG MAX DD</div><div class="kpi-value" id="anKpiDD">&mdash;</div><div class="kpi-sub" id="anKpiWorstDD">WORST &mdash;</div></div>
-        <div class="kpi-card"><div class="kpi-label">AVG WIN RATE</div><div class="kpi-value" id="anKpiWR">&mdash;</div><div class="kpi-sub" id="anKpiRecovery">RECOVERY &mdash;</div></div>
+        <div class="kpi-card"><div class="kpi-label">PORTFOLIO RETURN</div><div class="kpi-value" id="anKpiReturn">&mdash;</div><div class="kpi-sub" id="anKpiReturnSub">&mdash;</div></div>
+        <div class="kpi-card"><div class="kpi-label">PORTFOLIO MAX DD</div><div class="kpi-value" id="anKpiMaxDD">&mdash;</div><div class="kpi-sub" id="anKpiMaxDDSub">FROM COMBINED CURVE</div></div>
+        <div class="kpi-card"><div class="kpi-label">PORTFOLIO SHARPE</div><div class="kpi-value" id="anKpiSharpe">&mdash;</div><div class="kpi-sub" id="anKpiSharpeSub">ANNUALIZED</div></div>
+        <div class="kpi-card"><div class="kpi-label">WIN MONTHS</div><div class="kpi-value" id="anKpiWinMonths">&mdash;</div><div class="kpi-sub" id="anKpiWinMonthsSub">&mdash;</div></div>
+        <div class="kpi-card"><div class="kpi-label">BEST / WORST MONTH</div><div class="kpi-value" id="anKpiBestMonth">&mdash;</div><div class="kpi-sub" id="anKpiWorstMonth">&mdash;</div></div>
       </div>
       <div class="perf-grid">
         <div class="chart-panel perf-full">
@@ -3444,6 +3444,62 @@ function buildStreakChart(r) {
 }
 
 // ─── ANALYTICS TAB ───
+
+// Date-aligned combined curve: merges all strategies by actual calendar date
+function computeCombinedByDate(reports) {
+  const perStrategy = 100000;
+  const curveData = [];
+  for (const r of reports) {
+    const bc = getBalanceCurve(r);
+    if (!bc || bc.length < 2) continue;
+    const initBal = bc[0].balance || perStrategy;
+    const dateMap = {};
+    for (const p of bc) {
+      const d = (p.time || '').split(' ')[0]; // YYYY.MM.DD
+      if (d.length >= 8) dateMap[d] = p.balance;
+    }
+    curveData.push({ initBal, dateMap, dates: Object.keys(dateMap).sort() });
+  }
+  if (curveData.length === 0) return { combined: [], labels: [], monthlyReturns: [] };
+
+  // Collect ALL unique dates across all strategies
+  const allDatesSet = new Set();
+  for (const c of curveData) for (const d of c.dates) allDatesSet.add(d);
+  const allDates = [...allDatesSet].sort();
+
+  // Build combined curve: for each date, forward-fill each strategy's last known balance
+  const combined = [];
+  const lastKnown = curveData.map(c => c.initBal);
+  for (const date of allDates) {
+    let totalBal = 0;
+    for (let i = 0; i < curveData.length; i++) {
+      const c = curveData[i];
+      if (c.dateMap[date] !== undefined) lastKnown[i] = c.dateMap[date];
+      const pctReturn = (lastKnown[i] - c.initBal) / c.initBal;
+      totalBal += perStrategy * (1 + pctReturn);
+    }
+    combined.push({ time: date, balance: totalBal });
+  }
+
+  // Compute monthly returns from the combined curve
+  const monthBals = {};
+  for (const p of combined) {
+    const month = p.time.substring(0, 7); // YYYY.MM
+    if (month.length < 7) continue;
+    if (!monthBals[month]) monthBals[month] = { first: p.balance, last: p.balance };
+    monthBals[month].last = p.balance;
+  }
+  const months = Object.keys(monthBals).sort();
+  const monthlyReturns = [];
+  for (let i = 1; i < months.length; i++) {
+    const prev = monthBals[months[i-1]].last;
+    const cur = monthBals[months[i]].last;
+    monthlyReturns.push({ month: months[i], pct: ((cur - prev) / prev) * 100 });
+  }
+
+  return { combined, labels: allDates, monthlyReturns };
+}
+
 function renderAnalytics() {
   const empty = document.getElementById('analyticsEmpty');
   const content = document.getElementById('analyticsContent');
@@ -3455,38 +3511,62 @@ function renderAnalytics() {
   const n = reports.length;
   if (n === 0) { empty.classList.remove('hidden'); content.classList.add('hidden'); return; }
 
-  const pnls = reports.map(r => R(r,'netProfit')||0);
-  const pfs = reports.map(r => R(r,'profitFactor')||0);
-  const sharpes = reports.map(r => R(r,'sharpeRatio')||0);
-  const dds = reports.map(r => Math.abs(R(r,'maxDDPct')||0));
-  const wrs = reports.map(r => R(r,'winRate')||0);
-  const recs = reports.map(r => R(r,'recoveryFactor')||0);
-  const sum = arr => arr.reduce((a,b)=>a+b,0);
-  const avg = arr => arr.length ? sum(arr)/arr.length : 0;
-  const median = arr => { const s=[...arr].sort((a,b)=>a-b); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; };
-  const profCount = pnls.filter(p=>p>0).length;
-  const tp = sum(pnls);
+  // Compute date-aligned combined portfolio (shared by all charts + KPIs)
+  const portfolio = computeCombinedByDate(reports);
+  const { combined, monthlyReturns } = portfolio;
+  const profCount = reports.filter(r => (R(r,'netProfit')||0) > 0).length;
 
+  // ─── PORTFOLIO-SPECIFIC KPIs (computed from the combined curve) ───
   document.getElementById('anKpiCount').textContent = n;
   document.getElementById('anKpiProfitable').textContent = profCount + '/' + n + ' PROFITABLE';
-  const pnlEl = document.getElementById('anKpiPnl');
-  pnlEl.textContent = '$' + Math.abs(tp).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-  pnlEl.className = 'kpi-value ' + (tp>=0?'pnl-pos':'pnl-neg');
-  document.getElementById('anKpiAvgPnl').textContent = 'AVG $' + Math.abs(avg(pnls)).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-  document.getElementById('anKpiPF').textContent = avg(pfs).toFixed(2);
-  document.getElementById('anKpiMedPF').textContent = 'MEDIAN ' + median(pfs).toFixed(2);
-  document.getElementById('anKpiSharpe').textContent = avg(sharpes).toFixed(2);
-  document.getElementById('anKpiMedSharpe').textContent = 'MEDIAN ' + median(sharpes).toFixed(2);
-  document.getElementById('anKpiDD').textContent = avg(dds).toFixed(2) + '%';
-  document.getElementById('anKpiWorstDD').textContent = 'WORST ' + Math.max(...dds).toFixed(2) + '%';
-  document.getElementById('anKpiWR').textContent = avg(wrs).toFixed(2) + '%';
-  document.getElementById('anKpiRecovery').textContent = 'RECOVERY ' + avg(recs).toFixed(2);
+
+  if (combined.length >= 2) {
+    const initBal = combined[0].balance;
+    const finalBal = combined[combined.length - 1].balance;
+    const totalReturn = ((finalBal - initBal) / initBal) * 100;
+    const retEl = document.getElementById('anKpiReturn');
+    retEl.textContent = (totalReturn >= 0 ? '+' : '') + totalReturn.toFixed(2) + '%';
+    retEl.className = 'kpi-value ' + (totalReturn >= 0 ? 'pnl-pos' : 'pnl-neg');
+    document.getElementById('anKpiReturnSub').textContent = 'EQUAL-WEIGHT ' + n + ' STRATEGIES';
+
+    // Portfolio Max DD from combined curve
+    const bals = combined.map(p => p.balance);
+    let peak = bals[0], maxDD = 0;
+    for (const b of bals) { if (b > peak) peak = b; const dd = ((b - peak) / peak) * 100; if (dd < maxDD) maxDD = dd; }
+    document.getElementById('anKpiMaxDD').textContent = maxDD.toFixed(2) + '%';
+    document.getElementById('anKpiMaxDDSub').textContent = 'FROM COMBINED CURVE';
+
+    // Portfolio Sharpe from combined curve periodic returns
+    const returns = [];
+    for (let i = 1; i < bals.length; i++) returns.push((bals[i] - bals[i-1]) / bals[i-1]);
+    if (returns.length > 1) {
+      const mean = returns.reduce((a,b)=>a+b,0) / returns.length;
+      const variance = returns.reduce((s,r) => s + (r-mean)*(r-mean), 0) / returns.length;
+      const stdev = Math.sqrt(variance);
+      const sharpe = stdev > 0 ? (mean / stdev) * Math.sqrt(252) : 0;
+      document.getElementById('anKpiSharpe').textContent = sharpe.toFixed(2);
+      document.getElementById('anKpiSharpeSub').textContent = 'ANNUALIZED (' + returns.length + ' PERIODS)';
+    }
+
+    // Win Months + Best/Worst
+    if (monthlyReturns.length > 0) {
+      const winMonths = monthlyReturns.filter(m => m.pct > 0).length;
+      document.getElementById('anKpiWinMonths').textContent = winMonths + '/' + monthlyReturns.length;
+      document.getElementById('anKpiWinMonthsSub').textContent = (winMonths/monthlyReturns.length*100).toFixed(0) + '% WIN RATE';
+      const best = monthlyReturns.reduce((a,b) => a.pct > b.pct ? a : b);
+      const worst = monthlyReturns.reduce((a,b) => a.pct < b.pct ? a : b);
+      const bestEl = document.getElementById('anKpiBestMonth');
+      bestEl.textContent = '+' + best.pct.toFixed(2) + '%';
+      bestEl.className = 'kpi-value pnl-pos';
+      document.getElementById('anKpiWorstMonth').textContent = 'WORST: ' + worst.pct.toFixed(2) + '%';
+    }
+  }
 
   buildAnalyticsAllEquity(reports);
-  buildAnalyticsCombinedEquity(reports);
+  buildAnalyticsCombinedEquity(portfolio);
   buildAnalyticsAllDD(reports);
-  buildAnalyticsCombinedDD(reports);
-  buildAnalyticsMonthly(reports);
+  buildAnalyticsCombinedDD(portfolio);
+  buildAnalyticsMonthly(portfolio);
 }
 
 function _analyticsChartOpts(yCallback, legendDisplay) {
@@ -3505,45 +3585,51 @@ function _analyticsChartOpts(yCallback, legendDisplay) {
   };
 }
 
-function _analyticsGetLongest(reports) {
-  let longest = reports[0];
-  for (const r of reports) { if (getBalanceCurve(r).length > getBalanceCurve(longest).length) longest = r; }
-  return longest;
-}
-
 function buildAnalyticsAllEquity(reports) {
   if (CHARTS.analyticsAllEquity) CHARTS.analyticsAllEquity.destroy();
   const ctx = document.getElementById('analyticsAllEquity').getContext('2d');
-  const datasets = [];
+  // Build date-aligned datasets for each individual strategy
+  const allDatesSet = new Set();
+  const strategyData = [];
   for (let i = 0; i < reports.length; i++) {
     const r = reports[i];
     const curve = getBalanceCurve(r);
     if (curve.length < 2) continue;
     const init = curve[0].balance;
-    datasets.push({
-      label: getSymbol(r),
-      data: curve.map(p => ((p.balance - init) / init) * 100),
-      borderColor: COMPARE_COLORS[i % COMPARE_COLORS.length],
-      backgroundColor: 'transparent',
-      borderWidth: 1.5, fill: false, pointRadius: 0, tension: 0.1
-    });
+    const dateMap = {};
+    for (const p of curve) {
+      const d = (p.time || '').split(' ')[0];
+      if (d.length >= 8) { dateMap[d] = ((p.balance - init) / init) * 100; allDatesSet.add(d); }
+    }
+    strategyData.push({ sym: getSymbol(r), dateMap, idx: i });
   }
-  if (datasets.length === 0) return;
-  const labels = getBalanceCurve(_analyticsGetLongest(reports)).map(p => p.time.split(' ')[0]);
+  if (strategyData.length === 0) return;
+  const allDates = [...allDatesSet].sort();
+  const datasets = strategyData.map(s => {
+    const data = [];
+    let lastVal = 0;
+    for (const d of allDates) {
+      if (s.dateMap[d] !== undefined) lastVal = s.dateMap[d];
+      data.push(lastVal);
+    }
+    return {
+      label: s.sym, data,
+      borderColor: COMPARE_COLORS[s.idx % COMPARE_COLORS.length],
+      backgroundColor: 'transparent', borderWidth: 1.5, fill: false, pointRadius: 0, tension: 0.1
+    };
+  });
   const opts = _analyticsChartOpts(v => v.toFixed(1) + '%', true);
-  CHARTS.analyticsAllEquity = new Chart(ctx, { type: 'line', data: { labels, datasets }, options: opts });
+  CHARTS.analyticsAllEquity = new Chart(ctx, { type: 'line', data: { labels: allDates, datasets }, options: opts });
   document.getElementById('analyticsAllEquity').ondblclick = () => { if (CHARTS.analyticsAllEquity) CHARTS.analyticsAllEquity.resetZoom(); };
 }
 
-function buildAnalyticsCombinedEquity(reports) {
+function buildAnalyticsCombinedEquity(portfolio) {
   if (CHARTS.analyticsCombinedEquity) CHARTS.analyticsCombinedEquity.destroy();
   const ctx = document.getElementById('analyticsCombinedEquity').getContext('2d');
-  const ids = reports.map(r => r.id);
-  const { combined } = PORTFOLIO_SYSTEM.computeCombined(ids);
+  const { combined, labels } = portfolio;
   if (combined.length < 2) return;
   const init = combined[0].balance;
   const data = combined.map(p => ((p.balance - init) / init) * 100);
-  const labels = combined.map(p => (p.time || '').split(' ')[0]);
   const opts = _analyticsChartOpts(v => v.toFixed(1) + '%', false);
   opts.plugins.tooltip.callbacks.label = c => 'Return: ' + c.parsed.y.toFixed(2) + '%';
   opts.plugins.tooltip.bodyColor = V.neon;
@@ -3560,40 +3646,53 @@ function buildAnalyticsCombinedEquity(reports) {
 function buildAnalyticsAllDD(reports) {
   if (CHARTS.analyticsAllDD) CHARTS.analyticsAllDD.destroy();
   const ctx = document.getElementById('analyticsAllDD').getContext('2d');
-  const datasets = [];
+  // Build date-aligned drawdown for each strategy
+  const allDatesSet = new Set();
+  const strategyData = [];
   for (let i = 0; i < reports.length; i++) {
     const r = reports[i];
     const curve = getBalanceCurve(r);
     if (curve.length < 2) continue;
-    const bals = curve.map(p => p.balance);
-    let peak = bals[0];
-    const dd = bals.map(b => { if (b > peak) peak = b; return ((b - peak) / peak) * 100; });
-    datasets.push({
-      label: getSymbol(r),
-      data: dd,
-      borderColor: COMPARE_COLORS[i % COMPARE_COLORS.length],
-      backgroundColor: 'transparent',
-      borderWidth: 1.5, fill: false, pointRadius: 0, tension: 0.1
-    });
+    const dateDD = {};
+    let peak = curve[0].balance;
+    for (const p of curve) {
+      const d = (p.time || '').split(' ')[0];
+      if (d.length < 8) continue;
+      if (p.balance > peak) peak = p.balance;
+      dateDD[d] = ((p.balance - peak) / peak) * 100;
+      allDatesSet.add(d);
+    }
+    strategyData.push({ sym: getSymbol(r), dateDD, idx: i });
   }
-  if (datasets.length === 0) return;
-  const labels = getBalanceCurve(_analyticsGetLongest(reports)).map(p => p.time.split(' ')[0]);
+  if (strategyData.length === 0) return;
+  const allDates = [...allDatesSet].sort();
+  const datasets = strategyData.map(s => {
+    const data = [];
+    let lastVal = 0;
+    for (const d of allDates) {
+      if (s.dateDD[d] !== undefined) lastVal = s.dateDD[d];
+      data.push(lastVal);
+    }
+    return {
+      label: s.sym, data,
+      borderColor: COMPARE_COLORS[s.idx % COMPARE_COLORS.length],
+      backgroundColor: 'transparent', borderWidth: 1.5, fill: false, pointRadius: 0, tension: 0.1
+    };
+  });
   const opts = _analyticsChartOpts(v => v.toFixed(1) + '%', true);
   opts.scales.y.max = 0;
-  CHARTS.analyticsAllDD = new Chart(ctx, { type: 'line', data: { labels, datasets }, options: opts });
+  CHARTS.analyticsAllDD = new Chart(ctx, { type: 'line', data: { labels: allDates, datasets }, options: opts });
   document.getElementById('analyticsAllDD').ondblclick = () => { if (CHARTS.analyticsAllDD) CHARTS.analyticsAllDD.resetZoom(); };
 }
 
-function buildAnalyticsCombinedDD(reports) {
+function buildAnalyticsCombinedDD(portfolio) {
   if (CHARTS.analyticsCombinedDD) CHARTS.analyticsCombinedDD.destroy();
   const ctx = document.getElementById('analyticsCombinedDD').getContext('2d');
-  const ids = reports.map(r => r.id);
-  const { combined } = PORTFOLIO_SYSTEM.computeCombined(ids);
+  const { combined, labels } = portfolio;
   if (combined.length < 2) return;
   const bals = combined.map(p => p.balance);
   let peak = bals[0];
   const dd = bals.map(b => { if (b > peak) peak = b; return ((b - peak) / peak) * 100; });
-  const labels = combined.map(p => (p.time || '').split(' ')[0]);
   const opts = _analyticsChartOpts(v => v.toFixed(1) + '%', false);
   opts.scales.y.max = 0;
   opts.plugins.tooltip.callbacks.label = c => 'Drawdown: ' + c.parsed.y.toFixed(2) + '%';
@@ -3608,35 +3707,17 @@ function buildAnalyticsCombinedDD(reports) {
   document.getElementById('analyticsCombinedDD').ondblclick = () => { if (CHARTS.analyticsCombinedDD) CHARTS.analyticsCombinedDD.resetZoom(); };
 }
 
-function buildAnalyticsMonthly(reports) {
+function buildAnalyticsMonthly(portfolio) {
   if (CHARTS.analyticsMonthly) CHARTS.analyticsMonthly.destroy();
   const ctx = document.getElementById('analyticsMonthly').getContext('2d');
-  const ids = reports.map(r => r.id);
-  const { combined } = PORTFOLIO_SYSTEM.computeCombined(ids);
-  if (combined.length < 2) return;
-
-  // Group by month
-  const monthData = {};
-  for (const p of combined) {
-    const month = (p.time || '').substring(0, 7);
-    if (!month || month.length < 7) continue;
-    if (!monthData[month]) monthData[month] = { first: p.balance, last: p.balance };
-    monthData[month].last = p.balance;
-  }
-  const months = Object.keys(monthData).sort();
-  if (months.length < 2) return;
-  const monthReturns = [];
-  const monthLabels = [];
-  for (let i = 1; i < months.length; i++) {
-    const prev = monthData[months[i-1]].last;
-    const cur = monthData[months[i]].last;
-    monthReturns.push(((cur - prev) / prev) * 100);
-    monthLabels.push(months[i]);
-  }
-  const colors = monthReturns.map(r => r >= 0 ? V.neon : V.crimson);
+  const { monthlyReturns } = portfolio;
+  if (!monthlyReturns || monthlyReturns.length < 1) return;
+  const monthLabels = monthlyReturns.map(m => m.month);
+  const monthData = monthlyReturns.map(m => m.pct);
+  const colors = monthData.map(r => r >= 0 ? V.neon : V.crimson);
   CHARTS.analyticsMonthly = new Chart(ctx, {
     type: 'bar', data: { labels: monthLabels, datasets: [{
-      label: 'Monthly Return %', data: monthReturns,
+      label: 'Monthly Return %', data: monthData,
       backgroundColor: colors.map(c => c + '55'), borderColor: colors, borderWidth: 1
     }] },
     options: {
