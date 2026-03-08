@@ -1501,20 +1501,24 @@ table.portfolio tr.selected td { color: var(--t1); }
         <div class="kpi-card"><div class="kpi-label">WIN MONTHS</div><div class="kpi-value" id="anKpiWinMonths">&mdash;</div><div class="kpi-sub" id="anKpiWinMonthsSub">&mdash;</div></div>
         <div class="kpi-card"><div class="kpi-label">BEST / WORST MONTH</div><div class="kpi-value" id="anKpiBestMonth">&mdash;</div><div class="kpi-sub" id="anKpiWorstMonth">&mdash;</div></div>
       </div>
+      <!-- Strategy toggle strip (synced across equity & DD) -->
+      <div id="analyticsToggleStrip" style="display:flex;flex-wrap:wrap;gap:4px;padding:4px 0;margin-bottom:4px;align-items:center;">
+        <span style="font:600 8px/1 'JetBrains Mono';color:var(--t3);text-transform:uppercase;margin-right:4px;letter-spacing:.5px">Strategies:</span>
+      </div>
       <div class="perf-grid">
         <div class="chart-panel perf-full">
           <div class="chart-header"><span class="chart-title">ALL EQUITY CURVES (% RETURN)</span></div>
           <div class="chart-canvas-wrap"><canvas id="analyticsAllEquity"></canvas></div>
+        </div>
+        <div class="chart-panel perf-full">
+          <div class="chart-header"><span class="chart-title">ALL DRAWDOWNS</span></div>
+          <div class="chart-canvas-wrap"><canvas id="analyticsAllDD"></canvas></div>
         </div>
         <div class="chart-panel">
           <div class="chart-header"><span class="chart-title">COMBINED PORTFOLIO EQUITY</span></div>
           <div class="chart-canvas-wrap"><canvas id="analyticsCombinedEquity"></canvas></div>
         </div>
         <div class="chart-panel">
-          <div class="chart-header"><span class="chart-title">ALL DRAWDOWNS</span></div>
-          <div class="chart-canvas-wrap"><canvas id="analyticsAllDD"></canvas></div>
-        </div>
-        <div class="chart-panel perf-full">
           <div class="chart-header"><span class="chart-title">COMBINED PORTFOLIO DRAWDOWN</span></div>
           <div class="chart-canvas-wrap"><canvas id="analyticsCombinedDD"></canvas></div>
         </div>
@@ -3502,6 +3506,79 @@ function computeCombinedByDate(reports) {
   return { combined, labels: allDates, monthlyReturns };
 }
 
+// ─── ANALYTICS STATE ───
+const ANALYTICS_STATE = {
+  hiddenStrategies: new Set(),   // strategy symbols currently hidden
+  strategyMeta: [],              // [{ sym, color, idx }] built on each render
+  toggle(sym) {
+    if (this.hiddenStrategies.has(sym)) this.hiddenStrategies.delete(sym);
+    else this.hiddenStrategies.add(sym);
+    this._refreshToggles();
+    // Update chart visibility without full re-render
+    [CHARTS.analyticsAllEquity, CHARTS.analyticsAllDD].forEach(chart => {
+      if (!chart) return;
+      chart.data.datasets.forEach(ds => {
+        if (ds._sym === sym) ds.hidden = this.hiddenStrategies.has(sym);
+      });
+      chart.update('none');
+    });
+  },
+  showAll() { this.hiddenStrategies.clear(); this._refreshToggles(); this._syncCharts(); },
+  hideAll() { this.strategyMeta.forEach(s => this.hiddenStrategies.add(s.sym)); this._refreshToggles(); this._syncCharts(); },
+  _syncCharts() {
+    [CHARTS.analyticsAllEquity, CHARTS.analyticsAllDD].forEach(chart => {
+      if (!chart) return;
+      chart.data.datasets.forEach(ds => { if (ds._sym) ds.hidden = this.hiddenStrategies.has(ds._sym); });
+      chart.update('none');
+    });
+  },
+  _refreshToggles() {
+    const strip = document.getElementById('analyticsToggleStrip');
+    if (!strip) return;
+    strip.querySelectorAll('.an-toggle-pill').forEach(pill => {
+      const sym = pill.dataset.sym;
+      const hidden = this.hiddenStrategies.has(sym);
+      pill.style.opacity = hidden ? '0.3' : '1';
+      pill.style.textDecoration = hidden ? 'line-through' : 'none';
+    });
+  }
+};
+
+function _buildToggleStrip(strategyMeta) {
+  ANALYTICS_STATE.strategyMeta = strategyMeta;
+  const strip = document.getElementById('analyticsToggleStrip');
+  if (!strip) return;
+  // Keep the label, remove old pills
+  strip.querySelectorAll('.an-toggle-pill,.an-toggle-action').forEach(el => el.remove());
+  strategyMeta.forEach(s => {
+    const pill = document.createElement('span');
+    pill.className = 'an-toggle-pill';
+    pill.dataset.sym = s.sym;
+    pill.style.cssText = 'display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border:1px solid ' + s.color + '44;background:' + s.color + '11;color:' + s.color + ';font:600 8px/1 "JetBrains Mono";cursor:pointer;letter-spacing:.3px;transition:opacity .15s;user-select:none';
+    pill.style.opacity = ANALYTICS_STATE.hiddenStrategies.has(s.sym) ? '0.3' : '1';
+    pill.style.textDecoration = ANALYTICS_STATE.hiddenStrategies.has(s.sym) ? 'line-through' : 'none';
+    const dot = document.createElement('span');
+    dot.style.cssText = 'width:6px;height:6px;border-radius:50%;background:' + s.color;
+    pill.appendChild(dot);
+    pill.appendChild(document.createTextNode(s.sym));
+    pill.onclick = () => ANALYTICS_STATE.toggle(s.sym);
+    strip.appendChild(pill);
+  });
+  // Show All / Hide All buttons
+  const makeBtn = (label, fn) => {
+    const b = document.createElement('span');
+    b.className = 'an-toggle-action';
+    b.textContent = label;
+    b.style.cssText = 'padding:2px 6px;border:1px solid var(--g400);color:var(--t3);font:600 7px/1 "JetBrains Mono";cursor:pointer;letter-spacing:.3px;text-transform:uppercase;transition:color .15s';
+    b.onmouseenter = () => b.style.color = 'var(--t1)';
+    b.onmouseleave = () => b.style.color = 'var(--t3)';
+    b.onclick = fn;
+    return b;
+  };
+  strip.appendChild(makeBtn('SHOW ALL', () => ANALYTICS_STATE.showAll()));
+  strip.appendChild(makeBtn('HIDE ALL', () => ANALYTICS_STATE.hideAll()));
+}
+
 function renderAnalytics() {
   const empty = document.getElementById('analyticsEmpty');
   const content = document.getElementById('analyticsContent');
@@ -3538,15 +3615,13 @@ function renderAnalytics() {
     document.getElementById('anKpiMaxDD').textContent = maxDD.toFixed(2) + '%';
     document.getElementById('anKpiMaxDDSub').textContent = 'FROM COMBINED CURVE';
 
-    // Portfolio Sharpe from combined curve periodic returns
-    // Compute Sharpe from period returns with proper annualization
+    // Portfolio Sharpe from combined curve periodic returns (sample variance + proper annualization)
     const returns = [];
     for (let i = 1; i < bals.length; i++) returns.push((bals[i] - bals[i-1]) / bals[i-1]);
     if (returns.length > 1) {
       const mean = returns.reduce((a,b)=>a+b,0) / returns.length;
-      const variance = returns.reduce((s,r) => s + (r-mean)*(r-mean), 0) / (returns.length - 1); // sample variance
+      const variance = returns.reduce((s,r) => s + (r-mean)*(r-mean), 0) / (returns.length - 1);
       const stdev = Math.sqrt(variance);
-      // Estimate periods per year from actual date span
       const firstDate = new Date(combined[0].time.replace(/\./g,'-'));
       const lastDate = new Date(combined[combined.length-1].time.replace(/\./g,'-'));
       const spanDays = Math.max(1, (lastDate - firstDate) / 86400000);
@@ -3570,33 +3645,63 @@ function renderAnalytics() {
     }
   }
 
+  // Build shared strategy metadata for toggle strip + charts
+  const strategyMeta = [];
+  for (let i = 0; i < reports.length; i++) {
+    const r = reports[i];
+    const curve = getBalanceCurve(r);
+    if (curve.length < 2) continue;
+    strategyMeta.push({ sym: getSymbol(r), color: COMPARE_COLORS[i % COMPARE_COLORS.length], idx: i });
+  }
+  _buildToggleStrip(strategyMeta);
+
   buildAnalyticsAllEquity(reports);
-  buildAnalyticsCombinedEquity(portfolio);
   buildAnalyticsAllDD(reports);
+  buildAnalyticsCombinedEquity(portfolio);
   buildAnalyticsCombinedDD(portfolio);
   buildAnalyticsMonthly(portfolio);
 }
 
-function _analyticsChartOpts(yCallback, legendDisplay) {
-  return {
+function _analyticsChartOpts(yCallback, isMultiStrategy) {
+  const opts = {
     responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
+    spanGaps: false, // null values create gaps (no false data)
     scales: {
       x: { display: true, grid: { color: 'rgba(42,42,42,0.5)', lineWidth: 0.5 }, ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, maxTicksLimit: 12, maxRotation: 0 } },
       y: { display: true, grid: { color: 'rgba(42,42,42,0.5)', lineWidth: 0.5 }, ticks: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t3, callback: yCallback } }
     },
     plugins: {
-      legend: legendDisplay ? { display: true, position: 'top', labels: { font: { family: "'JetBrains Mono'", size: 8 }, color: V.t2, boxWidth: 10, padding: 6, usePointStyle: true } } : { display: false },
-      tooltip: { backgroundColor: V.g700+'ee', titleFont: { family: "'JetBrains Mono'", size: 9 }, bodyFont: { family: "'JetBrains Mono'", size: 9 }, titleColor: V.t3, bodyColor: V.t1, borderColor: V.g400, borderWidth: 1, callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y.toFixed(2) + '%' } },
+      legend: { display: false }, // toggles handled by our custom strip
+      tooltip: {
+        backgroundColor: V.g700+'ee', titleFont: { family: "'JetBrains Mono'", size: 9 }, bodyFont: { family: "'JetBrains Mono'", size: 9 },
+        titleColor: V.t3, bodyColor: V.t1, borderColor: V.g400, borderWidth: 1,
+        filter: item => item.parsed.y !== null, // skip null (pre-trade) values
+        callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y.toFixed(2) + '%' }
+      },
       zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: false }, pinch: { enabled: true }, drag: { enabled: true, backgroundColor: 'rgba(0,255,136,0.08)', borderColor: 'rgba(0,255,136,0.3)', borderWidth: 1 }, mode: 'x' } }
     },
     interaction: { mode: 'index', intersect: false }
   };
+  return opts;
+}
+
+// Build date-aligned data for a strategy with null before first trade date
+function _buildDateAlignedData(dateMap, allDates, firstDate) {
+  const data = [];
+  let lastVal = null;
+  let started = false;
+  for (const d of allDates) {
+    if (!started && d < firstDate) { data.push(null); continue; }
+    started = true;
+    if (dateMap[d] !== undefined) lastVal = dateMap[d];
+    data.push(lastVal);
+  }
+  return data;
 }
 
 function buildAnalyticsAllEquity(reports) {
   if (CHARTS.analyticsAllEquity) CHARTS.analyticsAllEquity.destroy();
   const ctx = document.getElementById('analyticsAllEquity').getContext('2d');
-  // Build date-aligned datasets for each individual strategy
   const allDatesSet = new Set();
   const strategyData = [];
   for (let i = 0; i < reports.length; i++) {
@@ -3605,25 +3710,26 @@ function buildAnalyticsAllEquity(reports) {
     if (curve.length < 2) continue;
     const init = curve[0].balance;
     const dateMap = {};
+    let firstDate = null;
     for (const p of curve) {
       const d = (p.time || '').split(' ')[0];
-      if (d.length >= 8) { dateMap[d] = ((p.balance - init) / init) * 100; allDatesSet.add(d); }
+      if (d.length < 8) continue;
+      if (!firstDate) firstDate = d;
+      dateMap[d] = ((p.balance - init) / init) * 100;
+      allDatesSet.add(d);
     }
-    strategyData.push({ sym: getSymbol(r), dateMap, idx: i });
+    strategyData.push({ sym: getSymbol(r), dateMap, firstDate, idx: i });
   }
   if (strategyData.length === 0) return;
   const allDates = [...allDatesSet].sort();
   const datasets = strategyData.map(s => {
-    const data = [];
-    let lastVal = 0;
-    for (const d of allDates) {
-      if (s.dateMap[d] !== undefined) lastVal = s.dateMap[d];
-      data.push(lastVal);
-    }
+    const data = _buildDateAlignedData(s.dateMap, allDates, s.firstDate);
+    const color = COMPARE_COLORS[s.idx % COMPARE_COLORS.length];
     return {
-      label: s.sym, data,
-      borderColor: COMPARE_COLORS[s.idx % COMPARE_COLORS.length],
-      backgroundColor: 'transparent', borderWidth: 1.5, fill: false, pointRadius: 0, tension: 0.1
+      label: s.sym, _sym: s.sym, data,
+      borderColor: color, backgroundColor: 'transparent', borderWidth: 1.5,
+      fill: false, pointRadius: 0, tension: 0.1, spanGaps: true, // connect within strategy's range
+      hidden: ANALYTICS_STATE.hiddenStrategies.has(s.sym)
     };
   });
   const opts = _analyticsChartOpts(v => v.toFixed(1) + '%', true);
@@ -3645,7 +3751,7 @@ function buildAnalyticsCombinedEquity(portfolio) {
     type: 'line', data: { labels, datasets: [{
       label: 'Combined Portfolio', data,
       borderColor: V.neon, backgroundColor: V.neonBg,
-      borderWidth: 2, fill: true, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: V.neon, tension: 0.1
+      borderWidth: 2, fill: true, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: V.neon, tension: 0.1, spanGaps: true
     }] }, options: opts
   });
   document.getElementById('analyticsCombinedEquity').ondblclick = () => { if (CHARTS.analyticsCombinedEquity) CHARTS.analyticsCombinedEquity.resetZoom(); };
@@ -3654,7 +3760,6 @@ function buildAnalyticsCombinedEquity(portfolio) {
 function buildAnalyticsAllDD(reports) {
   if (CHARTS.analyticsAllDD) CHARTS.analyticsAllDD.destroy();
   const ctx = document.getElementById('analyticsAllDD').getContext('2d');
-  // Build date-aligned drawdown for each strategy
   const allDatesSet = new Set();
   const strategyData = [];
   for (let i = 0; i < reports.length; i++) {
@@ -3663,28 +3768,27 @@ function buildAnalyticsAllDD(reports) {
     if (curve.length < 2) continue;
     const dateDD = {};
     let peak = curve[0].balance;
+    let firstDate = null;
     for (const p of curve) {
       const d = (p.time || '').split(' ')[0];
       if (d.length < 8) continue;
+      if (!firstDate) firstDate = d;
       if (p.balance > peak) peak = p.balance;
       dateDD[d] = ((p.balance - peak) / peak) * 100;
       allDatesSet.add(d);
     }
-    strategyData.push({ sym: getSymbol(r), dateDD, idx: i });
+    strategyData.push({ sym: getSymbol(r), dateDD, firstDate, idx: i });
   }
   if (strategyData.length === 0) return;
   const allDates = [...allDatesSet].sort();
   const datasets = strategyData.map(s => {
-    const data = [];
-    let lastVal = 0;
-    for (const d of allDates) {
-      if (s.dateDD[d] !== undefined) lastVal = s.dateDD[d];
-      data.push(lastVal);
-    }
+    const data = _buildDateAlignedData(s.dateDD, allDates, s.firstDate);
+    const color = COMPARE_COLORS[s.idx % COMPARE_COLORS.length];
     return {
-      label: s.sym, data,
-      borderColor: COMPARE_COLORS[s.idx % COMPARE_COLORS.length],
-      backgroundColor: 'transparent', borderWidth: 1.5, fill: false, pointRadius: 0, tension: 0.1
+      label: s.sym, _sym: s.sym, data,
+      borderColor: color, backgroundColor: 'transparent', borderWidth: 1.5,
+      fill: false, pointRadius: 0, tension: 0.1, spanGaps: true,
+      hidden: ANALYTICS_STATE.hiddenStrategies.has(s.sym)
     };
   });
   const opts = _analyticsChartOpts(v => v.toFixed(1) + '%', true);
@@ -3709,7 +3813,7 @@ function buildAnalyticsCombinedDD(portfolio) {
     type: 'line', data: { labels, datasets: [{
       label: 'Combined Drawdown', data: dd,
       borderColor: V.crimson, backgroundColor: V.crimsonBg,
-      borderWidth: 1.5, fill: true, pointRadius: 0, pointHoverRadius: 3, pointHoverBackgroundColor: V.crimson, tension: 0.1
+      borderWidth: 1.5, fill: true, pointRadius: 0, pointHoverRadius: 3, pointHoverBackgroundColor: V.crimson, tension: 0.1, spanGaps: true
     }] }, options: opts
   });
   document.getElementById('analyticsCombinedDD').ondblclick = () => { if (CHARTS.analyticsCombinedDD) CHARTS.analyticsCombinedDD.resetZoom(); };
