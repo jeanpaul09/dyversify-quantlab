@@ -4421,9 +4421,11 @@ function buildHistogramChart() {
     return (R(r, 'netProfit') / dep) * 100;
   }).filter(v => v !== null);
 
+  if (returns.length === 0) return; // no valid data — skip chart
   // Build histogram bins (5% intervals)
   const minR = Math.floor(Math.min(...returns) / 5) * 5;
   const maxR = Math.ceil(Math.max(...returns) / 5) * 5;
+  if (!isFinite(minR) || !isFinite(maxR) || minR >= maxR) return;
   const bins = [];
   const binLabels = [];
   for (let i = minR; i < maxR; i += 5) {
@@ -5116,9 +5118,11 @@ const MONTE_CARLO = {
     if (this.chartInstances.retHist) this.chartInstances.retHist.destroy();
 
     const returns = result.returns || result.finalEquities.map(e => ((e - result.initBal) / result.initBal) * 100);
+    if (!returns || returns.length === 0) return;
     const binSize = 10;
     const minBin = Math.floor(Math.min(...returns) / binSize) * binSize;
     const maxBin = Math.ceil(Math.max(...returns) / binSize) * binSize;
+    if (!isFinite(minBin) || !isFinite(maxBin) || minBin >= maxBin) return;
     const bins = [];
     const labels = [];
     const var95 = result.metrics.var95;
@@ -5334,6 +5338,7 @@ const PORTFOLIO_SYSTEM = {
       for (const c of curves) {
         const idx = Math.min(i, c.curve.length - 1);
         totalBal += c.curve[idx].balance; // actual balance, not normalized
+      }
       const time = curves[0].curve[Math.min(i, curves[0].curve.length - 1)].time || '';
       combined.push({ time, balance: totalBal });
     }
