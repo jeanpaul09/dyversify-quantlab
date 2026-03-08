@@ -3494,7 +3494,9 @@ function computeCombinedByDate(reports) {
   for (let i = 1; i < months.length; i++) {
     const prev = monthBals[months[i-1]].last;
     const cur = monthBals[months[i]].last;
-    monthlyReturns.push({ month: months[i], pct: ((cur - prev) / prev) * 100 });
+    const mFirst = monthBals[months[i]].first;
+    const mLast = monthBals[months[i]].last;
+    monthlyReturns.push({ month: months[i], pct: ((mLast - mFirst) / mFirst) * 100 });
   }
 
   return { combined, labels: allDates, monthlyReturns };
@@ -3537,13 +3539,19 @@ function renderAnalytics() {
     document.getElementById('anKpiMaxDDSub').textContent = 'FROM COMBINED CURVE';
 
     // Portfolio Sharpe from combined curve periodic returns
+    // Compute Sharpe from period returns with proper annualization
     const returns = [];
     for (let i = 1; i < bals.length; i++) returns.push((bals[i] - bals[i-1]) / bals[i-1]);
     if (returns.length > 1) {
       const mean = returns.reduce((a,b)=>a+b,0) / returns.length;
-      const variance = returns.reduce((s,r) => s + (r-mean)*(r-mean), 0) / returns.length;
+      const variance = returns.reduce((s,r) => s + (r-mean)*(r-mean), 0) / (returns.length - 1); // sample variance
       const stdev = Math.sqrt(variance);
-      const sharpe = stdev > 0 ? (mean / stdev) * Math.sqrt(252) : 0;
+      // Estimate periods per year from actual date span
+      const firstDate = new Date(combined[0].time.replace(/\./g,'-'));
+      const lastDate = new Date(combined[combined.length-1].time.replace(/\./g,'-'));
+      const spanDays = Math.max(1, (lastDate - firstDate) / 86400000);
+      const periodsPerYear = (returns.length / spanDays) * 365;
+      const sharpe = stdev > 0 ? (mean / stdev) * Math.sqrt(periodsPerYear) : 0;
       document.getElementById('anKpiSharpe').textContent = sharpe.toFixed(2);
       document.getElementById('anKpiSharpeSub').textContent = 'ANNUALIZED (' + returns.length + ' PERIODS)';
     }
