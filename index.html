@@ -3666,18 +3666,13 @@ function renderAnalytics() {
 }
 
 // ─── GLOW DOT PLUGIN ───
-// Draws a glowing radial light at the last data point of each visible line
+// Draws a glowing radial light at the last data point of each visible line.
+// Static glow (no animation loop) — drawn once per chart render, zero CPU overhead.
 const glowDotPlugin = {
   id: 'glowDot',
-  _frame: 0,
-  _raf: null,
-  afterDraw(chart) {
+  afterDatasetsDraw(chart) {
     if (!chart.options.plugins.glowDot) return;
     const ctx = chart.ctx;
-    const now = Date.now();
-    // Subtle pulse: oscillate glow radius between 0.85x and 1.15x over 2.5s
-    const pulse = 0.85 + 0.15 * (Math.sin(now / 400) + 1);
-
     ctx.save();
     chart.data.datasets.forEach((ds, i) => {
       if (ds.hidden) return;
@@ -3695,52 +3690,36 @@ const glowDotPlugin = {
       const color = ds.borderColor || '#ffffff';
 
       // Outer glow — large soft radial gradient
-      const glowR = 28 * pulse;
-      const glow = ctx.createRadialGradient(x, y, 0, x, y, glowR);
-      glow.addColorStop(0, color + '44');
-      glow.addColorStop(0.3, color + '18');
-      glow.addColorStop(0.7, color + '08');
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, 30);
+      glow.addColorStop(0, color + '40');
+      glow.addColorStop(0.25, color + '1a');
+      glow.addColorStop(0.6, color + '08');
       glow.addColorStop(1, 'transparent');
       ctx.fillStyle = glow;
       ctx.beginPath();
-      ctx.arc(x, y, glowR, 0, Math.PI * 2);
+      ctx.arc(x, y, 30, 0, Math.PI * 2);
       ctx.fill();
 
-      // Mid glow — tighter bloom
-      const midR = 12 * pulse;
-      const mid = ctx.createRadialGradient(x, y, 0, x, y, midR);
+      // Mid bloom — tighter intensity
+      const mid = ctx.createRadialGradient(x, y, 0, x, y, 12);
       mid.addColorStop(0, color + '66');
       mid.addColorStop(0.5, color + '22');
       mid.addColorStop(1, 'transparent');
       ctx.fillStyle = mid;
       ctx.beginPath();
-      ctx.arc(x, y, midR, 0, Math.PI * 2);
+      ctx.arc(x, y, 12, 0, Math.PI * 2);
       ctx.fill();
 
-      // Core dot — bright solid center
+      // Core dot — bright solid center with shadow glow
       ctx.fillStyle = color;
       ctx.shadowColor = color;
-      ctx.shadowBlur = 8 * pulse;
+      ctx.shadowBlur = 10;
       ctx.beginPath();
       ctx.arc(x, y, 2.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
     });
     ctx.restore();
-
-    // Throttled re-draw for pulse (~20fps, light on CPU)
-    if (!chart._glowActive) {
-      chart._glowActive = true;
-      const tick = () => {
-        if (!chart._glowActive || !chart.canvas || !chart.canvas.isConnected) { chart._glowActive = false; return; }
-        chart.draw();
-        setTimeout(() => requestAnimationFrame(tick), 50);
-      };
-      setTimeout(() => requestAnimationFrame(tick), 50);
-    }
-  },
-  afterDestroy(chart) {
-    chart._glowActive = false;
   }
 };
 Chart.register(glowDotPlugin);
