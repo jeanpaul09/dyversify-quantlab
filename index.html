@@ -1625,33 +1625,6 @@ const STATE = {
   }
 };
 
-// ─── GLOW DOT PLUGIN ───
-const glowDotPlugin = {
-  id: 'glowDot',
-  afterDatasetsDraw(chart) {
-    const ctx = chart.ctx;
-    chart.data.datasets.forEach((dataset, i) => {
-      if (!dataset.data || !dataset._sym) return;
-      const meta = chart.getDatasetMeta(i);
-      if (meta.hidden) return;
-      const color = dataset.borderColor || '#00ff88';
-      const glowColor = color + '40';
-      dataset.data.forEach((val, idx) => {
-        if (val === null || val === undefined) return;
-        const point = meta.data[idx];
-        if (!point || point.skip) return;
-        const x = point.x, y = point.y;
-        if (!isFinite(x) || !isFinite(y)) return;
-        // Draw glow circle
-        ctx.fillStyle = glowColor;
-        ctx.beginPath();
-        ctx.arc(x, y, 6, 0, Math.PI * 2);
-        ctx.fill();
-      });
-    });
-  }
-};
-Chart.register(glowDotPlugin);
 
 const CHARTS = {
   equity: null,
@@ -3726,12 +3699,10 @@ function _analyticsChartOpts(yCallback, isMultiStrategy) {
         filter: item => item.parsed.y !== null, // skip null (pre-trade) values
         callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y.toFixed(2) + '%' }
       },
-      glowDot: true,
       zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: false }, pinch: { enabled: true }, drag: { enabled: true, backgroundColor: 'rgba(0,255,136,0.08)', borderColor: 'rgba(0,255,136,0.3)', borderWidth: 1 }, mode: 'x' } }
     },
     interaction: { mode: 'index', intersect: false }
   };
-  opts.layout = { padding: { right: 20 } };
   return opts;
 }
 
@@ -3775,13 +3746,10 @@ function buildAnalyticsAllEquity(reports) {
   const datasets = strategyData.map(s => {
     const data = _buildDateAlignedData(s.dateMap, allDates, s.firstDate);
     const color = COMPARE_COLORS[s.idx % COMPARE_COLORS.length];
-    const grad = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
-    grad.addColorStop(0, color + '40');
-    grad.addColorStop(1, color + '00');
     return {
       label: s.sym, _sym: s.sym, data,
-      borderColor: color, backgroundColor: grad, borderWidth: 1.5,
-      fill: true, pointRadius: 0, pointHoverRadius: 4, tension: 0.2, spanGaps: true,
+      borderColor: color, backgroundColor: 'transparent', borderWidth: 1.5,
+      fill: false, pointRadius: 0, pointHoverRadius: 3, tension: 0.15, spanGaps: true,
       hidden: ANALYTICS_STATE.hiddenStrategies.has(s.sym)
     };
   });
@@ -3798,8 +3766,8 @@ function buildAnalyticsCombinedEquity(portfolio) {
   const init = combined[0].balance;
   const data = combined.map(p => ((p.balance - init) / init) * 100);
   const grad = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
-  grad.addColorStop(0, 'rgba(0,255,136,0.35)');
-  grad.addColorStop(1, 'rgba(0,255,136,0.02)');
+  grad.addColorStop(0, 'rgba(0,255,136,0.15)');
+  grad.addColorStop(1, 'rgba(0,255,136,0.01)');
   const opts = _analyticsChartOpts(v => v.toFixed(1) + '%', false);
   opts.plugins.tooltip.callbacks.label = c => 'Return: ' + c.parsed.y.toFixed(2) + '%';
   opts.plugins.tooltip.bodyColor = V.neon;
@@ -3843,7 +3811,7 @@ function buildAnalyticsAllDD(reports) {
     return {
       label: s.sym, _sym: s.sym, data,
       borderColor: color, backgroundColor: 'transparent', borderWidth: 1.5,
-      fill: false, pointRadius: 0, pointHoverRadius: 4, tension: 0.2, spanGaps: true,
+      fill: false, pointRadius: 0, pointHoverRadius: 3, tension: 0.15, spanGaps: true,
       hidden: ANALYTICS_STATE.hiddenStrategies.has(s.sym)
     };
   });
@@ -3862,8 +3830,8 @@ function buildAnalyticsCombinedDD(portfolio) {
   let peak = bals[0];
   const dd = bals.map(b => { if (b > peak) peak = b; return ((b - peak) / peak) * 100; });
   const grad = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
-  grad.addColorStop(0, 'rgba(220,20,60,0.25)');
-  grad.addColorStop(1, 'rgba(220,20,60,0.02)');
+  grad.addColorStop(0, 'rgba(220,20,60,0.12)');
+  grad.addColorStop(1, 'rgba(220,20,60,0.01)');
   const opts = _analyticsChartOpts(v => v.toFixed(1) + '%', false);
   opts.scales.y.max = 0;
   opts.plugins.tooltip.callbacks.label = c => 'Drawdown (at peak): ' + c.parsed.y.toFixed(2) + '%';
