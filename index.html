@@ -3451,12 +3451,12 @@ function buildStreakChart(r) {
 
 // Date-aligned combined curve: merges all strategies by actual calendar date
 function computeCombinedByDate(reports) {
-  const perStrategy = 100000;
   const curveData = [];
   for (const r of reports) {
     const bc = getBalanceCurve(r);
     if (!bc || bc.length < 2) continue;
-    const initBal = bc[0].balance || perStrategy;
+    const initBal = bc[0].balance;
+    if (!initBal || initBal <= 0) continue; // skip — no real starting balance
     const dateMap = {};
     for (const p of bc) {
       const d = (p.time || '').split(' ')[0]; // YYYY.MM.DD
@@ -3471,7 +3471,8 @@ function computeCombinedByDate(reports) {
   for (const c of curveData) for (const d of c.dates) allDatesSet.add(d);
   const allDates = [...allDatesSet].sort();
 
-  // Build combined curve: for each date, forward-fill each strategy's last known balance
+  // Build combined curve: equal-weight using each strategy's REAL initial balance
+  // Each strategy contributes its own initBal; combined starts at sum of all initBals
   const combined = [];
   const lastKnown = curveData.map(c => c.initBal);
   for (const date of allDates) {
@@ -3479,8 +3480,7 @@ function computeCombinedByDate(reports) {
     for (let i = 0; i < curveData.length; i++) {
       const c = curveData[i];
       if (c.dateMap[date] !== undefined) lastKnown[i] = c.dateMap[date];
-      const pctReturn = (lastKnown[i] - c.initBal) / c.initBal;
-      totalBal += perStrategy * (1 + pctReturn);
+      totalBal += lastKnown[i]; // actual balance, no normalization to fake number
     }
     combined.push({ time: date, balance: totalBal });
   }
@@ -4294,11 +4294,12 @@ function buildHistogramChart() {
   const ctx = document.getElementById('histogramChart').getContext('2d');
   const reports = getDateFilteredReports();
 
-  // Calculate % return for each report
+  // Calculate % return for each report using REAL initial deposit only
   const returns = reports.map(r => {
-    const dep = (r.settings && r.settings.initialDeposit) || r.initialDeposit || 100000;
+    const dep = (r.settings && r.settings.initialDeposit) || r.initialDeposit || (getBalanceCurve(r)[0] && getBalanceCurve(r)[0].balance);
+    if (!dep || dep <= 0) return null;
     return (R(r, 'netProfit') / dep) * 100;
-  });
+  }).filter(v => v !== null);
 
   // Build histogram bins (5% intervals)
   const minR = Math.floor(Math.min(...returns) / 5) * 5;
@@ -4635,7 +4636,8 @@ const MONTE_CARLO = {
 
     const profits = deals.map(d => d.profit);
     const N = profits.length;
-    const initBal = parseFloat(R(report, 'initialDeposit') || report.settings?.initialDeposit) || 100000;
+    const initBal = parseFloat(R(report, 'initialDeposit') || report.settings?.initialDeposit) || (getBalanceCurve(report)[0] && getBalanceCurve(report)[0].balance) || 0;
+    if (initBal <= 0) return null; // no real initial balance — refuse to simulate
 
     // Determine block length
     const effectiveBlock = blockSize === 'auto' ? this._autoBlockLength(profits) : parseInt(blockSize) || 10;
@@ -5196,23 +5198,22 @@ const PORTFOLIO_SYSTEM = {
       if (!r) return null;
       const bc = getBalanceCurve(r);
       if (!bc || bc.length < 2) return null;
-      return { id, curve: bc, initBal: bc[0].balance || 100000 };
+      const ib = bc[0].balance;
+      if (!ib || ib <= 0) return null; // skip — no real starting balance
+      return { id, curve: bc, initBal: ib };
     }).filter(Boolean);
 
     if (curves.length === 0) return { combined: [], individual: curves, totalInit: 0 };
 
     const maxLen = Math.max(...curves.map(c => c.curve.length));
     const combined = [];
-    const perStrategy = 100000;
-    const totalInit = perStrategy * curves.length;
+    const totalInit = curves.reduce((s, c) => s + c.initBal, 0); // sum of REAL deposits
 
     for (let i = 0; i < maxLen; i++) {
       let totalBal = 0;
       for (const c of curves) {
         const idx = Math.min(i, c.curve.length - 1);
-        const pctReturn = (c.curve[idx].balance - c.initBal) / c.initBal;
-        totalBal += perStrategy * (1 + pctReturn);
-      }
+        totalBal += c.curve[idx].balance; // actual balance, not normalized
       const time = curves[0].curve[Math.min(i, curves[0].curve.length - 1)].time || '';
       combined.push({ time, balance: totalBal });
     }
@@ -5994,7 +5995,7 @@ function runQuantAnalyst() {
     sharpe: R(r,'sharpeRatio')||0, dd: Math.abs(R(r,'maxDDPct')||0),
     wr: R(r,'winRate')||0, trades: R(r,'totalTrades')||0,
     recovery: R(r,'recoveryFactor')||0,
-    dep: (r.settings&&r.settings.initialDeposit)||r.initialDeposit||100000
+    dep: (r.settings&&r.settings.initialDeposit)||r.initialDeposit||(getBalanceCurve(r)[0]&&getBalanceCurve(r)[0].balance)||0
   }));
 
   // ─── SCORING ENGINE ───
@@ -6348,7 +6349,7 @@ async function syncFromDrive() {
           symbol: row['Symbol'] || '',
           expert: row['Expert'] || '',
           period: row['Period'] || '',
-          initialDeposit: parseFloat(row['Initial Deposit']) || 100000,
+          initialDeposit: parseFloat(row['Initial Deposit']) || 0,
           leverage: row['Leverage'] || ''
         },
         results: {
