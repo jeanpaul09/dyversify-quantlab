@@ -257,6 +257,5 @@ export default function Dashboard() {
       </footer>
 
     </div>
-  
- "»
+  );
 }
