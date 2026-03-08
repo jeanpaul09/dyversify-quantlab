@@ -1898,6 +1898,10 @@ function setStyle(id, val) { setTag(id, 'style', val); }
 const _PAIR_RE = /^(EUR|GBP|USD|JPY|AUD|NZD|CAD|CHF|XAU|XAG|BTC|ETH|US30|NAS|SPX|USTEC|USDX)(USD|EUR|GBP|JPY|AUD|NZD|CAD|CHF|HKD|SGD|NOK|SEK|TRY|ZAR|MXN|PLN|CZK|HUF)?$/i;
 function _isCurrencyPair(s) { return _PAIR_RE.test((s || '').replace(/[^A-Za-z0-9]/g, '')); }
 
+// Session names — these are trading sessions, NOT trading styles
+const _SESSION_NAMES = ['LONDON','ASIA','NY','NEW YORK','NEWYORK','SYDNEY','TOKYO'];
+function _isSessionName(s) { return _SESSION_NAMES.includes((s || '').trim().toUpperCase()); }
+
 // Known trading style patterns → canonical name
 const _KNOWN_STYLES = [
   { patterns: ['MICRO-IMPULSE','MICRO_IMPULSE','MICROIMPULSE','MICRO IMPULSE'], style: 'MICRO-IMPULSE' },
@@ -1943,7 +1947,7 @@ function autoDetectTags(r) {
   // Re-evaluate if: no style set, OR current style is a currency pair, OR it starts with a pair prefix (malformed compound like "EURUSD---MICRO-INTRADAY")
   const currentStyle = tags[id].style || '';
   const _pairPrefix = /^(EUR|GBP|USD|JPY|AUD|NZD|CAD|CHF|XAU|XAG|BTC|ETH|US30|NAS|SPX|USTEC|USDX)(USD|EUR|GBP|JPY|AUD|NZD|CAD|CHF)?[-_\s]/i;
-  const needsStyle = !currentStyle || _isCurrencyPair(currentStyle) || _pairPrefix.test(currentStyle);
+  const needsStyle = !currentStyle || _isCurrencyPair(currentStyle) || _pairPrefix.test(currentStyle) || _isSessionName(currentStyle);
 
   if (needsStyle) {
     let detected = null;
@@ -1957,15 +1961,15 @@ function autoDetectTags(r) {
       if (folder && folder !== 'ROOT' && folder.length > 1) {
         let candidate = folder.replace(/\s*(REPORTS?|RESULTS?|BACKTESTS?|DATA)\s*/gi, '').trim();
         if (candidate) candidate = candidate.replace(/[_\s]+/g, '-').toUpperCase();
-        if (candidate && !_isCurrencyPair(candidate)) detected = candidate;
+        if (candidate && !_isCurrencyPair(candidate) && !_isSessionName(candidate)) detected = candidate;
       }
     }
 
     if (detected) {
       tags[id].style = detected;
       changed = true;
-    } else if (currentStyle && (_isCurrencyPair(currentStyle) || _pairPrefix.test(currentStyle))) {
-      // Remove the bad pair-based or malformed style entirely
+    } else if (currentStyle && (_isCurrencyPair(currentStyle) || _pairPrefix.test(currentStyle) || _isSessionName(currentStyle))) {
+      // Remove the bad pair-based, malformed, or session-name style entirely
       delete tags[id].style;
       changed = true;
     }
