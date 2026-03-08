@@ -1,0 +1,190 @@
+@import "tailwindcss";
+
+:root {
+  /* Brand Colors */
+  --void: #000000;
+  --graphite-900: #0a0a0a;
+  --graphite-800: #0d0d0d;
+  --graphite-700: #121212;
+  --graphite-600: #1a1a1a;
+  --graphite-500: #222222;
+  --graphite-400: #2a2a2a;
+  --graphite-300: #333333;
+
+  /* Accents */
+  --neon: #00ff88;
+  --neon-dim: #00cc6a;
+  --neon-glow: rgba(0, 255, 136, 0.15); /* Reduced from 0.4 */
+  --neon-subtle: rgba(0, 255, 136, 0.04); /* Reduced from 0.08 */
+
+  --amber: #ff9500;
+  --amber-glow: rgba(255, 149, 0, 0.15);
+  --amber-subtle: rgba(255, 149, 0, 0.04);
+
+  --crimson: #ff3b30;
+  --crimson-glow: rgba(255, 59, 48, 0.15);
+  --crimson-subtle: rgba(255, 59, 48, 0.04);
+
+  --violet: #a78bfa;
+  --violet-glow: rgba(167, 139, 250, 0.15);
+
+  /* Text Hierarchy */
+  --text-1: #ffffff;
+  --text-2: #888888;
+  --text-3: #555555;
+  --text-4: #333333;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Animation Durations */
+  --duration-instant: 50ms;
+  --duration-fast: 100ms;
+  --duration-normal: 150ms;
+  --duration-slow: 250ms;
+  --duration-slower: 400ms;
+
+  /* Easings */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+@theme inline {
+  --color-void: var(--void);
+  --color-graphite-900: var(--graphite-900);
+  --color-graphite-800: var(--graphite-800);
+  --color-graphite-700: var(--graphite-700);
+  --color-graphite-600: var(--graphite-600);
+  --color-graphite-500: var(--graphite-500);
+  --color-graphite-400: var(--graphite-400);
+  --color-graphite-300: var(--graphite-300);
+
+  --color-neon: var(--neon);
+  --color-neon-dim: var(--neon-dim);
+  --color-amber: var(--amber);
+  --color-crimson: var(--crimson);
+  --color-violet: var(--violet);
+
+  --color-text-1: var(--text-1);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-text-4: var(--text-4);
+
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+body {
+  background-color: var(--void);
+  color: var(--text-1);
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-feature-settings: "tnum" on, "zero" on;
+}
+
+/* Utilities */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.uppercase-tracking {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.neural-panel {
+  background: var(--graphite-800);
+  border: 1px solid var(--graphite-400);
+  position: relative;
+}
+
+.neural-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--graphite-400) 20%, var(--graphite-400) 80%, transparent 100%);
+  opacity: 0.5;
+}
+
+.neural-interactive {
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.neural-interactive:hover {
+  border-color: var(--neon);
+  box-shadow: 0 0 0 1px var(--neon), 0 0 12px var(--neon-glow);
+}
+
+.glow-neon {
+  box-shadow: 0 0 4px var(--neon-glow); /* Subtle box glow only */
+}
+
+/* Reduced Text Glow - only for titles, not data */
+.text-shadow-neon {
+  text-shadow: 0 0 8px var(--neon-glow); 
+}
+
+.dot-grid {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dot-grid::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: radial-gradient(circle, var(--graphite-400) 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0.15;
+}
+
+.scanlines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0.3; /* Reduced from 0.5 */
+}
+
+.scanlines::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 255, 255, 0.01) 2px,
+    rgba(255, 255, 255, 0.01) 4px
+  );
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse-slow {
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
