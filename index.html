@@ -1900,18 +1900,18 @@ function setStyle(id, val) { setTag(id, 'style', val); }
 // Session = the trading session (LONDON, ASIA, NY, SYDNEY, TOKYO)
 // Everything else (pairs, junk IDs, "Report", "Open", numbers) is ignored.
 
-// Session keywords — detected anywhere in text, including embedded (e.g. "LondonOpen")
-const _SESSION_RE = /\b(LONDON|ASIA|NY|NEW\s*YORK|SYDNEY|TOKYO)\b/i;
-const _SESSION_EMBEDDED_RE = /(LONDON|ASIA|NY|SYDNEY|TOKYO)/i;
-
+// Session detection — ordered longest-first to avoid false positives
+// Handles embedded forms: "LondonOpen" → LONDON, "AsiaWPullback" → ASIA
+// NY requires word boundary to avoid matching inside random words
 function _detectSession(text) {
   const t = (text || '').toUpperCase();
-  // Try word-boundary match first, then embedded
-  const m = t.match(_SESSION_RE) || t.match(_SESSION_EMBEDDED_RE);
-  if (!m) return null;
-  const raw = m[1].toUpperCase();
-  if (raw === 'NEW YORK' || raw === 'NEWYORK') return 'NY';
-  return raw;
+  if (t.includes('LONDON')) return 'LONDON';
+  if (t.includes('SYDNEY')) return 'SYDNEY';
+  if (t.includes('TOKYO'))  return 'TOKYO';
+  if (t.includes('ASIA'))   return 'ASIA';
+  if (/\bNEW[\s_-]*YORK\b/.test(t)) return 'NY';
+  if (/\bNY\b/.test(t))     return 'NY';
+  return null;
 }
 
 // Style detection — finds MICRO-<WORD> pattern in any text
@@ -3787,12 +3787,13 @@ function computeCombinedByDate(reports) {
     if (!bc || bc.length < 2) continue;
     const initBal = bc[0].balance;
     if (!initBal || initBal <= 0) continue;
+    // Normalize each strategy: store as growth factor (1.0 = initial deposit)
     const dateMap = {};
     for (const p of bc) {
       const d = (p.time || '').split(' ')[0]; // YYYY.MM.DD
-      if (d.length >= 8) dateMap[d] = p.balance;
+      if (d.length >= 8) dateMap[d] = p.balance / initBal;
     }
-    curveData.push({ initBal, dateMap, dates: Object.keys(dateMap).sort() });
+    curveData.push({ dateMap, dates: Object.keys(dateMap).sort() });
   }
   if (curveData.length === 0) return { combined: [], labels: [], monthlyReturns: [] };
 
@@ -3801,20 +3802,22 @@ function computeCombinedByDate(reports) {
   for (const c of curveData) for (const d of c.dates) allDatesSet.add(d);
   const allDates = [...allDatesSet].sort();
 
-  // Build combined curve: for each date, sum actual balances forward-filled per strategy
+  // Build EQUAL-WEIGHT normalized combined curve
+  // Each strategy contributes equally (1/N weight) regardless of deposit size
+  // Result: balance starts at 1.0, represents portfolio growth factor
   const combined = [];
-  const lastKnown = curveData.map(c => c.initBal);
+  const lastKnown = curveData.map(() => 1.0);
+  const n = curveData.length;
   for (const date of allDates) {
-    let totalBal = 0;
-    for (let i = 0; i < curveData.length; i++) {
-      const c = curveData[i];
-      if (c.dateMap[date] !== undefined) lastKnown[i] = c.dateMap[date];
-      totalBal += lastKnown[i];
+    let totalNorm = 0;
+    for (let i = 0; i < n; i++) {
+      if (curveData[i].dateMap[date] !== undefined) lastKnown[i] = curveData[i].dateMap[date];
+      totalNorm += lastKnown[i];
     }
-    combined.push({ time: date, balance: totalBal });
+    combined.push({ time: date, balance: totalNorm / n });
   }
 
-  // Compute monthly returns from the combined curve
+  // Compute monthly returns: % change from previous month end to current month end
   const monthBals = {};
   for (const p of combined) {
     const month = p.time.substring(0, 7); // YYYY.MM
@@ -3825,11 +3828,9 @@ function computeCombinedByDate(reports) {
   const months = Object.keys(monthBals).sort();
   const monthlyReturns = [];
   for (let i = 1; i < months.length; i++) {
-    const prev = monthBals[months[i-1]].last;
-    const cur = monthBals[months[i]].last;
-    const mFirst = monthBals[months[i]].first;
-    const mLast = monthBals[months[i]].last;
-    monthlyReturns.push({ month: months[i], pct: ((mLast - mFirst) / mFirst) * 100 });
+    const prevEnd = monthBals[months[i - 1]].last;
+    const curEnd = monthBals[months[i]].last;
+    monthlyReturns.push({ month: months[i], pct: ((curEnd - prevEnd) / prevEnd) * 100 });
   }
 
   return { combined, labels: allDates, monthlyReturns };
@@ -6799,8 +6800,8 @@ async function syncFromDrive() {
         if (periodMatch && lastPt.time) {
           const periodEnd = new Date(parseInt(periodMatch[1]), parseInt(periodMatch[2]) - 1, parseInt(periodMatch[3]));
           const lastTime = DATE_FILTER.parseTime(lastPt.time);
-          // If last curve point is more than 60 days before the period end, curve is truncated
-          if (lastTime && periodEnd && (periodEnd - lastTime) > 60 * 86400000) {
+          // If last curve point is more than 7 days before the period end, curve is truncated
+          if (lastTime && periodEnd && (periodEnd - lastTime) > 7 * 86400000) {
             console.warn('Curve truncated for ' + report.filename + ': last=' + lastPt.time + ' periodEnd=' + periodMatch[0]);
             report._curveTruncated = true;
           }
