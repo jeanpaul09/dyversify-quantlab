@@ -3779,32 +3779,52 @@ function buildStreakChart(r) {
 
 // ─── ANALYTICS TAB ───
 
-// Date-aligned combined curve: merges all strategies by actual calendar date
+// ─── DEALS-BASED COMBINED PORTFOLIO ENGINE ───
+// Builds combined equity curve from TRADE-LEVEL deals data (not downsampled balance curves).
+// This captures intra-day drawdowns that are lost when balance curves are downsampled
+// by the Apps Script (40K char limit halves points repeatedly).
+// Falls back to balance curves only when deals data is unavailable.
 function computeCombinedByDate(reports) {
+  // Phase 1: Build per-strategy normalized equity from DEALS (trade-level granularity)
   const curveData = [];
   for (const r of reports) {
+    const deals = (DATE_FILTER.isActive() ? DATE_FILTER.filterDeals(r) : (r.deals || []))
+      .filter(d => d.balance > 0 && d.time);
     const bc = getBalanceCurve(r);
-    if (!bc || bc.length < 2) continue;
-    const initBal = bc[0].balance;
-    if (!initBal || initBal <= 0) continue;
-    // Normalize each strategy: store as growth factor (1.0 = initial deposit)
-    const dateMap = {};
-    for (const p of bc) {
-      const d = (p.time || '').split(' ')[0]; // YYYY.MM.DD
-      if (d.length >= 8) dateMap[d] = p.balance / initBal;
+
+    // Prefer deals data (trade-level precision); fall back to balance curve
+    let dateMap = {};
+    let initBal = 0;
+    if (deals.length >= 2) {
+      initBal = deals[0].balance;
+      if (initBal > 0) {
+        for (const d of deals) {
+          const dt = (d.time || '').split(' ')[0];
+          if (dt.length >= 8) dateMap[dt] = d.balance / initBal;
+        }
+      }
     }
+    // Fallback: use balance curve if deals unavailable
+    if (Object.keys(dateMap).length < 2 && bc && bc.length >= 2) {
+      dateMap = {};
+      initBal = bc[0].balance;
+      if (initBal > 0) {
+        for (const p of bc) {
+          const dt = (p.time || '').split(' ')[0];
+          if (dt.length >= 8) dateMap[dt] = p.balance / initBal;
+        }
+      }
+    }
+    if (Object.keys(dateMap).length < 2 || initBal <= 0) continue;
     curveData.push({ dateMap, dates: Object.keys(dateMap).sort() });
   }
-  if (curveData.length === 0) return { combined: [], labels: [], monthlyReturns: [] };
+  if (curveData.length === 0) return { combined: [], labels: [], monthlyReturns: [], avgDD: 0, worstDD: 0 };
 
-  // Collect ALL unique dates across all strategies
+  // Phase 2: Merge all dates and build equal-weight combined growth curve
   const allDatesSet = new Set();
   for (const c of curveData) for (const d of c.dates) allDatesSet.add(d);
   const allDates = [...allDatesSet].sort();
 
-  // Build EQUAL-WEIGHT normalized combined curve
-  // Each strategy contributes equally (1/N weight) regardless of deposit size
-  // Result: balance starts at 1.0, represents portfolio growth factor
   const combined = [];
   const lastKnown = curveData.map(() => 1.0);
   const n = curveData.length;
@@ -3817,10 +3837,10 @@ function computeCombinedByDate(reports) {
     combined.push({ time: date, balance: totalNorm / n });
   }
 
-  // Compute monthly returns: % change from previous month end to current month end
+  // Phase 3: Compute monthly returns from combined curve
   const monthBals = {};
   for (const p of combined) {
-    const month = p.time.substring(0, 7); // YYYY.MM
+    const month = p.time.substring(0, 7);
     if (month.length < 7) continue;
     if (!monthBals[month]) monthBals[month] = { first: p.balance, last: p.balance };
     monthBals[month].last = p.balance;
@@ -3833,7 +3853,16 @@ function computeCombinedByDate(reports) {
     monthlyReturns.push({ month: months[i], pct: ((curEnd - prevEnd) / prevEnd) * 100 });
   }
 
-  return { combined, labels: allDates, monthlyReturns };
+  // Phase 4: Compute individual report DD metrics (from MT5-parsed values, most accurate)
+  let totalDD = 0, ddCount = 0, worstDD = 0;
+  for (const r of reports) {
+    const dd = Math.abs(parseFloat(R(r, 'maxDDPct')) || 0);
+    if (dd > 0) { totalDD += dd; ddCount++; }
+    if (dd > worstDD) worstDD = dd;
+  }
+  const avgDD = ddCount > 0 ? totalDD / ddCount : 0;
+
+  return { combined, labels: allDates, monthlyReturns, avgDD, worstDD };
 }
 
 // ─── ANALYTICS STATE ───
@@ -3959,12 +3988,20 @@ function renderAnalytics() {
     retEl.className = 'kpi-value ' + (totalReturn >= 0 ? 'pnl-pos' : 'pnl-neg');
     document.getElementById('anKpiReturnSub').textContent = 'EQUAL-WEIGHT ' + n + ' STRATEGIES';
 
-    // Portfolio Max DD from combined curve
-    const bals = combined.map(p => p.balance);
-    let peak = bals[0], maxDD = 0;
-    for (const b of bals) { if (b > peak) peak = b; const dd = ((b - peak) / peak) * 100; if (dd < maxDD) maxDD = dd; }
-    document.getElementById('anKpiMaxDD').textContent = maxDD.toFixed(2) + '%';
-    document.getElementById('anKpiMaxDDSub').textContent = 'FROM COMBINED CURVE';
+    // Portfolio Max DD — use individual strategy DDs from MT5 (accurate equity DD)
+    // The combined curve DD is diluted by diversification + downsampled balance data
+    const { avgDD, worstDD } = portfolio;
+    if (avgDD > 0) {
+      document.getElementById('anKpiMaxDD').textContent = '-' + avgDD.toFixed(2) + '%';
+      document.getElementById('anKpiMaxDDSub').textContent = 'AVG STRATEGY DD (WORST: ' + worstDD.toFixed(2) + '%)';
+    } else {
+      // Fallback: compute from combined curve
+      const bals = combined.map(p => p.balance);
+      let peak = bals[0], maxDD = 0;
+      for (const b of bals) { if (b > peak) peak = b; const dd = ((b - peak) / peak) * 100; if (dd < maxDD) maxDD = dd; }
+      document.getElementById('anKpiMaxDD').textContent = maxDD.toFixed(2) + '%';
+      document.getElementById('anKpiMaxDDSub').textContent = 'FROM COMBINED CURVE';
+    }
 
     // Portfolio Sharpe from combined curve periodic returns (sample variance + proper annualization)
     const returns = [];
@@ -6869,7 +6906,13 @@ document.getElementById('btnSyncDrive').addEventListener('click', syncFromDrive)
 async function fetchDriveBalanceCurves() {
   const missing = [];
   for (const [id, r] of store) {
-    if (r.source === 'drive' && r.driveFileId && (!r.balanceCurve || r.balanceCurve.length === 0 || r._curveTruncated || !r.deals || r.deals.length === 0)) {
+    // Re-fetch if: no curve, truncated, no deals, OR heavily downsampled
+    // (more than 100 trades but fewer than 100 curve points = data lost to Apps Script 40K limit)
+    const totalTrades = parseInt(R(r, 'totalTrades')) || 0;
+    const curveLen = (r.balanceCurve || []).length;
+    const dealsLen = (r.deals || []).length;
+    const isDownsampled = totalTrades > 100 && curveLen > 0 && curveLen < Math.min(totalTrades * 0.5, 200) && dealsLen < curveLen + 10;
+    if (r.source === 'drive' && r.driveFileId && (!r.balanceCurve || curveLen === 0 || r._curveTruncated || dealsLen === 0 || isDownsampled)) {
       missing.push(r);
     }
   }
