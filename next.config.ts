@@ -1,15 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  async redirects() {
-    return [
-      {
-        source: '/',
-        destination: '/quantlab.html',
-        permanent: false,
-      },
-    ];
-  },
+  // Redirect removed — root now serves the dashboard
+  // Auth middleware handles route protection
 };
 
 export default nextConfig;
