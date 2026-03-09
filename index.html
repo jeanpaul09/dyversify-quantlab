@@ -1959,7 +1959,7 @@ AUTH.init();
     ctx.lineJoin = 'round';
     for (let i = tailIdx; i < headIdx; i++) {
       const segFrac = (i - tailIdx) / visibleLen;  // 0 at tail → 1 at head
-      const segOpacity = line.maxOpacity * segFrac * segFrac;  // quadratic fade
+      const segOpacity = line.maxOpacity * segFrac;  // linear fade — tail stays visible longer
       if (segOpacity < 0.003) continue;
 
       // Glow
