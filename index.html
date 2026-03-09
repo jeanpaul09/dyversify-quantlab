@@ -1905,7 +1905,7 @@ AUTH.init();
 
   // Generate a sharp-angled market chart polyline
   function generateLine() {
-    const bullish = Math.random() > 0.25;  // 75% green
+    const bullish = Math.random() > 0.40;  // 60% green, 40% red
     const color = bullish ? 'rgba(0,255,136,' : 'rgba(255,59,48,';
     const segments = Math.floor(rand(30, 55));
     // Randomize start X across the full width — left third, middle, or right third
@@ -1930,7 +1930,7 @@ AUTH.init();
       progress: 0,
       drawSpeed: rand(0.004, 0.008),
       phase: 'drawing',  // 'drawing' | 'done'
-      tailLen: 0.65,      // visible tail = 65% of total line length
+      tailLen: 0.85,      // visible tail = 85% of total line length
       glowWidth: rand(4, 7)
     };
   }
