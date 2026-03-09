@@ -6196,9 +6196,16 @@ const PORTFOLIO_SYSTEM = {
         if (b.close <= a.open) continue;
         const overlapDur = Math.min(a.close, b.close) - Math.max(a.open, b.open);
         totalOverlapMs += overlapDur;
-        if (a.dir === b.dir) sameDirMs += overlapDur;
+        // Only count same-direction if BOTH have a valid direction (buy/sell)
+        if (a.dir && b.dir && a.dir === b.dir) sameDirMs += overlapDur;
       }
     }
+    // If overlap is negligible (< 1% of smaller strategy's total time), return 0
+    let totalI = 0, totalJ = 0;
+    for (const a of ti) totalI += a.close - a.open;
+    for (const b of tj) totalJ += b.close - b.open;
+    const minTotal = Math.min(totalI, totalJ);
+    if (minTotal > 0 && totalOverlapMs / minTotal < 0.01) return 0;
     return totalOverlapMs > 0 ? sameDirMs / totalOverlapMs : 0;
   },
 
@@ -6214,14 +6221,16 @@ const PORTFOLIO_SYSTEM = {
       if (getSymbol(rp) === sym) {
         const curve = getBalanceCurve(rp);
         if (curve && curve.length >= 5) {
-          // Build a short label from filename, stripping common symbol prefix
+          // Build a short label — strip extension, symbol, and common noise
           let label = (rp.id || rp.filename || id).replace(/\.(htm|html|csv)$/i, '');
-          // Strip symbol prefix if present
-          const symUpper = sym.toUpperCase();
-          if (label.toUpperCase().startsWith(symUpper)) label = label.slice(sym.length);
-          if (label.startsWith('_') || label.startsWith('-') || label.startsWith(' ')) label = label.slice(1);
-          if (!label) label = id.slice(0, 20);
-          if (label.length > 18) label = label.slice(0, 17) + '\u2026';
+          // Strip symbol anywhere in name (case-insensitive)
+          const symRe = new RegExp(sym.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+          label = label.replace(symRe, '');
+          // Strip common noise words
+          label = label.replace(/\bReport\b/gi, '').replace(/\bMicro\b/gi, '');
+          label = label.replace(/^[\s_\-.,]+|[\s_\-.,]+$/g, '').replace(/\s{2,}/g, ' ');
+          if (!label) label = '#' + (sameSymbol.length + 1);
+          if (label.length > 22) label = label.slice(0, 21) + '\u2026';
           sameSymbol.push({ id, label, curve });
         }
       }
@@ -6281,7 +6290,7 @@ const PORTFOLIO_SYSTEM = {
         const absCorr = Math.abs(corrMatrix[i][j]);
         const olap = overlapMatrix[i][j];
         const sdir = sameDirMatrix[i][j];
-        if (absCorr > 0.50 || olap > 0.30 || sdir > 0.25) {
+        if (absCorr > 0.50 && olap > 0.30 && sdir > 0.25) {
           cannibalPairs.push({
             label1: labels[i], label2: labels[j],
             corr: corrMatrix[i][j], overlap: olap, sameDir: sdir,
