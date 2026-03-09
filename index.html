@@ -1537,6 +1537,7 @@ table.portfolio tr.selected td { color: var(--t1); }
         <!-- Combined Equity -->
         <div class="chart-panel">
           <div class="chart-header"><span class="chart-title">EQUITY CURVES (% RETURN)</span></div>
+          <div id="pfChartWarning" style="display:none;padding:4px 12px;background:rgba(255,149,0,0.08);border:1px solid rgba(255,149,0,0.2);margin-bottom:4px"></div>
           <div class="chart-canvas-wrap"><canvas id="pfEquityChart"></canvas></div>
         </div>
 
@@ -3426,7 +3427,31 @@ function renderDetail() {
     if (CHARTS.underwater) { CHARTS.underwater.destroy(); CHARTS.underwater = null; }
     document.getElementById('underwaterPanel').classList.add('hidden');
     const chartWrap = document.getElementById('equityChart').parentElement;
-    chartWrap.innerHTML = '<div class="drive-notice">EQUITY CHART NOT AVAILABLE FOR DRIVE-SYNCED REPORTS<br><span style="font-size:8px;color:var(--t4);margin-top:4px">Import the original MT5 HTML file for full chart data</span></div><canvas id="equityChart" style="display:none"></canvas>';
+    if (raw.driveFileId && !raw._curveFetchAttempted) {
+      chartWrap.innerHTML = '<div class="drive-notice">LOADING EQUITY CURVE FROM DRIVE...<br><span style="font-size:8px;color:var(--t4);margin-top:4px">Fetching original MT5 report</span></div><canvas id="equityChart" style="display:none"></canvas>';
+      raw._curveFetchAttempted = true;
+      // Fetch this single report's curve
+      (async () => {
+        try {
+          const resp = await fetch(DRIVE_SYNC.WEB_APP_URL + '?action=getHtml&fileId=' + encodeURIComponent(raw.driveFileId));
+          if (resp.ok) {
+            const json = await resp.json();
+            if (json.html) {
+              const parsed = parseMT5Report(json.html, raw.filename);
+              if (parsed && parsed.balanceCurve && parsed.balanceCurve.length > 0) {
+                raw.balanceCurve = parsed.balanceCurve;
+                raw._curveTruncated = false;
+                if (parsed.deals && parsed.deals.length > 0) raw.deals = parsed.deals;
+                console.log('Fetched curve for ' + getSymbol(raw) + ': ' + parsed.balanceCurve.length + ' pts');
+                if (STATE.selectedReportId === raw.id) renderDetail();
+              }
+            }
+          }
+        } catch(e) { console.warn('Curve fetch failed for ' + raw.filename, e); }
+      })();
+    } else {
+      chartWrap.innerHTML = '<div class="drive-notice">EQUITY CHART NOT AVAILABLE<br><span style="font-size:8px;color:var(--t4);margin-top:4px">Import the original MT5 HTML file for full chart data</span></div><canvas id="equityChart" style="display:none"></canvas>';
+    }
   }
 
   // Additional detail charts (require deal-level data)
@@ -6390,15 +6415,24 @@ const PORTFOLIO_SYSTEM = {
     const { combined, individual } = this.computeCombined(reportIds);
     if (combined.length === 0) return;
 
-    // Debug: log each curve's date range to help diagnose truncation
-    console.group('Portfolio Equity Chart — Curve Date Ranges');
+    // Debug: log each curve's date range + warn about excluded strategies
+    const allIds = reportIds;
+    const includedIds = individual.map(c => c.id);
+    const excludedIds = allIds.filter(id => !includedIds.includes(id));
+    console.group('Portfolio Equity Chart — ' + includedIds.length + '/' + allIds.length + ' strategies have curve data');
     individual.forEach(c => {
       const bc = c.curve;
       const first = bc.length > 0 ? (bc[0].time || '?') : 'EMPTY';
       const last = bc.length > 0 ? (bc[bc.length - 1].time || '?') : 'EMPTY';
       const r = store.get(c.id);
       const trunc = r && r._curveTruncated ? ' [TRUNCATED!]' : '';
-      console.log('' + (r ? getSymbol(r) : c.id) + ': ' + first + ' → ' + last + ' (' + bc.length + ' pts)' + trunc);
+      console.log('  ✓ ' + (r ? getSymbol(r) : c.id) + ': ' + first + ' → ' + last + ' (' + bc.length + ' pts)' + trunc);
+    });
+    excludedIds.forEach(id => {
+      const r = store.get(id);
+      const bc = r ? (r.balanceCurve || []) : [];
+      const trunc = r && r._curveTruncated ? ' [FLAGGED TRUNCATED]' : '';
+      console.warn('  ✗ EXCLUDED ' + (r ? getSymbol(r) : id) + ': ' + bc.length + ' curve pts' + trunc + (r && r.source === 'drive' ? ' (Drive source)' : ''));
     });
     console.log('Combined: ' + combined.length + ' pts, ' + (combined[0]||{}).time + ' → ' + (combined[combined.length-1]||{}).time);
     console.groupEnd();
@@ -6609,7 +6643,19 @@ const PORTFOLIO_SYSTEM = {
         ].map(k => '<div class="pf-kpi"><div class="pf-kpi-label">' + k.label + '</div><div class="pf-kpi-value" style="color:' + (k.cls === 'neon' ? 'var(--neon)' : k.cls === 'crimson' ? 'var(--crimson)' : 'var(--acc)') + '">' + k.value + '</div></div>').join('');
       }
 
-      // Chart
+      // Chart — check for strategies missing curve data
+      const curveCounts = ids.map(id => { const r = store.get(id); return r ? (r.balanceCurve || []).length : 0; });
+      const missingCurves = ids.filter((id, i) => curveCounts[i] < 2);
+      const chartWarn = document.getElementById('pfChartWarning');
+      if (chartWarn) {
+        if (missingCurves.length > 0) {
+          const names = missingCurves.map(id => { const r = store.get(id); return r ? getSymbol(r) : id; });
+          chartWarn.innerHTML = '<span style="font-family:var(--mono);font-size:8px;color:var(--amber);letter-spacing:.5px">⚠ ' + missingCurves.length + ' PAIR' + (missingCurves.length > 1 ? 'S' : '') + ' EXCLUDED FROM CHART (NO CURVE DATA): ' + names.join(', ') + '</span>';
+          chartWarn.style.display = '';
+        } else {
+          chartWarn.style.display = 'none';
+        }
+      }
       this.buildEquityChart(ids);
 
       // Correlation
@@ -6664,7 +6710,8 @@ const PORTFOLIO_SYSTEM = {
         const pts = bc.length;
         const isTrunc = r._curveTruncated ? ' style="color:var(--crimson)"' : '';
         const truncTag = r._curveTruncated ? '<span style="font-family:var(--mono);font-size:7px;padding:1px 4px;background:rgba(255,59,48,0.15);color:var(--crimson);border:1px solid rgba(255,59,48,0.3);margin-left:4px">TRUNCATED</span>' : '';
-        return '<div style="display:flex;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid var(--g600);cursor:pointer;flex-wrap:wrap" onclick="selectReportForDetail(\'' + id + '\')">' +
+        const safeId = id.replace(/'/g, "\\'").replace(/\\/g, '\\\\');
+        return '<div style="display:flex;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid var(--g600);cursor:pointer;flex-wrap:wrap" onclick="selectReportForDetail(\'' + safeId + '\')">' +
           '<span style="font-family:var(--mono);font-size:10px;color:var(--acc);min-width:90px">' + getSymbol(r) + truncTag + '</span>' +
           '<span style="font-family:var(--mono);font-size:9px;color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + pnl.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span>' +
           '<span style="font-family:var(--mono);font-size:9px;color:var(--t2)">PF ' + pf.toFixed(2) + '</span>' +
