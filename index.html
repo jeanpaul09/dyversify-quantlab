@@ -419,14 +419,17 @@ table.portfolio tr.selected td { color: var(--t1); }
 /* Portfolio */
 .pf-empty { text-align: center; padding: 48px 24px; }
 .pf-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 16px; }
-.pf-card { background: var(--g800); border: 1px solid var(--g400); padding: 16px; cursor: pointer; transition: border-color 0.15s; }
-.pf-card:hover { border-color: var(--t3); }
-.pf-card-name { font-family: var(--mono); font-size: 11px; color: var(--acc); font-weight: 700; letter-spacing: 0.06em; margin-bottom: 8px; text-transform: uppercase; }
-.pf-card-count { font-family: var(--mono); font-size: 8px; color: var(--t3); margin-bottom: 10px; letter-spacing: 0.08em; }
-.pf-card-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.pf-card-metric { }
-.pf-card-k { font-family: var(--mono); font-size: 7px; color: var(--t3); letter-spacing: 0.08em; }
-.pf-card-v { font-family: var(--mono); font-size: 12px; color: var(--t1); }
+.pf-card { background: var(--g800); border: 1px solid var(--g400); cursor: pointer; transition: border-color 0.15s; overflow: hidden; }
+.pf-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, transparent 60%); pointer-events: none; }
+.pf-card:hover { border-color: var(--t2); }
+.pf-card .mc-spark { height: 60px; padding: 8px 12px 0; }
+.pf-card .mc-spark svg { width: 100%; height: 100%; }
+.pf-card .mc-body { padding: 8px 12px 10px; }
+.pf-card .mc-symbol { font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--acc); letter-spacing: 0.06em; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.pf-card .mc-metrics { display: flex; gap: 12px; flex-wrap: wrap; }
+.pf-card .mc-metric { display: flex; gap: 4px; font-family: var(--mono); font-size: 10px; }
+.pf-card .mc-metric .mc-k { color: var(--t3); text-transform: uppercase; letter-spacing: 0.05em; }
+.pf-card .mc-metric .mc-v { color: var(--t2); font-variant-numeric: tabular-nums; }
 .pf-kpi-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px; }
 .pf-kpi { background: var(--g800); border: 1px solid var(--g400); padding: 10px 12px; }
 .pf-kpi-label { font-family: var(--mono); font-size: 7px; color: var(--t3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 3px; }
@@ -6682,16 +6685,19 @@ const PORTFOLIO_SYSTEM = {
       const metrics = this.computePortfolioMetrics(ids);
       if (!metrics) return '';
 
-      const pnlColor = metrics.netProfit >= 0 ? 'var(--neon)' : 'var(--crimson)';
+      const { combined } = this.computeCombined(ids);
+      const sparkSvg = combined.length > 2 ? buildSparklineSVG(combined, 260, 50) : '';
+      const pnlClass = metrics.netProfit >= 0 ? 'pnl-pos' : 'pnl-neg';
       return '<div class="pf-card" onclick="PORTFOLIO_SYSTEM.openDetail(\'' + regime + '\')">' +
-        '<div class="pf-card-name">' + regime + '</div>' +
-        '<div class="pf-card-count">' + ids.length + ' PAIRS</div>' +
-        '<div class="pf-card-metrics">' +
-        '<div class="pf-card-metric"><div class="pf-card-k">NET P&L</div><div class="pf-card-v" style="color:' + pnlColor + '">' + (metrics.netProfit >= 0 ? '+' : '') + '$' + metrics.netProfit.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + '</div></div>' +
-        '<div class="pf-card-metric"><div class="pf-card-k">PROFIT FACTOR</div><div class="pf-card-v">' + metrics.profitFactor.toFixed(2) + '</div></div>' +
-        '<div class="pf-card-metric"><div class="pf-card-k">MAX DD%</div><div class="pf-card-v" style="color:var(--acc)">' + metrics.maxDD.toFixed(2) + '%</div></div>' +
-        '<div class="pf-card-metric"><div class="pf-card-k">TOTAL TRADES</div><div class="pf-card-v">' + metrics.totalTrades + '</div></div>' +
-        '</div></div>';
+        '<div class="mc-spark">' + sparkSvg + '</div>' +
+        '<div class="mc-body">' +
+        '<div class="mc-symbol"><span>' + regime + '</span><span class="badge" style="background:var(--amber-bg);color:var(--amber);border:1px solid rgba(255,149,0,0.3);font-size:7px;padding:1px 5px;margin-left:4px">' + ids.length + ' PAIRS</span></div>' +
+        '<div class="mc-metrics">' +
+        '<div class="mc-metric"><span class="mc-k">P&amp;L</span><span class="mc-v ' + pnlClass + '">' + fmtPnl(metrics.netProfit) + '</span></div>' +
+        '<div class="mc-metric"><span class="mc-k">PF</span><span class="mc-v">' + fmt(metrics.profitFactor) + '</span></div>' +
+        '<div class="mc-metric"><span class="mc-k">SHARPE</span><span class="mc-v">' + fmt(metrics.avgSharpe) + '</span></div>' +
+        '<div class="mc-metric"><span class="mc-k">DD%</span><span class="mc-v">' + fmtPct(metrics.maxDD) + '</span></div>' +
+        '</div></div></div>';
     }).join('');
   }
 };
