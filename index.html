@@ -1272,6 +1272,7 @@ table.portfolio tr.selected td { color: var(--t1); }
             <span class="chart-title">CORRELATION</span>
             <span id="detailCorrInfo" style="font-family:var(--mono);font-size:8px;color:var(--t4)"></span>
           </div>
+          <div class="metrics-grid" id="detailCorrSummary" style="margin-bottom:10px"></div>
           <div id="detailCorrBars"></div>
           <div class="sim-legend" id="detailCorrLegend"></div>
         </div>
@@ -4125,13 +4126,37 @@ function buildDetailCorrelation(r) {
   }
   barsDiv.innerHTML = barsHtml;
 
-  // Summary stats
+  // Summary box — key stats in metric cards
   const avgCorr = others.reduce((s, o) => s + o.corr, 0) / others.length;
   const avgAbs = others.reduce((s, o) => s + Math.abs(o.corr), 0) / others.length;
-  infoSpan.textContent = `${getSymbol(r)} vs ${others.length} REPORTS \u00B7 AVG: ${avgCorr >= 0 ? '+' : ''}${avgCorr.toFixed(3)} \u00B7 AVG |r|: ${avgAbs.toFixed(3)}`;
+  const mostCorr = others[0]; // already sorted by |corr| desc
+  const leastCorr = others[others.length - 1];
+  const posCount = others.filter(o => o.corr > 0).length;
+  const negCount = others.filter(o => o.corr < 0).length;
+  // Diversification score: lower avg |corr| = better diversification (0-100 scale)
+  const divScore = Math.max(0, Math.min(100, ((1 - avgAbs) * 100))).toFixed(0);
+  const divColor = avgAbs < 0.3 ? 'pnl-pos' : avgAbs > 0.6 ? 'pnl-neg' : '';
+
+  const summaryCards = [
+    { label: 'AVG CORRELATION', value: (avgCorr >= 0 ? '+' : '') + avgCorr.toFixed(3), cls: avgCorr >= 0 ? 'pnl-pos' : 'pnl-neg' },
+    { label: 'AVG |r|', value: avgAbs.toFixed(3), cls: '' },
+    { label: 'DIVERSIFICATION', value: divScore + '%', cls: divColor },
+    { label: 'MOST CORRELATED', value: mostCorr.symbol.slice(0, 12), cls: '' },
+    { label: 'HIGHEST r', value: (mostCorr.corr >= 0 ? '+' : '') + mostCorr.corr.toFixed(3), cls: mostCorr.corr >= 0 ? 'pnl-pos' : 'pnl-neg' },
+    { label: 'LEAST CORRELATED', value: leastCorr.symbol.slice(0, 12), cls: '' },
+    { label: 'POSITIVE / NEGATIVE', value: posCount + ' / ' + negCount, cls: '' },
+    { label: 'REPORTS COMPARED', value: others.length, cls: '' },
+  ];
+
+  document.getElementById('detailCorrSummary').innerHTML = summaryCards.map(m =>
+    `<div class="metric-card"><div class="metric-label">${m.label}</div><div class="metric-value ${m.cls}">${m.value}</div></div>`
+  ).join('');
+
+  infoSpan.textContent = `${getSymbol(r)} vs ${others.length} REPORTS`;
   legendDiv.innerHTML = 'Pearson r of daily returns (date-aligned). ' +
     '<span style="color:var(--neon)">GREEN</span> = co-move, ' +
-    '<span style="color:var(--crimson)">RED</span> = hedge.';
+    '<span style="color:var(--crimson)">RED</span> = hedge. ' +
+    'Diversification = 100% minus avg |r| (higher = less overlap).';
 
   panel.style.display = '';
 }
