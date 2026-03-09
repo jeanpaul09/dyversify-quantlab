@@ -4128,7 +4128,7 @@ function buildDetailCorrelation(r) {
   document.getElementById('detailOverlapMatrix').innerHTML =
     PORTFOLIO_SYSTEM.renderInteractionMatrix(overlapMatrix, labels, 'overlap');
   document.getElementById('detailSameDirMatrix').innerHTML =
-    PORTFOLIO_SYSTEM.renderInteractionMatrix(sameDirMatrix, labels, 'overlap');
+    PORTFOLIO_SYSTEM.renderInteractionMatrix(sameDirMatrix, labels, 'samedir');
   document.getElementById('detailDivScoreMatrix').innerHTML =
     PORTFOLIO_SYSTEM.renderInteractionMatrix(divScoreMatrix, labels, 'divscore');
 
@@ -6058,8 +6058,10 @@ const PORTFOLIO_SYSTEM = {
     // Date-aligned correlation: match returns by actual calendar dates
     // Index-based alignment is WRONG when curves have different data point counts
     const mapA = {}, mapB = {};
-    for (const p of curveA) { const d = (p.time || '').split(' ')[0]; if (d.length >= 8) mapA[d] = p.balance; }
-    for (const p of curveB) { const d = (p.time || '').split(' ')[0]; if (d.length >= 8) mapB[d] = p.balance; }
+    // Normalize date format (handle both "." and "-" separators)
+    const dateKey = p => (p.time || '').split(' ')[0].replace(/\./g, '-');
+    for (const p of curveA) { const d = dateKey(p); if (d.length >= 8) mapA[d] = p.balance; }
+    for (const p of curveB) { const d = dateKey(p); if (d.length >= 8) mapB[d] = p.balance; }
     // Find common dates (where both curves have data)
     const commonDates = Object.keys(mapA).filter(d => mapB[d] !== undefined).sort();
     if (commonDates.length < 10) return 0;
@@ -6068,7 +6070,7 @@ const PORTFOLIO_SYSTEM = {
     for (let i = 1; i < commonDates.length; i++) {
       const prevA = mapA[commonDates[i-1]], curA = mapA[commonDates[i]];
       const prevB = mapB[commonDates[i-1]], curB = mapB[commonDates[i]];
-      if (prevA > 0 && prevB > 0) {
+      if (prevA > 0 && curA > 0 && prevB > 0 && curB > 0) {
         retA.push((curA - prevA) / prevA);
         retB.push((curB - prevB) / prevB);
       }
@@ -6152,7 +6154,10 @@ const PORTFOLIO_SYSTEM = {
       const ms = t.getTime();
       if (d.direction === 'in') {
         if (!openBySymbol[sym]) openBySymbol[sym] = [];
-        openBySymbol[sym].push({ ms, dir: (d.type || '').toLowerCase() }); // 'buy' or 'sell'
+        // Normalize direction: "buy limit" → "buy", "sell stop" → "sell"
+        const rawType = (d.type || '').toLowerCase();
+        const dir = rawType.includes('buy') ? 'buy' : rawType.includes('sell') ? 'sell' : '';
+        openBySymbol[sym].push({ ms, dir });
       } else if (d.direction === 'out') {
         if (openBySymbol[sym] && openBySymbol[sym].length > 0) {
           const entry = openBySymbol[sym].shift();
@@ -6223,9 +6228,11 @@ const PORTFOLIO_SYSTEM = {
         if (curve && curve.length >= 5) {
           // Build a short label — strip extension, symbol, and common noise
           let label = (rp.id || rp.filename || id).replace(/\.(htm|html|csv)$/i, '');
-          // Strip symbol anywhere in name (case-insensitive)
-          const symRe = new RegExp(sym.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-          label = label.replace(symRe, '');
+          // Strip symbol anywhere in name (case-insensitive), guard against empty symbol
+          if (sym && sym.length > 0) {
+            const symRe = new RegExp(sym.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            label = label.replace(symRe, '');
+          }
           // Strip common noise words
           label = label.replace(/\bReport\b/gi, '').replace(/\bMicro\b/gi, '');
           label = label.replace(/^[\s_\-.,]+|[\s_\-.,]+$/g, '').replace(/\s{2,}/g, ' ');
@@ -6495,6 +6502,9 @@ const PORTFOLIO_SYSTEM = {
         } else if (type === 'ddsync') {
           bg = v < 0.20 ? 'rgba(0,255,136,0.15)' : v < 0.40 ? 'rgba(255,149,0,0.15)' : 'rgba(255,59,48,0.15)';
           tc = v < 0.20 ? '#00ff88' : v < 0.40 ? '#ff9500' : '#ff3b30';
+        } else if (type === 'samedir') {
+          bg = v < 0.25 ? 'rgba(0,255,136,0.15)' : v < 0.50 ? 'rgba(255,149,0,0.15)' : 'rgba(255,59,48,0.15)';
+          tc = v < 0.25 ? '#00ff88' : v < 0.50 ? '#ff9500' : '#ff3b30';
         } else { // divscore — higher is better
           bg = v > 0.50 ? 'rgba(0,255,136,0.15)' : v > 0.30 ? 'rgba(255,149,0,0.15)' : 'rgba(255,59,48,0.15)';
           tc = v > 0.50 ? '#00ff88' : v > 0.30 ? '#ff9500' : '#ff3b30';
