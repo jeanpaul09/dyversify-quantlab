@@ -6387,33 +6387,63 @@ const PORTFOLIO_SYSTEM = {
     const { combined, individual } = this.computeCombined(reportIds);
     if (combined.length === 0) return;
 
-    // Use time labels from the longest individual curve for x-axis
-    const longestCurve = individual.reduce((a, b) => a.curve.length > b.curve.length ? a : b, individual[0]);
-    const labels = longestCurve.curve.map((p, i) => {
-      if (p.time) { const d = p.time.split(' ')[0]; return d; }
-      return i;
-    });
+    // Build a SHARED date-aligned x-axis from ALL curves (individual + combined)
+    const allDatesSet = new Set();
+    for (const c of individual) {
+      for (const p of c.curve) {
+        const d = (p.time || '').split(' ')[0];
+        if (d.length >= 8) allDatesSet.add(d);
+      }
+    }
+    for (const p of combined) {
+      const d = (p.time || '').split(' ')[0];
+      if (d.length >= 8) allDatesSet.add(d);
+    }
+    const labels = [...allDatesSet].sort();
 
-    // Show % return (not absolute $) so all curves are comparable and not flat
+    // Build date→% return maps for each individual curve
     const datasets = [];
     const colors = ['rgba(0,212,255,0.6)', 'rgba(255,149,0,0.6)', 'rgba(175,82,222,0.6)', 'rgba(255,204,0,0.6)', 'rgba(255,59,48,0.6)', 'rgba(52,199,89,0.6)'];
     individual.forEach((c, idx) => {
       const r = store.get(c.id);
       const init = c.initBal || c.curve[0].balance || 1;
+      const dateMap = {};
+      for (const p of c.curve) {
+        const d = (p.time || '').split(' ')[0];
+        if (d.length >= 8) dateMap[d] = ((p.balance - init) / init) * 100;
+      }
+      // Map to shared x-axis with forward-fill (null before first data point)
+      let lastVal = null, started = false;
+      const firstDate = c.curve.find(p => (p.time||'').split(' ')[0].length >= 8);
+      const firstD = firstDate ? firstDate.time.split(' ')[0] : '';
+      const data = labels.map(d => {
+        if (!started && d < firstD) return null;
+        started = true;
+        if (dateMap[d] !== undefined) lastVal = dateMap[d];
+        return lastVal;
+      });
       datasets.push({
         label: r ? getSymbol(r) : c.id,
-        data: c.curve.map(p => ((p.balance - init) / init) * 100),
-        borderColor: colors[idx % colors.length], backgroundColor: 'transparent',
-        fill: false, pointRadius: 0, borderWidth: 1.2
+        data, borderColor: colors[idx % colors.length], backgroundColor: 'transparent',
+        fill: false, pointRadius: 0, borderWidth: 1.2, spanGaps: true
       });
     });
-    // Combined curve as % return
+    // Combined curve as % return, date-aligned to same x-axis
     const combinedInit = combined[0].balance || 1;
+    const combinedMap = {};
+    for (const p of combined) {
+      const d = (p.time || '').split(' ')[0];
+      if (d.length >= 8) combinedMap[d] = ((p.balance - combinedInit) / combinedInit) * 100;
+    }
+    let lastCombVal = 0;
+    const combinedData = labels.map(d => {
+      if (combinedMap[d] !== undefined) lastCombVal = combinedMap[d];
+      return lastCombVal;
+    });
     datasets.push({
       label: 'COMBINED',
-      data: combined.map(p => ((p.balance - combinedInit) / combinedInit) * 100),
-      borderColor: '#00ff88', backgroundColor: 'transparent',
-      fill: false, pointRadius: 0, borderWidth: 2.5
+      data: combinedData, borderColor: '#00ff88', backgroundColor: 'transparent',
+      fill: false, pointRadius: 0, borderWidth: 2.5, spanGaps: true
     });
 
     this.chartInstance = new Chart(canvas, {
