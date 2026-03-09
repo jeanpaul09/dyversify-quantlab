@@ -1882,10 +1882,10 @@ AUTH.init();
   const ctx = canvas.getContext('2d');
   let W, H, dpr;
   const lines = [];      // active lines
-  const MAX_LINES = 3;   // 3 concurrent — trailing fade keeps it clean
+  const MAX_LINES = 6;   // 2x volume — trailing fade keeps it clean
   let lastSpawn = 0;
-  const SPAWN_INTERVAL_MIN = 3000;
-  const SPAWN_INTERVAL_MAX = 5500;
+  const SPAWN_INTERVAL_MIN = 1500;
+  const SPAWN_INTERVAL_MAX = 2800;
   let nextSpawnDelay = rand(SPAWN_INTERVAL_MIN, SPAWN_INTERVAL_MAX);
 
   function rand(a, b) { return a + Math.random() * (b - a); }
