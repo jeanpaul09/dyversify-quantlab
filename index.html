@@ -912,7 +912,7 @@ table.portfolio tr.selected td { color: var(--t1); }
   margin-bottom:48px; display:flex; align-items:center; justify-content:center;
 }
 .auth-logo-png {
-  height:64px; width:auto; opacity:0.95;
+  height:80px; width:auto; opacity:0.95;
 }
 
 /* Divider — thin line */
@@ -1913,8 +1913,8 @@ AUTH.init();
     // Randomize start Y more broadly
     const startY = bullish ? rand(H * 0.35, H * 0.88) : rand(H * 0.12, H * 0.65);
     const stepX = rand(W * 0.6, W * 1.1) / segments;
-    const trend = bullish ? -rand(1.8, 3.2) : rand(1.8, 3.2);
-    const volatility = rand(8, 22);
+    const trend = bullish ? -rand(3.0, 5.5) : rand(3.0, 5.5);
+    const volatility = rand(6, 16);
     const points = [];
     let x = startX, y = startY;
     for (let i = 0; i <= segments; i++) {
