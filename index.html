@@ -6244,11 +6244,9 @@ const PORTFOLIO_SYSTEM = {
     const ctx = canvas.getContext('2d');
 
     const regimeColors = ['#00ff88', '#00d4ff', '#ff9500', '#a78bfa', '#ff3b30', '#ffcc00'];
-    const datasets = [];
-    let maxLen = 0;
     const curvesMap = {};
 
-    // Build combined curve per regime, normalize to % return
+    // Build combined curve per regime
     for (let idx = 0; idx < names.length; idx++) {
       const name = names[idx];
       const ids = regimes[name] || [];
@@ -6257,23 +6255,51 @@ const PORTFOLIO_SYSTEM = {
         const { combined } = this.computeCombined(ids);
         if (combined.length < 2) continue;
         curvesMap[name] = combined;
-        if (combined.length > maxLen) maxLen = combined.length;
-        const init = combined[0].balance || 1;
-        datasets.push({
-          label: name.replace('MICRO-', ''),
-          data: combined.map(p => ((p.balance - init) / init) * 100),
-          borderColor: regimeColors[idx % regimeColors.length],
-          backgroundColor: 'transparent',
-          fill: false, pointRadius: 0, borderWidth: 2
-        });
       } catch(e) { /* skip */ }
     }
 
-    if (datasets.length === 0) return;
+    const validNames = Object.keys(curvesMap);
+    if (validNames.length === 0) return;
 
-    // Use longest curve's time labels
-    const longestName = names.reduce((a, b) => (curvesMap[a]||[]).length >= (curvesMap[b]||[]).length ? a : b);
-    const labels = (curvesMap[longestName] || []).map(p => p.time || '');
+    // Build SHARED date-aligned x-axis from ALL regime curves
+    const allDatesSet = new Set();
+    for (const name of validNames) {
+      for (const p of curvesMap[name]) {
+        const d = (p.time || '').split(' ')[0];
+        if (d.length >= 8) allDatesSet.add(d);
+      }
+    }
+    const labels = [...allDatesSet].sort();
+
+    // Map each regime curve to shared x-axis with forward-fill
+    const datasets = [];
+    for (let idx = 0; idx < names.length; idx++) {
+      const name = names[idx];
+      if (!curvesMap[name]) continue;
+      const combined = curvesMap[name];
+      const init = combined[0].balance || 1;
+      // Build date → % return map
+      const dateMap = {};
+      for (const p of combined) {
+        const d = (p.time || '').split(' ')[0];
+        if (d.length >= 8) dateMap[d] = ((p.balance - init) / init) * 100;
+      }
+      // Map to shared x-axis: null before first date, forward-fill after
+      const firstD = (combined[0].time || '').split(' ')[0];
+      let lastVal = null, started = false;
+      const data = labels.map(d => {
+        if (!started && d < firstD) return null;
+        started = true;
+        if (dateMap[d] !== undefined) lastVal = dateMap[d];
+        return lastVal;
+      });
+      datasets.push({
+        label: name.replace('MICRO-', ''),
+        data, borderColor: regimeColors[idx % regimeColors.length],
+        backgroundColor: 'transparent',
+        fill: false, pointRadius: 0, borderWidth: 2, spanGaps: true
+      });
+    }
 
     this._regimeEquityChart = new Chart(ctx, {
       type: 'line', data: { labels, datasets },
