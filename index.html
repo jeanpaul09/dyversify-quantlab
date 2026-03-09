@@ -442,6 +442,18 @@ table.portfolio tr.selected td { color: var(--t1); }
 .pf-corr-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 8px; }
 .pf-corr-table th, .pf-corr-table td { padding: 4px 6px; text-align: center; border: 1px solid var(--g600); }
 .pf-corr-table th { color: var(--t3); font-weight: 400; font-size: 7px; }
+/* Detail correlation matrix */
+.det-corr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+@media (max-width: 900px) { .det-corr-grid { grid-template-columns: 1fr; } }
+.det-corr-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 9px; }
+.det-corr-table th, .det-corr-table td { padding: 5px 8px; text-align: center; border: 1px solid var(--g600); font-variant-numeric: tabular-nums; }
+.det-corr-table th { color: var(--t3); font-weight: 400; font-size: 7px; background: var(--g700); white-space: nowrap; max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+.det-corr-table th.row-header { text-align: left; }
+.det-corr-bar { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-family: var(--mono); font-size: 10px; }
+.det-corr-bar-label { min-width: 90px; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--t2); font-size: 9px; }
+.det-corr-bar-track { flex: 1; height: 14px; background: var(--g700); position: relative; overflow: hidden; }
+.det-corr-bar-fill { position: absolute; top: 0; height: 100%; }
+.det-corr-bar-val { min-width: 44px; text-align: right; font-size: 9px; font-variant-numeric: tabular-nums; }
 .sim-matrix { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 9px; }
 .sim-matrix th, .sim-matrix td { padding: 6px 8px; text-align: center; border: 1px solid var(--g600); }
 .sim-matrix th { color: var(--t3); font-weight: 400; font-size: 7px; background: var(--g700); white-space: nowrap; }
@@ -1258,6 +1270,25 @@ table.portfolio tr.selected td { color: var(--t1); }
           <div class="chart-canvas-wrap short">
             <canvas id="streakChart"></canvas>
           </div>
+        </div>
+
+        <!-- Correlation Matrix -->
+        <div class="chart-panel" id="detailCorrelationPanel" style="display:none">
+          <div class="chart-header">
+            <span class="chart-title">CORRELATION MATRIX</span>
+            <span id="detailCorrInfo" style="font-family:var(--mono);font-size:8px;color:var(--t4)"></span>
+          </div>
+          <div class="det-corr-grid">
+            <div>
+              <div class="sim-panel-label">PAIRWISE CORRELATIONS</div>
+              <div id="detailCorrBars"></div>
+            </div>
+            <div>
+              <div class="sim-panel-label">FULL MATRIX</div>
+              <div id="detailCorrMatrix" style="overflow-x:auto"></div>
+            </div>
+          </div>
+          <div class="sim-legend" id="detailCorrLegend"></div>
         </div>
 
         <!-- Input Parameters -->
@@ -3515,6 +3546,9 @@ function renderDetail() {
     </div>`;
   }).join('');
 
+  // Correlation matrix
+  try { buildDetailCorrelation(r); } catch(e) { console.error('Correlation matrix error:', e); }
+
   // Input parameters
   const inputs = getInputs(r);
   const rawKeys = Object.keys(inputs).filter(k => !k.match(/^_\d/) && !(inputs[k] && inputs[k].includes && inputs[k].includes('======')));
@@ -4053,6 +4087,120 @@ function buildStreakChart(r) {
       }
     }
   });
+}
+
+// ─── DETAIL TAB — CORRELATION MATRIX ───
+function buildDetailCorrelation(r) {
+  const panel = document.getElementById('detailCorrelationPanel');
+  const barsDiv = document.getElementById('detailCorrBars');
+  const matrixDiv = document.getElementById('detailCorrMatrix');
+  const infoSpan = document.getElementById('detailCorrInfo');
+  const legendDiv = document.getElementById('detailCorrLegend');
+  if (!panel || !barsDiv || !matrixDiv) return;
+
+  // Gather all other reports that have balance curves
+  const currentId = r.id || r.filename;
+  const currentCurve = getBalanceCurve(r);
+  if (!currentCurve || currentCurve.length < 10) { panel.style.display = 'none'; return; }
+
+  const otherIds = [];
+  const otherCurves = [];
+  const otherSymbols = [];
+  for (const [id, rp] of store) {
+    if (id === currentId) continue;
+    const c = getBalanceCurve(rp);
+    if (c && c.length >= 10) {
+      otherIds.push(id);
+      otherCurves.push(c);
+      otherSymbols.push(getSymbol(rp));
+    }
+  }
+
+  if (otherIds.length === 0) { panel.style.display = 'none'; return; }
+
+  // Compute pairwise correlation of current report vs each other report
+  const pairCorrs = otherCurves.map(c => PORTFOLIO_SYSTEM.pearsonCorrelation(currentCurve, c));
+
+  // Sort by absolute correlation descending for bars
+  const indices = otherIds.map((_, i) => i);
+  indices.sort((a, b) => Math.abs(pairCorrs[b]) - Math.abs(pairCorrs[a]));
+
+  // Build bar chart (left panel)
+  const currentSymbol = getSymbol(r);
+  let barsHtml = '';
+  const maxBars = Math.min(indices.length, 15);
+  for (let k = 0; k < maxBars; k++) {
+    const i = indices[k];
+    const corr = pairCorrs[i];
+    const abs = Math.abs(corr);
+    const pct = (abs * 100).toFixed(0);
+    const isPos = corr >= 0;
+    const barColor = isPos ? 'rgba(0,255,136,0.7)' : 'rgba(255,59,48,0.7)';
+    const txtColor = abs > 0.3 ? (isPos ? 'var(--neon)' : 'var(--crimson)') : 'var(--t3)';
+    // Bar fills from left (center alignment not needed — simple left-fill)
+    barsHtml += `<div class="det-corr-bar">
+      <span class="det-corr-bar-label" title="${otherSymbols[i]}">${otherSymbols[i]}</span>
+      <div class="det-corr-bar-track"><div class="det-corr-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+      <span class="det-corr-bar-val" style="color:${txtColor}">${corr >= 0 ? '+' : ''}${corr.toFixed(3)}</span>
+    </div>`;
+  }
+  barsDiv.innerHTML = barsHtml;
+
+  // Build full NxN matrix (right panel) — include current report + all others
+  // Limit to top 10 most correlated for readability
+  const matrixCap = Math.min(indices.length, 10);
+  const matrixIds = [currentId, ...indices.slice(0, matrixCap).map(i => otherIds[i])];
+  const matrixSymbols = [currentSymbol, ...indices.slice(0, matrixCap).map(i => otherSymbols[i])];
+  const matrixCurves = [currentCurve, ...indices.slice(0, matrixCap).map(i => otherCurves[i])];
+  const n = matrixIds.length;
+
+  // Compute full NxN correlation matrix
+  const matrix = Array.from({length: n}, () => Array(n).fill(0));
+  for (let i = 0; i < n; i++) {
+    matrix[i][i] = 1;
+    for (let j = i + 1; j < n; j++) {
+      const corr = PORTFOLIO_SYSTEM.pearsonCorrelation(matrixCurves[i], matrixCurves[j]);
+      matrix[i][j] = corr;
+      matrix[j][i] = corr;
+    }
+  }
+
+  // Render matrix table
+  const truncSym = s => s.length > 10 ? s.slice(0, 9) + '\u2026' : s;
+  let html = '<table class="det-corr-table"><thead><tr><th></th>';
+  for (let j = 0; j < n; j++) html += `<th title="${matrixSymbols[j]}">${truncSym(matrixSymbols[j])}</th>`;
+  html += '</tr></thead><tbody>';
+  for (let i = 0; i < n; i++) {
+    html += `<tr><th class="row-header" title="${matrixSymbols[i]}">${truncSym(matrixSymbols[i])}</th>`;
+    for (let j = 0; j < n; j++) {
+      const v = matrix[i][j];
+      const abs = Math.abs(v);
+      let bg, tc;
+      if (i === j) {
+        bg = 'var(--g600)'; tc = 'var(--t2)';
+      } else {
+        const alpha = (abs * 0.25).toFixed(2);
+        bg = v >= 0 ? `rgba(0,255,136,${alpha})` : `rgba(255,59,48,${alpha})`;
+        tc = abs > 0.3 ? (v >= 0 ? '#00ff88' : '#ff3b30') : 'var(--t3)';
+      }
+      const highlight = (i === 0 || j === 0) && i !== j ? 'font-weight:600;' : '';
+      html += `<td style="background:${bg};color:${tc};${highlight}">${v.toFixed(2)}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  matrixDiv.innerHTML = html;
+
+  // Info and legend
+  const avgCorr = pairCorrs.reduce((s, v) => s + v, 0) / pairCorrs.length;
+  const avgAbs = pairCorrs.reduce((s, v) => s + Math.abs(v), 0) / pairCorrs.length;
+  infoSpan.textContent = `${otherIds.length} PAIRS \u00B7 AVG: ${avgCorr >= 0 ? '+' : ''}${avgCorr.toFixed(3)} \u00B7 AVG |r|: ${avgAbs.toFixed(3)}`;
+  legendDiv.innerHTML = 'Pearson correlation of daily returns on date-aligned balance curves. ' +
+    '<span style="color:var(--neon)">GREEN</span> = positive (co-move), ' +
+    '<span style="color:var(--crimson)">RED</span> = negative (hedge). ' +
+    'First row/column = current report vs others. Min 10 common dates required.';
+
+  panel.style.display = '';
 }
 
 // ─── ANALYTICS TAB ───
