@@ -4240,14 +4240,13 @@ function renderAnalytics() {
     document.getElementById('anKpiReturnSub').textContent = 'EQUAL-WEIGHT ' + n + ' STRATEGIES';
 
     // Portfolio Max DD — use individual strategy DDs from MT5 (accurate equity DD)
-    // The combined curve DD is diluted by diversification + downsampled balance data
     const { avgDD, worstDD } = portfolio;
+    const bals = combined.map(p => p.balance);
     if (avgDD > 0) {
       document.getElementById('anKpiMaxDD').textContent = '-' + avgDD.toFixed(2) + '%';
       document.getElementById('anKpiMaxDDSub').textContent = 'AVG STRATEGY DD (WORST: ' + worstDD.toFixed(2) + '%)';
     } else {
       // Fallback: compute from combined curve
-      const bals = combined.map(p => p.balance);
       let peak = bals[0], maxDD = 0;
       for (const b of bals) { if (b > peak) peak = b; const dd = ((b - peak) / peak) * 100; if (dd < maxDD) maxDD = dd; }
       document.getElementById('anKpiMaxDD').textContent = maxDD.toFixed(2) + '%';
@@ -5868,12 +5867,14 @@ const PORTFOLIO_SYSTEM = {
     const totalInit = validCurves.reduce((s, c) => s + c.initBal, 0);
 
     // Date-aligned combination: merge by actual calendar date (not index position)
-    // Each strategy's balance is summed at matching dates; uses last-known for gaps
+    // NORMALIZE each strategy to growth factor (balance / initBal) so all strategies
+    // contribute equally regardless of deposit size. Without normalization, a $50k
+    // account dwarfs a $500 account, making the combined curve look flat.
     const dateMaps = validCurves.map(c => {
       const dm = {};
       for (const p of c.curve) {
         const d = (p.time || '').split(' ')[0];
-        if (d.length >= 8) dm[d] = p.balance;
+        if (d.length >= 8) dm[d] = p.balance / c.initBal;  // normalized growth factor
       }
       return dm;
     });
@@ -5881,15 +5882,17 @@ const PORTFOLIO_SYSTEM = {
     for (const dm of dateMaps) for (const d of Object.keys(dm)) allDates.add(d);
     const sortedDates = [...allDates].sort();
 
+    const n2 = validCurves.length;
     const combined = [];
-    const lastKnown = validCurves.map(c => c.initBal);
+    const lastKnown = validCurves.map(() => 1.0);  // start at 1.0 (normalized)
     for (const date of sortedDates) {
-      let totalBal = 0;
-      for (let i = 0; i < validCurves.length; i++) {
+      let totalNorm = 0;
+      for (let i = 0; i < n2; i++) {
         if (dateMaps[i][date] !== undefined) lastKnown[i] = dateMaps[i][date];
-        totalBal += lastKnown[i];
+        totalNorm += lastKnown[i];
       }
-      combined.push({ time: date, balance: totalBal });
+      // Average growth factor → scale back to dollar-equivalent using totalInit
+      combined.push({ time: date, balance: (totalNorm / n2) * totalInit });
     }
     return { combined, individual: curves, totalInit };
   },
