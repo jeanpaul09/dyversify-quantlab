@@ -442,12 +442,16 @@ table.portfolio tr.selected td { color: var(--t1); }
 .pf-corr-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 8px; }
 .pf-corr-table th, .pf-corr-table td { padding: 4px 6px; text-align: center; border: 1px solid var(--g600); }
 .pf-corr-table th { color: var(--t3); font-weight: 400; font-size: 7px; }
-/* Detail correlation bars */
-.det-corr-bar { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-family: var(--mono); font-size: 10px; }
-.det-corr-bar-label { min-width: 100px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--t2); font-size: 9px; }
-.det-corr-bar-track { flex: 1; height: 12px; background: var(--g700); position: relative; overflow: hidden; }
-.det-corr-bar-fill { position: absolute; top: 0; height: 100%; }
-.det-corr-bar-val { min-width: 48px; text-align: right; font-size: 9px; font-variant-numeric: tabular-nums; }
+/* Detail same-symbol analysis */
+#detailMatricesGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width:900px) { #detailMatricesGrid { grid-template-columns: 1fr; } }
+.cannibal-alert { padding:8px 12px; background:rgba(255,59,48,0.08); border:1px solid rgba(255,59,48,0.3); margin-bottom:12px; }
+.cannibal-title { font-family:var(--mono); font-size:8px; color:#ff3b30; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; }
+.cannibal-list { font-family:var(--mono); font-size:9px; color:var(--t1); line-height:1.6; }
+.strat-metrics-table { width:100%; border-collapse:collapse; font-family:var(--mono); font-size:9px; }
+.strat-metrics-table th, .strat-metrics-table td { padding:5px 8px; border:1px solid var(--g600); font-variant-numeric:tabular-nums; }
+.strat-metrics-table th { color:var(--t3); font-weight:400; font-size:7px; background:var(--g700); text-transform:uppercase; }
+.strat-metrics-table td { color:var(--t2); }
 .sim-matrix { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 9px; }
 .sim-matrix th, .sim-matrix td { padding: 6px 8px; text-align: center; border: 1px solid var(--g600); }
 .sim-matrix th { color: var(--t3); font-weight: 400; font-size: 7px; background: var(--g700); white-space: nowrap; }
@@ -1266,15 +1270,42 @@ table.portfolio tr.selected td { color: var(--t1); }
           </div>
         </div>
 
-        <!-- Correlation (this report vs others) -->
+        <!-- Same-Symbol Analysis (NxN matrices) -->
         <div class="chart-panel" id="detailCorrelationPanel" style="display:none">
           <div class="chart-header">
-            <span class="chart-title">CORRELATION</span>
+            <span class="chart-title">SAME-SYMBOL ANALYSIS</span>
             <span id="detailCorrInfo" style="font-family:var(--mono);font-size:8px;color:var(--t4)"></span>
           </div>
-          <div class="metrics-grid" id="detailCorrSummary" style="margin-bottom:10px"></div>
-          <div id="detailCorrBars"></div>
-          <div class="sim-legend" id="detailCorrLegend"></div>
+          <div class="cannibal-alert" id="detailCannibalAlert" style="display:none">
+            <div class="cannibal-title">CANNIBALIZATION WARNING</div>
+            <div class="cannibal-list" id="detailCannibalList"></div>
+          </div>
+          <div id="detailMatricesGrid">
+            <div>
+              <div class="sim-panel-label">RETURN CORRELATION</div>
+              <div id="detailCorrMatrix" style="overflow-x:auto"></div>
+              <div class="sim-legend">&lt;0.30 diversified · 0.30–0.60 moderate · &gt;0.60 same signal</div>
+            </div>
+            <div>
+              <div class="sim-panel-label">TRADE OVERLAP %</div>
+              <div id="detailOverlapMatrix" style="overflow-x:auto"></div>
+              <div class="sim-legend">&lt;0.20 good · 0.20–0.40 moderate · &gt;0.40 redundant</div>
+            </div>
+            <div>
+              <div class="sim-panel-label">SAME-DIRECTION OVERLAP %</div>
+              <div id="detailSameDirMatrix" style="overflow-x:auto"></div>
+              <div class="sim-legend">&lt;0.25 good · 0.25–0.50 moderate · &gt;0.50 correlated</div>
+            </div>
+            <div>
+              <div class="sim-panel-label">DIVERSIFICATION SCORE</div>
+              <div id="detailDivScoreMatrix" style="overflow-x:auto"></div>
+              <div class="sim-legend">higher = better · &gt;0.50 strong · 0.30–0.50 moderate · &lt;0.30 weak</div>
+            </div>
+          </div>
+          <div style="margin-top:14px">
+            <div class="sim-panel-label">STRATEGY METRICS</div>
+            <div id="detailStratMetrics" style="overflow-x:auto"></div>
+          </div>
         </div>
 
         <!-- Input Parameters -->
@@ -4075,88 +4106,81 @@ function buildStreakChart(r) {
   });
 }
 
-// ─── DETAIL TAB — CORRELATION (this report vs others, one at a time) ───
+// ─── DETAIL TAB — SAME-SYMBOL ANALYSIS (NxN matrices) ───
 function buildDetailCorrelation(r) {
   const panel = document.getElementById('detailCorrelationPanel');
-  const barsDiv = document.getElementById('detailCorrBars');
-  const infoSpan = document.getElementById('detailCorrInfo');
-  const legendDiv = document.getElementById('detailCorrLegend');
-  if (!panel || !barsDiv) return;
+  if (!panel) return;
 
-  // Current report's curve
-  const currentId = r.id || r.filename;
-  const currentCurve = getBalanceCurve(r);
-  if (!currentCurve || currentCurve.length < 10) { panel.style.display = 'none'; return; }
+  const reportId = r.id || r.filename;
+  const result = PORTFOLIO_SYSTEM.buildSameSymbolAnalysis(reportId);
 
-  // Gather all other reports with valid balance curves
-  const others = [];
-  for (const [id, rp] of store) {
-    if (id === currentId) continue;
-    const c = getBalanceCurve(rp);
-    if (c && c.length >= 10) {
-      others.push({ id, symbol: getSymbol(rp), curve: c });
+  if (!result) { panel.style.display = 'none'; return; }
+
+  const { labels, corrMatrix, overlapMatrix, sameDirMatrix, divScoreMatrix, cannibalPairs, ids } = result;
+
+  // Header info
+  document.getElementById('detailCorrInfo').textContent =
+    getSymbol(r) + ' \u00B7 ' + labels.length + ' FILES';
+
+  // Render 4 NxN matrices using existing portfolio renderer
+  document.getElementById('detailCorrMatrix').innerHTML =
+    PORTFOLIO_SYSTEM.renderInteractionMatrix(corrMatrix, labels, 'corr');
+  document.getElementById('detailOverlapMatrix').innerHTML =
+    PORTFOLIO_SYSTEM.renderInteractionMatrix(overlapMatrix, labels, 'overlap');
+  document.getElementById('detailSameDirMatrix').innerHTML =
+    PORTFOLIO_SYSTEM.renderInteractionMatrix(sameDirMatrix, labels, 'overlap');
+  document.getElementById('detailDivScoreMatrix').innerHTML =
+    PORTFOLIO_SYSTEM.renderInteractionMatrix(divScoreMatrix, labels, 'divscore');
+
+  // Cannibalization warnings
+  const alertDiv = document.getElementById('detailCannibalAlert');
+  const listDiv = document.getElementById('detailCannibalList');
+  if (cannibalPairs.length > 0) {
+    alertDiv.style.display = '';
+    listDiv.innerHTML = cannibalPairs.map(p =>
+      `<div>${p.label1} \u2194 ${p.label2} &nbsp;\u2014&nbsp; ` +
+      `r=${p.corr.toFixed(2)}, overlap=${(p.overlap * 100).toFixed(0)}%, ` +
+      `same-dir=${(p.sameDir * 100).toFixed(0)}%, ` +
+      `div=${(p.divScore * 100).toFixed(0)}%</div>`
+    ).join('');
+  } else {
+    alertDiv.style.display = 'none';
+  }
+
+  // Per-strategy metrics table
+  const metricsDiv = document.getElementById('detailStratMetrics');
+  if (metricsDiv) {
+    let html = '<table class="strat-metrics-table"><thead><tr>' +
+      '<th style="text-align:left">STRATEGY</th><th>TRADES</th><th>NET P&L</th>' +
+      '<th>PF</th><th>WIN%</th><th>MAX DD</th><th>EXPECTANCY</th><th>AVG HOLD</th>' +
+      '</tr></thead><tbody>';
+    for (let i = 0; i < ids.length; i++) {
+      const rp = store.get(ids[i]);
+      if (!rp) continue;
+      const pnl = R(rp, 'netProfit') || 0;
+      const pf = R(rp, 'profitFactor') || 0;
+      const wr = R(rp, 'winRate') || 0;
+      const dd = R(rp, 'maxDDPct') || 0;
+      const ep = R(rp, 'expectedPayoff') || 0;
+      const trades = R(rp, 'totalTrades') || 0;
+      const hold = fmtHoldTime(R(rp, 'avgHoldTime'));
+      const pnlColor = pnl >= 0 ? 'color:#00ff88' : 'color:#ff3b30';
+      const pfColor = pf >= 1.5 ? 'color:#00ff88' : pf >= 1.0 ? 'color:#ff9500' : 'color:#ff3b30';
+      const ddColor = Math.abs(dd) < 10 ? 'color:#00ff88' : Math.abs(dd) < 20 ? 'color:#ff9500' : 'color:#ff3b30';
+      html += `<tr>` +
+        `<td style="text-align:left;color:var(--t1)">${labels[i]}</td>` +
+        `<td style="text-align:center">${trades}</td>` +
+        `<td style="text-align:right;${pnlColor}">${fmtPnl(pnl)}</td>` +
+        `<td style="text-align:center;${pfColor}">${fmt(pf)}</td>` +
+        `<td style="text-align:center">${fmtPct(wr)}</td>` +
+        `<td style="text-align:center;${ddColor}">${fmtPct(dd)}</td>` +
+        `<td style="text-align:right">${fmt(ep)}</td>` +
+        `<td style="text-align:center;color:var(--t3)">${hold}</td>` +
+        `</tr>`;
     }
+    html += '</tbody></table>';
+    metricsDiv.innerHTML = html;
   }
-
-  if (others.length === 0) { panel.style.display = 'none'; return; }
-
-  // Compute correlation of THIS report vs each other (1-to-many, not NxN)
-  for (const o of others) {
-    o.corr = PORTFOLIO_SYSTEM.pearsonCorrelation(currentCurve, o.curve);
-  }
-
-  // Sort by absolute correlation descending
-  others.sort((a, b) => Math.abs(b.corr) - Math.abs(a.corr));
-
-  // Render bars — this report vs each other, one pair at a time
-  let barsHtml = '';
-  const maxBars = Math.min(others.length, 20);
-  for (let k = 0; k < maxBars; k++) {
-    const o = others[k];
-    const abs = Math.abs(o.corr);
-    const pct = (abs * 100).toFixed(0);
-    const isPos = o.corr >= 0;
-    const barColor = isPos ? 'rgba(0,255,136,0.7)' : 'rgba(255,59,48,0.7)';
-    const txtColor = abs > 0.3 ? (isPos ? 'var(--neon)' : 'var(--crimson)') : 'var(--t3)';
-    barsHtml += `<div class="det-corr-bar">
-      <span class="det-corr-bar-label" title="${o.symbol}">${o.symbol}</span>
-      <div class="det-corr-bar-track"><div class="det-corr-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
-      <span class="det-corr-bar-val" style="color:${txtColor}">${o.corr >= 0 ? '+' : ''}${o.corr.toFixed(3)}</span>
-    </div>`;
-  }
-  barsDiv.innerHTML = barsHtml;
-
-  // Summary box — key stats in metric cards
-  const avgCorr = others.reduce((s, o) => s + o.corr, 0) / others.length;
-  const avgAbs = others.reduce((s, o) => s + Math.abs(o.corr), 0) / others.length;
-  const mostCorr = others[0]; // already sorted by |corr| desc
-  const leastCorr = others[others.length - 1];
-  const posCount = others.filter(o => o.corr > 0).length;
-  const negCount = others.filter(o => o.corr < 0).length;
-  // Diversification score: lower avg |corr| = better diversification (0-100 scale)
-  const divScore = Math.max(0, Math.min(100, ((1 - avgAbs) * 100))).toFixed(0);
-  const divColor = avgAbs < 0.3 ? 'pnl-pos' : avgAbs > 0.6 ? 'pnl-neg' : '';
-
-  const summaryCards = [
-    { label: 'AVG CORRELATION', value: (avgCorr >= 0 ? '+' : '') + avgCorr.toFixed(3), cls: avgCorr >= 0 ? 'pnl-pos' : 'pnl-neg' },
-    { label: 'AVG |r|', value: avgAbs.toFixed(3), cls: '' },
-    { label: 'DIVERSIFICATION', value: divScore + '%', cls: divColor },
-    { label: 'MOST CORRELATED', value: mostCorr.symbol.slice(0, 12), cls: '' },
-    { label: 'HIGHEST r', value: (mostCorr.corr >= 0 ? '+' : '') + mostCorr.corr.toFixed(3), cls: mostCorr.corr >= 0 ? 'pnl-pos' : 'pnl-neg' },
-    { label: 'LEAST CORRELATED', value: leastCorr.symbol.slice(0, 12), cls: '' },
-    { label: 'POSITIVE / NEGATIVE', value: posCount + ' / ' + negCount, cls: '' },
-    { label: 'REPORTS COMPARED', value: others.length, cls: '' },
-  ];
-
-  document.getElementById('detailCorrSummary').innerHTML = summaryCards.map(m =>
-    `<div class="metric-card"><div class="metric-label">${m.label}</div><div class="metric-value ${m.cls}">${m.value}</div></div>`
-  ).join('');
-
-  infoSpan.textContent = `${getSymbol(r)} vs ${others.length} REPORTS`;
-  legendDiv.innerHTML = 'Pearson r of daily returns (date-aligned). ' +
-    '<span style="color:var(--neon)">GREEN</span> = co-move, ' +
-    '<span style="color:var(--crimson)">RED</span> = hedge. ' +
-    'Diversification = 100% minus avg |r| (higher = less overlap).';
 
   panel.style.display = '';
 }
@@ -6112,6 +6136,162 @@ const PORTFOLIO_SYSTEM = {
       }
     }
     return intervals;
+  },
+
+  // Like _getTradeIntervals but also captures trade direction (buy/sell)
+  _getTradeIntervalsWithDir(reportId) {
+    const r = store.get(reportId);
+    if (!r || !r.deals) return [];
+    const openBySymbol = {}; // symbol → [{ms, dir}]
+    const intervals = [];
+    for (const d of r.deals) {
+      if (!d.direction || !d.time) continue;
+      const sym = d.symbol || '_';
+      const t = this._parseTime(d.time);
+      if (!t) continue;
+      const ms = t.getTime();
+      if (d.direction === 'in') {
+        if (!openBySymbol[sym]) openBySymbol[sym] = [];
+        openBySymbol[sym].push({ ms, dir: (d.type || '').toLowerCase() }); // 'buy' or 'sell'
+      } else if (d.direction === 'out') {
+        if (openBySymbol[sym] && openBySymbol[sym].length > 0) {
+          const entry = openBySymbol[sym].shift();
+          if (ms > entry.ms) intervals.push({ open: entry.ms, close: ms, dir: entry.dir });
+        }
+      }
+    }
+    return intervals;
+  },
+
+  // Trade overlap between two individual reports (not regime groups)
+  computeReportOverlap(id1, id2) {
+    const ti = this._getTradeIntervals(id1).sort((a, b) => a.open - b.open);
+    const tj = this._getTradeIntervals(id2).sort((a, b) => a.open - b.open);
+    if (ti.length === 0 || tj.length === 0) return 0;
+    let overlapMs = 0, totalI = 0, totalJ = 0;
+    for (const a of ti) totalI += a.close - a.open;
+    for (const b of tj) totalJ += b.close - b.open;
+    if (totalI === 0 || totalJ === 0) return 0;
+    for (const a of ti) {
+      for (const b of tj) {
+        if (b.open >= a.close) break;
+        if (b.close <= a.open) continue;
+        overlapMs += Math.min(a.close, b.close) - Math.max(a.open, b.open);
+      }
+    }
+    const pctI = overlapMs / totalI;
+    const pctJ = overlapMs / totalJ;
+    return Math.min((pctI + pctJ) / 2, 1);
+  },
+
+  // Same-direction overlap: of overlapping trade time, how much is same direction
+  computeSameDirOverlap(id1, id2) {
+    const ti = this._getTradeIntervalsWithDir(id1).sort((a, b) => a.open - b.open);
+    const tj = this._getTradeIntervalsWithDir(id2).sort((a, b) => a.open - b.open);
+    if (ti.length === 0 || tj.length === 0) return 0;
+    let sameDirMs = 0, totalOverlapMs = 0;
+    for (const a of ti) {
+      for (const b of tj) {
+        if (b.open >= a.close) break;
+        if (b.close <= a.open) continue;
+        const overlapDur = Math.min(a.close, b.close) - Math.max(a.open, b.open);
+        totalOverlapMs += overlapDur;
+        if (a.dir === b.dir) sameDirMs += overlapDur;
+      }
+    }
+    return totalOverlapMs > 0 ? sameDirMs / totalOverlapMs : 0;
+  },
+
+  // Master function: build all matrices for same-symbol reports
+  buildSameSymbolAnalysis(reportId) {
+    const currentR = store.get(reportId);
+    if (!currentR) return null;
+    const sym = getSymbol(currentR);
+
+    // Find all reports with same symbol
+    const sameSymbol = [];
+    for (const [id, rp] of store) {
+      if (getSymbol(rp) === sym) {
+        const curve = getBalanceCurve(rp);
+        if (curve && curve.length >= 5) {
+          // Build a short label from filename, stripping common symbol prefix
+          let label = (rp.id || rp.filename || id).replace(/\.(htm|html|csv)$/i, '');
+          // Strip symbol prefix if present
+          const symUpper = sym.toUpperCase();
+          if (label.toUpperCase().startsWith(symUpper)) label = label.slice(sym.length);
+          if (label.startsWith('_') || label.startsWith('-') || label.startsWith(' ')) label = label.slice(1);
+          if (!label) label = id.slice(0, 20);
+          if (label.length > 18) label = label.slice(0, 17) + '\u2026';
+          sameSymbol.push({ id, label, curve });
+        }
+      }
+    }
+
+    if (sameSymbol.length < 2) return null;
+
+    const n = sameSymbol.length;
+    const ids = sameSymbol.map(s => s.id);
+    const labels = sameSymbol.map(s => s.label);
+
+    // 1. Return correlation matrix
+    const corrMatrix = Array.from({length: n}, () => Array(n).fill(0));
+    for (let i = 0; i < n; i++) {
+      corrMatrix[i][i] = 1;
+      for (let j = i + 1; j < n; j++) {
+        const v = this.pearsonCorrelation(sameSymbol[i].curve, sameSymbol[j].curve);
+        corrMatrix[i][j] = v; corrMatrix[j][i] = v;
+      }
+    }
+
+    // 2. Trade overlap matrix
+    const overlapMatrix = Array.from({length: n}, () => Array(n).fill(0));
+    for (let i = 0; i < n; i++) {
+      overlapMatrix[i][i] = 1;
+      for (let j = i + 1; j < n; j++) {
+        const v = this.computeReportOverlap(ids[i], ids[j]);
+        overlapMatrix[i][j] = v; overlapMatrix[j][i] = v;
+      }
+    }
+
+    // 3. Same-direction overlap matrix
+    const sameDirMatrix = Array.from({length: n}, () => Array(n).fill(0));
+    for (let i = 0; i < n; i++) {
+      sameDirMatrix[i][i] = 1;
+      for (let j = i + 1; j < n; j++) {
+        const v = this.computeSameDirOverlap(ids[i], ids[j]);
+        sameDirMatrix[i][j] = v; sameDirMatrix[j][i] = v;
+      }
+    }
+
+    // 4. Diversification score: 1 - (0.40*|corr| + 0.35*overlap + 0.25*sameDir)
+    const divScoreMatrix = Array.from({length: n}, () => Array(n).fill(0));
+    for (let i = 0; i < n; i++) {
+      divScoreMatrix[i][i] = 1;
+      for (let j = i + 1; j < n; j++) {
+        const score = 1 - (0.40 * Math.abs(corrMatrix[i][j]) + 0.35 * overlapMatrix[i][j] + 0.25 * sameDirMatrix[i][j]);
+        const v = Math.max(0, Math.min(1, score));
+        divScoreMatrix[i][j] = v; divScoreMatrix[j][i] = v;
+      }
+    }
+
+    // 5. Cannibalization flags
+    const cannibalPairs = [];
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const absCorr = Math.abs(corrMatrix[i][j]);
+        const olap = overlapMatrix[i][j];
+        const sdir = sameDirMatrix[i][j];
+        if (absCorr > 0.50 || olap > 0.30 || sdir > 0.25) {
+          cannibalPairs.push({
+            label1: labels[i], label2: labels[j],
+            corr: corrMatrix[i][j], overlap: olap, sameDir: sdir,
+            divScore: divScoreMatrix[i][j]
+          });
+        }
+      }
+    }
+
+    return { labels, corrMatrix, overlapMatrix, sameDirMatrix, divScoreMatrix, cannibalPairs, ids };
   },
 
   _getRegimeIntervals(regimes, regimeName) {
