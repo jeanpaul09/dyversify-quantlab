@@ -907,13 +907,14 @@ table.portfolio tr.selected td { color: var(--t1); }
   display:flex; flex-direction:column; align-items:center; gap:0;
 }
 
-/* Logo PNG image */
-.auth-logo-img {
-  margin-bottom:48px; display:flex; justify-content:center;
+/* Logo SVG */
+.auth-logo-wrap {
+  margin-bottom:48px; display:flex; align-items:center; justify-content:center; gap:14px;
 }
-.auth-logo-img img {
-  height:60px; width:auto; opacity:0.94;
-  filter: drop-shadow(0 0 12px rgba(255,255,255,0.06));
+.auth-logo-wrap .auth-bird { height:52px; width:auto; opacity:0.94; }
+.auth-logo-wrap .auth-wordmark {
+  font-family: var(--sans); font-size:34px; font-weight:700; font-style:italic;
+  color:#ffffff; letter-spacing:-0.02em;
 }
 
 /* Divider — thin line */
@@ -998,8 +999,22 @@ table.portfolio tr.selected td { color: var(--t1); }
   <canvas class="auth-market-canvas" id="authMarketCanvas"></canvas>
   <!-- Content -->
   <div class="auth-container">
-    <div class="auth-logo-img">
-      <img src="dyversify-logo.png" alt="Dyversify" />
+    <div class="auth-logo-wrap">
+      <svg class="auth-bird" viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Wing feathers (back to front, dark to light) -->
+        <path d="M28 18 L12 58 L38 72 L54 32 Z" fill="#6b6b6b" opacity="0.85"/>
+        <path d="M38 12 L18 56 L44 70 L60 26 Z" fill="#9a9a9a" opacity="0.9"/>
+        <path d="M48 8  L24 54 L50 68 L66 22 Z" fill="#cccccc" opacity="0.92"/>
+        <!-- Body / main shape -->
+        <path d="M56 4 L30 52 L56 66 L72 18 Z" fill="#ffffff"/>
+        <!-- Chest / lower body pointing down-right -->
+        <path d="M56 66 L62 78 L78 108 L72 56 L56 42 Z" fill="#ffffff"/>
+        <!-- Beak -->
+        <path d="M78 108 L84 118 L76 104 Z" fill="#ffffff"/>
+        <!-- Inner wing accent line -->
+        <path d="M52 20 L34 56 L40 60" stroke="rgba(0,0,0,0.08)" stroke-width="0.5" fill="none"/>
+      </svg>
+      <span class="auth-wordmark">Dyversify</span>
     </div>
     <div class="auth-divider"></div>
     <div class="auth-section">
@@ -1904,40 +1919,62 @@ AUTH.init();
   resize();
   window.addEventListener('resize', resize);
 
-  // Generate a realistic-looking market chart polyline
+  // Generate a smooth market chart polyline using cubic interpolation
   function generateLine() {
     const bullish = Math.random() > 0.5;
     const color = bullish ? 'rgba(0,255,136,' : 'rgba(255,59,48,';
-    const segments = Math.floor(rand(50, 90));
-    const startX = rand(-W * 0.1, W * 0.1);
-    // Green starts lower half → climbs UP; Red starts upper half → falls DOWN
-    const startY = bullish ? rand(H * 0.55, H * 0.85) : rand(H * 0.15, H * 0.45);
-    const stepX = rand(W * 0.85, W * 1.3) / segments;
-    // Much more drastic trend — green strongly up, red strongly down
-    const trend = bullish ? -rand(1.5, 3.5) : rand(1.5, 3.5);
-    const volatility = rand(10, 32);
-    const points = [];
+    // Fewer control points → then cubic-interpolate for smoothness
+    const controls = Math.floor(rand(12, 22));
+    const startX = rand(-W * 0.05, W * 0.08);
+    const startY = bullish ? rand(H * 0.55, H * 0.82) : rand(H * 0.18, H * 0.45);
+    const endX = rand(W * 0.85, W * 1.1);
+    const stepX = (endX - startX) / controls;
+    // Clear directional trend — green UP, red DOWN
+    const totalDrift = bullish ? -rand(H * 0.25, H * 0.45) : rand(H * 0.25, H * 0.45);
+    const trendPerStep = totalDrift / controls;
+    const volatility = rand(12, 30);
+
+    // Build control points
+    const cps = [];
     let x = startX, y = startY;
-    for (let i = 0; i <= segments; i++) {
-      points.push({ x, y });
+    for (let i = 0; i <= controls; i++) {
+      cps.push({ x, y: Math.max(10, Math.min(H - 10, y)) });
       x += stepX;
-      y += trend + (Math.random() - 0.5) * volatility;
-      y = Math.max(10, Math.min(H - 10, y));
+      y += trendPerStep + (Math.random() - 0.5) * volatility;
     }
+
+    // Cubic Catmull-Rom interpolation for smooth curve
+    const points = [];
+    const RES = 4; // sub-points per segment
+    for (let i = 0; i < cps.length - 1; i++) {
+      const p0 = cps[Math.max(i - 1, 0)];
+      const p1 = cps[i];
+      const p2 = cps[i + 1];
+      const p3 = cps[Math.min(i + 2, cps.length - 1)];
+      for (let t = 0; t < RES; t++) {
+        const f = t / RES;
+        const f2 = f * f, f3 = f2 * f;
+        const px = 0.5 * ((2*p1.x) + (-p0.x+p2.x)*f + (2*p0.x-5*p1.x+4*p2.x-p3.x)*f2 + (-p0.x+3*p1.x-3*p2.x+p3.x)*f3);
+        const py = 0.5 * ((2*p1.y) + (-p0.y+p2.y)*f + (2*p0.y-5*p1.y+4*p2.y-p3.y)*f2 + (-p0.y+3*p1.y-3*p2.y+p3.y)*f3);
+        points.push({ x: px, y: py });
+      }
+    }
+    points.push(cps[cps.length - 1]);
+
     return {
       points,
       color,
       bullish,
-      maxOpacity: rand(0.08, 0.18),
-      lineWidth: rand(1.2, 2.2),
-      progress: 0,         // 0→1 draw-in phase
-      fadeProgress: 0,     // 0→1 fade-out phase
-      drawSpeed: rand(0.005, 0.014),
-      fadeSpeed: rand(0.003, 0.008),
-      phase: 'drawing',    // 'drawing' | 'holding' | 'fading' | 'done'
-      holdTime: rand(800, 2000),
+      maxOpacity: rand(0.07, 0.14),
+      lineWidth: rand(1, 1.8),
+      progress: 0,
+      fadeProgress: 0,
+      drawSpeed: rand(0.003, 0.008),   // slower = smoother draw
+      fadeSpeed: rand(0.002, 0.006),
+      phase: 'drawing',
+      holdTime: rand(1000, 2500),
       holdStart: 0,
-      glowWidth: rand(8, 16)
+      glowWidth: rand(4, 8)            // subtler glow
     };
   }
 
@@ -1945,7 +1982,7 @@ AUTH.init();
     const pts = line.points;
     let opacity;
     if (line.phase === 'drawing') {
-      opacity = line.maxOpacity * Math.min(line.progress * 3, 1);
+      opacity = line.maxOpacity * Math.min(line.progress * 2.5, 1);
       line.progress += line.drawSpeed;
       if (line.progress >= 1) {
         line.phase = 'holding';
@@ -1953,16 +1990,11 @@ AUTH.init();
       }
     } else if (line.phase === 'holding') {
       opacity = line.maxOpacity;
-      if (now - line.holdStart > line.holdTime) {
-        line.phase = 'fading';
-      }
+      if (now - line.holdStart > line.holdTime) line.phase = 'fading';
     } else if (line.phase === 'fading') {
       line.fadeProgress += line.fadeSpeed;
       opacity = line.maxOpacity * (1 - line.fadeProgress);
-      if (line.fadeProgress >= 1) {
-        line.phase = 'done';
-        return;
-      }
+      if (line.fadeProgress >= 1) { line.phase = 'done'; return; }
     }
     if (opacity <= 0) return;
 
@@ -1971,13 +2003,11 @@ AUTH.init();
       : pts.length;
     if (drawCount < 2) return;
 
-    // Outer glow along the trail
+    // Subtle outer glow
     ctx.beginPath();
     ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < drawCount; i++) {
-      ctx.lineTo(pts[i].x, pts[i].y);
-    }
-    ctx.strokeStyle = line.color + (opacity * 0.35).toFixed(4) + ')';
+    for (let i = 1; i < drawCount; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.strokeStyle = line.color + (opacity * 0.2).toFixed(4) + ')';
     ctx.lineWidth = line.glowWidth;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -1986,37 +2016,36 @@ AUTH.init();
     // Core line
     ctx.beginPath();
     ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < drawCount; i++) {
-      ctx.lineTo(pts[i].x, pts[i].y);
-    }
+    for (let i = 1; i < drawCount; i++) ctx.lineTo(pts[i].x, pts[i].y);
     ctx.strokeStyle = line.color + opacity.toFixed(4) + ')';
     ctx.lineWidth = line.lineWidth;
     ctx.stroke();
 
-    // ── GLOWING TIP at the leading edge ──
+    // ── Smooth glowing tip ──
     if (line.phase === 'drawing' && drawCount >= 2) {
       const tip = pts[drawCount - 1];
-      const tipOpacity = Math.min(opacity * 4, 0.9);  // bright tip
-      const baseColor = line.bullish ? [0,255,136] : [255,59,48];
+      // Smoothly pulse the tip brightness using sin wave
+      const pulse = 0.75 + 0.25 * Math.sin(now * 0.004);
+      const tipOpacity = Math.min(opacity * 3 * pulse, 0.65);
+      const bc = line.bullish ? '0,255,136' : '255,59,48';
 
-      // Outer radial glow (large, soft)
-      const grad = ctx.createRadialGradient(tip.x, tip.y, 0, tip.x, tip.y, 28);
-      grad.addColorStop(0, 'rgba(' + baseColor.join(',') + ',' + (tipOpacity * 0.7).toFixed(3) + ')');
-      grad.addColorStop(0.3, 'rgba(' + baseColor.join(',') + ',' + (tipOpacity * 0.3).toFixed(3) + ')');
-      grad.addColorStop(1, 'rgba(' + baseColor.join(',') + ',0)');
+      // Soft outer halo
+      const grad = ctx.createRadialGradient(tip.x, tip.y, 0, tip.x, tip.y, 20);
+      grad.addColorStop(0, 'rgba(' + bc + ',' + (tipOpacity * 0.5).toFixed(3) + ')');
+      grad.addColorStop(0.4, 'rgba(' + bc + ',' + (tipOpacity * 0.15).toFixed(3) + ')');
+      grad.addColorStop(1, 'rgba(' + bc + ',0)');
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(tip.x, tip.y, 28, 0, Math.PI * 2);
+      ctx.arc(tip.x, tip.y, 20, 0, Math.PI * 2);
       ctx.fill();
 
-      // Inner bright core (small, intense)
-      const grad2 = ctx.createRadialGradient(tip.x, tip.y, 0, tip.x, tip.y, 6);
-      grad2.addColorStop(0, 'rgba(255,255,255,' + (tipOpacity * 0.9).toFixed(3) + ')');
-      grad2.addColorStop(0.5, 'rgba(' + baseColor.join(',') + ',' + (tipOpacity * 0.6).toFixed(3) + ')');
-      grad2.addColorStop(1, 'rgba(' + baseColor.join(',') + ',0)');
+      // Small bright core
+      const grad2 = ctx.createRadialGradient(tip.x, tip.y, 0, tip.x, tip.y, 4);
+      grad2.addColorStop(0, 'rgba(255,255,255,' + (tipOpacity * 0.7).toFixed(3) + ')');
+      grad2.addColorStop(1, 'rgba(' + bc + ',0)');
       ctx.fillStyle = grad2;
       ctx.beginPath();
-      ctx.arc(tip.x, tip.y, 6, 0, Math.PI * 2);
+      ctx.arc(tip.x, tip.y, 4, 0, Math.PI * 2);
       ctx.fill();
     }
   }
