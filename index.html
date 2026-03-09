@@ -6390,6 +6390,19 @@ const PORTFOLIO_SYSTEM = {
     const { combined, individual } = this.computeCombined(reportIds);
     if (combined.length === 0) return;
 
+    // Debug: log each curve's date range to help diagnose truncation
+    console.group('Portfolio Equity Chart — Curve Date Ranges');
+    individual.forEach(c => {
+      const bc = c.curve;
+      const first = bc.length > 0 ? (bc[0].time || '?') : 'EMPTY';
+      const last = bc.length > 0 ? (bc[bc.length - 1].time || '?') : 'EMPTY';
+      const r = store.get(c.id);
+      const trunc = r && r._curveTruncated ? ' [TRUNCATED!]' : '';
+      console.log('' + (r ? getSymbol(r) : c.id) + ': ' + first + ' → ' + last + ' (' + bc.length + ' pts)' + trunc);
+    });
+    console.log('Combined: ' + combined.length + ' pts, ' + (combined[0]||{}).time + ' → ' + (combined[combined.length-1]||{}).time);
+    console.groupEnd();
+
     // Build a SHARED date-aligned x-axis from ALL curves (individual + combined)
     const allDatesSet = new Set();
     for (const c of individual) {
@@ -6636,7 +6649,7 @@ const PORTFOLIO_SYSTEM = {
       // Strategy Interaction Matrices (regime vs regime)
       this.renderInteractionMatrices();
 
-      // Pairs list
+      // Pairs list (with curve date range for data integrity check)
       const pairsDiv = document.getElementById('pfPairsList');
       pairsDiv.innerHTML = ids.map(id => {
         const r = store.get(id);
@@ -6645,12 +6658,19 @@ const PORTFOLIO_SYSTEM = {
         const pf = parseFloat(R(r, 'profitFactor')) || 0;
         const dd = Math.abs(parseFloat(R(r, 'maxDDPct')) || 0);
         const wr = parseFloat(R(r, 'winRate')) || 0;
-        return '<div style="display:flex;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid var(--g600);cursor:pointer" onclick="selectReportForDetail(\'' + id + '\')">' +
-          '<span style="font-family:var(--mono);font-size:10px;color:var(--acc);min-width:90px">' + getSymbol(r) + '</span>' +
+        const bc = r.balanceCurve || [];
+        const curveStart = bc.length > 0 ? (bc[0].time || '').split(' ')[0] : '—';
+        const curveEnd = bc.length > 0 ? (bc[bc.length - 1].time || '').split(' ')[0] : '—';
+        const pts = bc.length;
+        const isTrunc = r._curveTruncated ? ' style="color:var(--crimson)"' : '';
+        const truncTag = r._curveTruncated ? '<span style="font-family:var(--mono);font-size:7px;padding:1px 4px;background:rgba(255,59,48,0.15);color:var(--crimson);border:1px solid rgba(255,59,48,0.3);margin-left:4px">TRUNCATED</span>' : '';
+        return '<div style="display:flex;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid var(--g600);cursor:pointer;flex-wrap:wrap" onclick="selectReportForDetail(\'' + id + '\')">' +
+          '<span style="font-family:var(--mono);font-size:10px;color:var(--acc);min-width:90px">' + getSymbol(r) + truncTag + '</span>' +
           '<span style="font-family:var(--mono);font-size:9px;color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + pnl.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span>' +
           '<span style="font-family:var(--mono);font-size:9px;color:var(--t2)">PF ' + pf.toFixed(2) + '</span>' +
           '<span style="font-family:var(--mono);font-size:9px;color:var(--acc)">DD ' + dd.toFixed(2) + '%</span>' +
           '<span style="font-family:var(--mono);font-size:9px;color:var(--t2)">WR ' + wr.toFixed(2) + '%</span>' +
+          '<span' + isTrunc + ' style="font-family:var(--mono);font-size:8px;color:var(--t4);margin-left:auto">' + curveStart + ' → ' + curveEnd + ' (' + pts + 'pts)</span>' +
           '</div>';
       }).join('');
 
