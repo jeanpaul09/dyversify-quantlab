@@ -2477,18 +2477,18 @@ function parseMT5Report(text, filename) {
 
 // ─── FORMATTING HELPERS ───
 function fmt(n, dec=2) {
-  if (n === undefined || n === null || isNaN(n)) return '\u2014';
+  if (n === undefined || n === null || isNaN(n) || !isFinite(n)) return '\u2014';
   const s = Math.abs(n).toFixed(dec);
   const parts = s.split('.');
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return (n < 0 ? '-' : '') + parts.join('.');
 }
 function fmtPnl(n, dec=2) {
-  if (isNaN(n)) return '\u2014';
+  if (isNaN(n) || !isFinite(n)) return '\u2014';
   const prefix = n >= 0 ? '+$' : '-$';
   return prefix + fmt(Math.abs(n), dec);
 }
-function fmtPct(n, dec=2) { return isNaN(n) ? '\u2014' : fmt(n, dec) + '%'; }
+function fmtPct(n, dec=2) { return (isNaN(n) || !isFinite(n)) ? '\u2014' : fmt(n, dec) + '%'; }
 function fmtHoldTime(val) {
   if (!val) return '\u2014';
   // Handle ISO date from Google Sheets epoch (1899-12-30T06:10:14.000Z)
@@ -3529,7 +3529,7 @@ function buildEquityChart(r, mode) {
   const curve = getBalanceCurve(r);
   if (!curve.length) return;
 
-  const labels = curve.map(p => p.time.split(' ')[0]);
+  const labels = curve.map(p => (p.time || '').split(' ')[0]);
   const balData = curve.map(p => p.balance);
   const initial = balData[0] || 1;
 
@@ -3635,7 +3635,7 @@ function buildUnderwaterChart(r) {
   if (!curve.length) return;
 
   const balances = curve.map(p => p.balance);
-  const labels = curve.map(p => p.time.split(' ')[0]);
+  const labels = curve.map(p => (p.time || '').split(' ')[0]);
 
   // Calculate drawdown from running maximum
   let runningMax = balances[0];
@@ -4101,7 +4101,7 @@ function computeCombinedByDate(reports) {
   for (let i = 1; i < months.length; i++) {
     const prevEnd = monthBals[months[i - 1]].last;
     const curEnd = monthBals[months[i]].last;
-    monthlyReturns.push({ month: months[i], pct: ((curEnd - prevEnd) / prevEnd) * 100 });
+    monthlyReturns.push({ month: months[i], pct: prevEnd > 0 ? ((curEnd - prevEnd) / prevEnd) * 100 : 0 });
   }
 
   // Phase 4: Compute individual report DD metrics (from MT5-parsed values, most accurate)
@@ -4643,7 +4643,7 @@ function renderComparePairs(empty, view, modeBar) {
   });
 
   const longest = selected.reduce((a, b) => getBalanceCurve(a).length > getBalanceCurve(b).length ? a : b);
-  const labels = getBalanceCurve(longest).map(p => p.time.split(' ')[0]);
+  const labels = getBalanceCurve(longest).map(p => (p.time || '').split(' ')[0]);
 
   CHARTS.compare = new Chart(ctx, {
     type: 'line', data: { labels, datasets },
@@ -6318,13 +6318,14 @@ const PORTFOLIO_SYSTEM = {
     const winRate = totalTrades > 0 ? sumWin / totalTrades : 0;
 
     // Diversification ratio
+    let avgCorr = 0;
     if (validIds.length >= 2) {
       const matrix = this.computeCorrelationMatrix(validIds);
       let corrSum = 0, corrCnt = 0;
       for (let i = 0; i < matrix.length; i++)
         for (let j = i + 1; j < matrix.length; j++) { corrSum += Math.abs(matrix[i][j]); corrCnt++; }
-      var avgCorr = corrCnt > 0 ? corrSum / corrCnt : 0;
-    } else { var avgCorr = 0; }
+      avgCorr = corrCnt > 0 ? corrSum / corrCnt : 0;
+    }
     const divRatio = 1 - avgCorr;
 
     return {
