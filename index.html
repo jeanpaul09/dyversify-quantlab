@@ -2871,23 +2871,31 @@ const DATE_FILTER = {
       if (dd > maxDD) maxDD = dd;
     }
 
-    // Sharpe from % trade returns (not dollar P&L, which is scale-dependent)
-    // Each return = profit / equity_before_trade, annualized by √(trades_per_year)
-    const returns = closedTrades.map(d => {
-      const equityBefore = d.balance - d.profit; // balance is AFTER deal
-      return equityBefore > 0 ? d.profit / equityBefore : 0;
-    });
-    const mean = returns.reduce((s,v) => s+v, 0) / returns.length;
-    const variance = returns.length > 1
-      ? returns.reduce((s,v) => s + (v-mean)*(v-mean), 0) / (returns.length - 1) // sample variance (N-1)
-      : 0;
-    const stddev = Math.sqrt(variance);
-    // Estimate trades per year from the filtered period span
-    const firstTime = this.parseTime(closedTrades[0].time);
-    const lastTime = this.parseTime(closedTrades[closedTrades.length - 1].time);
-    const spanDays = firstTime && lastTime ? Math.max(1, (lastTime - firstTime) / 86400000) : 252;
-    const tradesPerYear = (closedTrades.length / spanDays) * 365;
-    const sharpeRatio = stddev > 0 ? (mean / stddev) * Math.sqrt(tradesPerYear) : 0;
+    // Sharpe from DAILY equity curve returns, annualized by √252
+    // Industry standard: aggregate to daily frequency, then annualize.
+    // Per-trade Sharpe with √(trades/year) inflates for high-frequency strategies.
+    const dailyReturns = [];
+    if (curve.length >= 2) {
+      // Group curve points by date, take last balance per day
+      const dailyBals = {};
+      for (const p of curve) {
+        const d = (p.time || '').split(' ')[0].replace(/\./g, '-');
+        if (d.length >= 8) dailyBals[d] = p.balance;
+      }
+      const sortedDays = Object.keys(dailyBals).sort();
+      for (let di = 1; di < sortedDays.length; di++) {
+        const prev = dailyBals[sortedDays[di - 1]];
+        const cur = dailyBals[sortedDays[di]];
+        if (prev > 0) dailyReturns.push((cur - prev) / prev);
+      }
+    }
+    let sharpeRatio = 0;
+    if (dailyReturns.length > 1) {
+      const mean = dailyReturns.reduce((s,v) => s+v, 0) / dailyReturns.length;
+      const variance = dailyReturns.reduce((s,v) => s + (v-mean)*(v-mean), 0) / (dailyReturns.length - 1);
+      const stddev = Math.sqrt(variance);
+      sharpeRatio = stddev > 0 ? (mean / stddev) * Math.sqrt(252) : 0;
+    }
 
     // Recovery factor
     const recoveryFactor = maxDD > 0 ? (netProfit / (peak * maxDD / 100)) : 0;
@@ -4415,21 +4423,27 @@ function renderAnalytics() {
       document.getElementById('anKpiMaxDDSub').textContent = 'FROM COMBINED CURVE';
     }
 
-    // Portfolio Sharpe from combined curve periodic returns (sample variance + proper annualization)
-    const returns = [];
-    for (let i = 1; i < bals.length; i++) { if (bals[i-1] > 0) returns.push((bals[i] - bals[i-1]) / bals[i-1]); }
-    if (returns.length > 1) {
-      const mean = returns.reduce((a,b)=>a+b,0) / returns.length;
-      const variance = returns.reduce((s,r) => s + (r-mean)*(r-mean), 0) / (returns.length - 1);
+    // Portfolio Sharpe from DAILY equity curve returns, annualized by √252
+    // Aggregate to daily (last balance per day) to avoid inflation from intraday points
+    const dailyBalMap = {};
+    for (const p of combined) {
+      const d = (p.time || '').split(' ')[0].replace(/\./g, '-');
+      if (d.length >= 8) dailyBalMap[d] = p.balance;
+    }
+    const sortedDayKeys = Object.keys(dailyBalMap).sort();
+    const dailyRets = [];
+    for (let di = 1; di < sortedDayKeys.length; di++) {
+      const prev = dailyBalMap[sortedDayKeys[di - 1]];
+      const cur = dailyBalMap[sortedDayKeys[di]];
+      if (prev > 0) dailyRets.push((cur - prev) / prev);
+    }
+    if (dailyRets.length > 1) {
+      const mean = dailyRets.reduce((a,b)=>a+b,0) / dailyRets.length;
+      const variance = dailyRets.reduce((s,r) => s + (r-mean)*(r-mean), 0) / (dailyRets.length - 1);
       const stdev = Math.sqrt(variance);
-      const firstDate = new Date((combined[0].time || '').replace(/\./g,'-'));
-      const lastDate = new Date((combined[combined.length-1].time || '').replace(/\./g,'-'));
-      if (isNaN(firstDate.getTime()) || isNaN(lastDate.getTime())) { /* skip Sharpe if dates invalid */ }
-      const spanDays = Math.max(1, (lastDate - firstDate) / 86400000);
-      const periodsPerYear = (returns.length / spanDays) * 365;
-      const sharpe = stdev > 0 ? (mean / stdev) * Math.sqrt(periodsPerYear) : 0;
+      const sharpe = stdev > 0 ? (mean / stdev) * Math.sqrt(252) : 0;
       document.getElementById('anKpiSharpe').textContent = sharpe.toFixed(2);
-      document.getElementById('anKpiSharpeSub').textContent = 'ANNUALIZED (' + returns.length + ' PERIODS)';
+      document.getElementById('anKpiSharpeSub').textContent = 'ANNUALIZED (' + sortedDayKeys.length + ' DAYS, √252)';
     }
 
     // Win Months + Best/Worst
@@ -6708,13 +6722,12 @@ const PORTFOLIO_SYSTEM = {
     const maxDD = worstIndDD > 0 ? worstIndDD : combinedDD;
 
     // Sum metrics from individual reports (not average — total P&L, weighted PF)
-    let totalGrossProfit = 0, totalGrossLoss = 0, sumSharpe = 0, sumWin = 0, totalTrades = 0, cnt = 0;
+    let totalGrossProfit = 0, totalGrossLoss = 0, sumWin = 0, totalTrades = 0, cnt = 0;
     for (const id of validIds) {
       const r = store.get(id);
       if (!r) continue;
       totalGrossProfit += Math.abs(parseFloat(R(r, 'grossProfit'))) || 0;
       totalGrossLoss += Math.abs(parseFloat(R(r, 'grossLoss'))) || 0;
-      sumSharpe += parseFloat(R(r, 'sharpeRatio')) || 0;
       sumWin += (parseFloat(R(r, 'winRate')) || 0) * (parseInt(R(r, 'totalTrades')) || 0);
       totalTrades += parseInt(R(r, 'totalTrades')) || 0;
       cnt++;
@@ -6722,6 +6735,30 @@ const PORTFOLIO_SYSTEM = {
 
     const profitFactor = totalGrossLoss > 0 ? totalGrossProfit / totalGrossLoss : totalGrossProfit > 0 ? 999 : 0;
     const winRate = totalTrades > 0 ? sumWin / totalTrades : 0;
+
+    // Compute portfolio Sharpe from combined equity curve daily returns (√252 annualized)
+    // This is more accurate than averaging individual Sharpes which may use different conventions
+    let avgSharpe = 0;
+    if (combined.length >= 2) {
+      const dailyBals = {};
+      for (const p of combined) {
+        const d = (p.time || '').split(' ')[0].replace(/\./g, '-');
+        if (d.length >= 8) dailyBals[d] = p.balance;
+      }
+      const sortedDays = Object.keys(dailyBals).sort();
+      const dailyRets = [];
+      for (let di = 1; di < sortedDays.length; di++) {
+        const prev = dailyBals[sortedDays[di - 1]];
+        const cur = dailyBals[sortedDays[di]];
+        if (prev > 0) dailyRets.push((cur - prev) / prev);
+      }
+      if (dailyRets.length > 1) {
+        const mean = dailyRets.reduce((s,v) => s+v, 0) / dailyRets.length;
+        const variance = dailyRets.reduce((s,v) => s + (v-mean)*(v-mean), 0) / (dailyRets.length - 1);
+        const stddev = Math.sqrt(variance);
+        avgSharpe = stddev > 0 ? (mean / stddev) * Math.sqrt(252) : 0;
+      }
+    }
 
     // Diversification ratio
     let avgCorr = 0;
@@ -6736,7 +6773,7 @@ const PORTFOLIO_SYSTEM = {
 
     return {
       netProfit, maxDD, profitFactor, winRate,
-      avgSharpe: cnt > 0 ? sumSharpe / cnt : 0,
+      avgSharpe,
       divRatio, avgCorr, totalTrades, count: cnt
     };
   },
