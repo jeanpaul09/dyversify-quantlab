@@ -1289,17 +1289,17 @@ table.portfolio tr.selected td { color: var(--t1); }
             <div>
               <div class="sim-panel-label">TRADE OVERLAP %</div>
               <div id="detailOverlapMatrix" style="overflow-x:auto"></div>
-              <div class="sim-legend">&lt;0.20 good · 0.20–0.40 moderate · &gt;0.40 redundant</div>
+              <div class="sim-legend">&lt;20% good · 20–40% moderate · &gt;40% redundant</div>
             </div>
             <div>
               <div class="sim-panel-label">SAME-DIRECTION OVERLAP %</div>
               <div id="detailSameDirMatrix" style="overflow-x:auto"></div>
-              <div class="sim-legend">&lt;0.25 good · 0.25–0.50 moderate · &gt;0.50 correlated</div>
+              <div class="sim-legend">&lt;25% good · 25–50% moderate · &gt;50% correlated</div>
             </div>
             <div>
               <div class="sim-panel-label">DIVERSIFICATION SCORE</div>
               <div id="detailDivScoreMatrix" style="overflow-x:auto"></div>
-              <div class="sim-legend">higher = better · &gt;0.50 strong · 0.30–0.50 moderate · &lt;0.30 weak</div>
+              <div class="sim-legend">higher = better · &gt;50% strong · 30–50% moderate · &lt;30% weak</div>
             </div>
           </div>
           <div style="margin-top:14px">
@@ -2333,7 +2333,7 @@ function R(report, key) {
   if (report[key] !== undefined) return report[key];
   return 0;
 }
-function getSymbol(r) { return r.symbol || (r.settings && r.settings.symbol) || r.id; }
+function getSymbol(r) { return (r.symbol || (r.settings && r.settings.symbol) || r.id || '').toUpperCase(); }
 function getBalanceCurve(r) {
   const curve = r.balanceCurve || [];
   if (DATE_FILTER.isActive()) return DATE_FILTER.filterCurve(r);
@@ -2695,8 +2695,8 @@ const DATE_FILTER = {
   // Parse MT5 timestamp "YYYY.MM.DD HH:MM:SS" → Date
   parseTime(t) {
     if (!t) return null;
-    const d = t.replace(/\./g, '-').replace(' ', 'T');
-    return new Date(d);
+    const d = new Date(t.replace(/\./g, '-').replace(' ', 'T'));
+    return isNaN(d.getTime()) ? null : d;
   },
 
   // Get date string from Date → "YYYY-MM-DD"
@@ -6109,19 +6109,23 @@ const PORTFOLIO_SYSTEM = {
   // ─── STRATEGY INTERACTION MATRICES ─────────────────────────────
   _parseTime(timeStr) {
     if (!timeStr) return null;
-    const parts = timeStr.replace(/\./g, '-').split(' ');
-    if (parts.length < 2) return null;
-    return new Date(parts[0] + 'T' + parts[1] + 'Z');
+    // Consistent with DATE_FILTER.parseTime — no 'Z' suffix since MT5 timestamps
+    // are broker-local time, not UTC. Both must interpret the same way.
+    const normalized = timeStr.replace(/\./g, '-').replace(' ', 'T');
+    const d = new Date(normalized);
+    return isNaN(d.getTime()) ? null : d;
   },
 
   _getTradeIntervals(reportId) {
     const r = store.get(reportId);
     if (!r || !r.deals) return [];
+    // Use date-filtered deals when date filter is active
+    const deals = DATE_FILTER.isActive() ? DATE_FILTER.filterDeals(r) : r.deals;
     // MT5 entry/exit deals have DIFFERENT order numbers.
     // Match by symbol: pair consecutive "in" → "out" deals per symbol in time order.
     const openBySymbol = {}; // symbol → [openTime, ...]
     const intervals = [];
-    for (const d of r.deals) {
+    for (const d of deals) {
       if (!d.direction || !d.time) continue;
       const sym = d.symbol || '_';
       const t = this._parseTime(d.time);
@@ -6144,9 +6148,11 @@ const PORTFOLIO_SYSTEM = {
   _getTradeIntervalsWithDir(reportId) {
     const r = store.get(reportId);
     if (!r || !r.deals) return [];
+    // Use date-filtered deals when date filter is active
+    const deals = DATE_FILTER.isActive() ? DATE_FILTER.filterDeals(r) : r.deals;
     const openBySymbol = {}; // symbol → [{ms, dir}]
     const intervals = [];
-    for (const d of r.deals) {
+    for (const d of deals) {
       if (!d.direction || !d.time) continue;
       const sym = d.symbol || '_';
       const t = this._parseTime(d.time);
@@ -6168,10 +6174,27 @@ const PORTFOLIO_SYSTEM = {
     return intervals;
   },
 
+  // Merge overlapping/adjacent intervals into non-overlapping ranges
+  _mergeIntervals(intervals) {
+    if (intervals.length <= 1) return intervals;
+    const sorted = intervals.slice().sort((a, b) => a.open - b.open);
+    const merged = [{ open: sorted[0].open, close: sorted[0].close }];
+    for (let i = 1; i < sorted.length; i++) {
+      const last = merged[merged.length - 1];
+      if (sorted[i].open <= last.close) {
+        last.close = Math.max(last.close, sorted[i].close);
+      } else {
+        merged.push({ open: sorted[i].open, close: sorted[i].close });
+      }
+    }
+    return merged;
+  },
+
   // Trade overlap between two individual reports (not regime groups)
+  // Merges each report's intervals first to avoid double-counting concurrent trades
   computeReportOverlap(id1, id2) {
-    const ti = this._getTradeIntervals(id1).sort((a, b) => a.open - b.open);
-    const tj = this._getTradeIntervals(id2).sort((a, b) => a.open - b.open);
+    const ti = this._mergeIntervals(this._getTradeIntervals(id1));
+    const tj = this._mergeIntervals(this._getTradeIntervals(id2));
     if (ti.length === 0 || tj.length === 0) return 0;
     let overlapMs = 0, totalI = 0, totalJ = 0;
     for (const a of ti) totalI += a.close - a.open;
@@ -6190,6 +6213,7 @@ const PORTFOLIO_SYSTEM = {
   },
 
   // Same-direction overlap: of overlapping trade time, how much is same direction
+  // Uses raw (unmerged) intervals because direction matters per-trade
   computeSameDirOverlap(id1, id2) {
     const ti = this._getTradeIntervalsWithDir(id1).sort((a, b) => a.open - b.open);
     const tj = this._getTradeIntervalsWithDir(id2).sort((a, b) => a.open - b.open);
@@ -6205,10 +6229,12 @@ const PORTFOLIO_SYSTEM = {
         if (a.dir && b.dir && a.dir === b.dir) sameDirMs += overlapDur;
       }
     }
-    // If overlap is negligible (< 1% of smaller strategy's total time), return 0
+    // Use MERGED intervals for negligible overlap guard (avoids inflated denominator)
+    const mergedI = this._mergeIntervals(ti);
+    const mergedJ = this._mergeIntervals(tj);
     let totalI = 0, totalJ = 0;
-    for (const a of ti) totalI += a.close - a.open;
-    for (const b of tj) totalJ += b.close - b.open;
+    for (const a of mergedI) totalI += a.close - a.open;
+    for (const b of mergedJ) totalJ += b.close - b.open;
     const minTotal = Math.min(totalI, totalJ);
     if (minTotal > 0 && totalOverlapMs / minTotal < 0.01) return 0;
     return totalOverlapMs > 0 ? sameDirMs / totalOverlapMs : 0;
@@ -6509,7 +6535,10 @@ const PORTFOLIO_SYSTEM = {
           bg = v > 0.50 ? 'rgba(0,255,136,0.15)' : v > 0.30 ? 'rgba(255,149,0,0.15)' : 'rgba(255,59,48,0.15)';
           tc = v > 0.50 ? '#00ff88' : v > 0.30 ? '#ff9500' : '#ff3b30';
         }
-        html += '<td style="background:' + bg + ';color:' + tc + ';font-weight:500">' + v.toFixed(2) + '</td>';
+        // Show percentages for overlap/samedir/divscore types, raw value for correlation/concur/ddsync
+        const isPct = (type === 'overlap' || type === 'samedir' || type === 'divscore');
+        const display = isPct ? (v * 100).toFixed(0) + '%' : v.toFixed(2);
+        html += '<td style="background:' + bg + ';color:' + tc + ';font-weight:500">' + display + '</td>';
       }
       html += '</tr>';
     }
