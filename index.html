@@ -6474,7 +6474,7 @@ const PORTFOLIO_SYSTEM = {
         for (const pt of combined) {
           if (pt.balance > peak) peak = pt.balance;
           const dd = peak > 0 ? (peak - pt.balance) / peak : 0;
-          const dateKey = (pt.time || '').split(' ')[0];
+          const dateKey = (pt.time || '').split(' ')[0].replace(/\./g, '-');
           if (dateKey.length >= 8) ddByDate[name][dateKey] = dd >= ddThreshold ? 1 : 0;
         }
       } catch(e) { /* skip */ }
@@ -6820,12 +6820,12 @@ const PORTFOLIO_SYSTEM = {
     const allDatesSet = new Set();
     for (const c of individual) {
       for (const p of c.curve) {
-        const d = (p.time || '').split(' ')[0];
+        const d = (p.time || '').split(' ')[0].replace(/\./g, '-');
         if (d.length >= 8) allDatesSet.add(d);
       }
     }
     for (const p of combined) {
-      const d = (p.time || '').split(' ')[0];
+      const d = (p.time || '').split(' ')[0].replace(/\./g, '-');
       if (d.length >= 8) allDatesSet.add(d);
     }
     const labels = [...allDatesSet].sort();
@@ -6838,13 +6838,13 @@ const PORTFOLIO_SYSTEM = {
       const init = c.initBal || c.curve[0].balance || 1;
       const dateMap = {};
       for (const p of c.curve) {
-        const d = (p.time || '').split(' ')[0];
+        const d = (p.time || '').split(' ')[0].replace(/\./g, '-');
         if (d.length >= 8) dateMap[d] = ((p.balance - init) / init) * 100;
       }
       // Map to shared x-axis with forward-fill (null before first data point)
       let lastVal = null, started = false;
-      const firstDate = c.curve.find(p => (p.time||'').split(' ')[0].length >= 8);
-      const firstD = firstDate ? firstDate.time.split(' ')[0] : '';
+      const firstDate = c.curve.find(p => (p.time||'').split(' ')[0].replace(/\./g, '-').length >= 8);
+      const firstD = firstDate ? (firstDate.time || '').split(' ')[0].replace(/\./g, '-') : '';
       const data = labels.map(d => {
         if (!started && d < firstD) return null;
         started = true;
@@ -6861,7 +6861,7 @@ const PORTFOLIO_SYSTEM = {
     const combinedInit = combined[0].balance || 1;
     const combinedMap = {};
     for (const p of combined) {
-      const d = (p.time || '').split(' ')[0];
+      const d = (p.time || '').split(' ')[0].replace(/\./g, '-');
       if (d.length >= 8) combinedMap[d] = ((p.balance - combinedInit) / combinedInit) * 100;
     }
     let lastCombVal = 0;
