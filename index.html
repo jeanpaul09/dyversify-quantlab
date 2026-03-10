@@ -2940,7 +2940,7 @@ const DATE_FILTER = {
       totalPnl += closed.reduce((s,d) => s + d.profit, 0);
     }
     document.getElementById('psTrades').textContent = totalTrades.toLocaleString();
-    document.getElementById('psPnl').textContent = (totalPnl >= 0 ? '+' : '') + '$' + totalPnl.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    document.getElementById('psPnl').textContent = (totalPnl >= 0 ? '+' : '') + '$' + (totalPnl || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     document.getElementById('psPnl').style.color = totalPnl >= 0 ? V.neon : V.crimson;
   },
 
@@ -3061,7 +3061,7 @@ function updateKPIs() {
       document.getElementById('kpiBestSharpeSym').textContent = bestShPf.regime;
 
       const worstDdPf = pfMetrics.reduce((a, b) => a.m.maxDD > b.m.maxDD ? a : b);
-      document.getElementById('kpiWorstDD').textContent = worstDdPf.m.maxDD.toFixed(2) + '%';
+      document.getElementById('kpiWorstDD').textContent = (worstDdPf.m.maxDD || 0).toFixed(2) + '%';
       document.getElementById('kpiWorstDD').className = 'kpi-value';
       document.getElementById('kpiWorstDDSym').textContent = worstDdPf.regime;
 
@@ -3615,7 +3615,7 @@ function buildEquityChart(r, mode) {
   const curve = getBalanceCurve(r);
   if (!curve.length) return;
 
-  const labels = curve.map(p => (p.time || '').split(' ')[0]);
+  const labels = curve.map(p => (p.time || '').split(' ')[0].replace(/\./g, '-'));
   const balData = curve.map(p => p.balance);
   const initial = balData[0] || 1;
 
@@ -3721,7 +3721,7 @@ function buildUnderwaterChart(r) {
   if (!curve.length) return;
 
   const balances = curve.map(p => p.balance);
-  const labels = curve.map(p => (p.time || '').split(' ')[0]);
+  const labels = curve.map(p => (p.time || '').split(' ')[0].replace(/\./g, '-'));
 
   // Calculate drawdown from running maximum
   let runningMax = balances[0];
@@ -4825,7 +4825,7 @@ function renderComparePairs(empty, view, modeBar) {
   });
 
   const longest = selected.reduce((a, b) => getBalanceCurve(a).length > getBalanceCurve(b).length ? a : b);
-  const labels = getBalanceCurve(longest).map(p => (p.time || '').split(' ')[0]);
+  const labels = getBalanceCurve(longest).map(p => (p.time || '').split(' ')[0].replace(/\./g, '-'));
 
   CHARTS.compare = new Chart(ctx, {
     type: 'line', data: { labels, datasets },
@@ -5097,14 +5097,14 @@ function renderPerformance() {
   const totalGP = reports.reduce((s, r) => s + Math.abs(R(r, 'grossProfit') || 0), 0);
   const totalGL = reports.reduce((s, r) => s + Math.abs(R(r, 'grossLoss') || 0), 0);
   const weightedPF = totalGL > 0 ? totalGP / totalGL : totalGP > 0 ? 999 : 0;
-  document.getElementById('perfKpiPF').textContent = weightedPF.toFixed(2);
-  document.getElementById('perfKpiMedianPF').textContent = 'MEDIAN ' + median(pfs).toFixed(2);
-  document.getElementById('perfKpiSharpe').textContent = avg(sharpes).toFixed(2);
-  document.getElementById('perfKpiMedianSharpe').textContent = 'MEDIAN ' + median(sharpes).toFixed(2);
-  document.getElementById('perfKpiDD').textContent = avg(dds).toFixed(2) + '%';
-  document.getElementById('perfKpiWorstDD').textContent = 'WORST ' + Math.max(...dds).toFixed(2) + '%';
-  document.getElementById('perfKpiWR').textContent = avg(wrs).toFixed(2) + '%';
-  document.getElementById('perfKpiAvgRecovery').textContent = 'RECOVERY ' + avg(recs).toFixed(2);
+  document.getElementById('perfKpiPF').textContent = (weightedPF || 0).toFixed(2);
+  document.getElementById('perfKpiMedianPF').textContent = 'MEDIAN ' + (median(pfs) || 0).toFixed(2);
+  document.getElementById('perfKpiSharpe').textContent = (avg(sharpes) || 0).toFixed(2);
+  document.getElementById('perfKpiMedianSharpe').textContent = 'MEDIAN ' + (median(sharpes) || 0).toFixed(2);
+  document.getElementById('perfKpiDD').textContent = (avg(dds) || 0).toFixed(2) + '%';
+  document.getElementById('perfKpiWorstDD').textContent = 'WORST ' + (dds.length > 0 ? Math.max(...dds) : 0).toFixed(2) + '%';
+  document.getElementById('perfKpiWR').textContent = (avg(wrs) || 0).toFixed(2) + '%';
+  document.getElementById('perfKpiAvgRecovery').textContent = 'RECOVERY ' + (avg(recs) || 0).toFixed(2);
 
   buildHistogramChart();
   buildScatterChart();
@@ -6962,10 +6962,11 @@ const PORTFOLIO_SYSTEM = {
     const allInputs = {};
     const reports = ids.map(id => {
       const r = store.get(id);
+      if (!r) return null;
       const inputs = getInputs(r);
       for (const k of Object.keys(inputs)) allInputs[k] = true;
       return { id, r, inputs, sym: getSymbol(r) };
-    });
+    }).filter(Boolean);
 
     // Group parameters using partner-defined groups
     const paramGroups = buildParamGroups(Object.keys(allInputs));
@@ -7121,8 +7122,8 @@ const PORTFOLIO_SYSTEM = {
         const dd = Math.abs(parseFloat(R(r, 'maxDDPct')) || 0);
         const wr = parseFloat(R(r, 'winRate')) || 0;
         const bc = r.balanceCurve || [];
-        const curveStart = bc.length > 0 ? (bc[0].time || '').split(' ')[0] : '—';
-        const curveEnd = bc.length > 0 ? (bc[bc.length - 1].time || '').split(' ')[0] : '—';
+        const curveStart = bc.length > 0 ? (bc[0].time || '').split(' ')[0].replace(/\./g, '-') : '—';
+        const curveEnd = bc.length > 0 ? (bc[bc.length - 1].time || '').split(' ')[0].replace(/\./g, '-') : '—';
         const pts = bc.length;
         const isTrunc = r._curveTruncated ? ' style="color:var(--crimson)"' : '';
         const truncTag = r._curveTruncated ? '<span style="font-family:var(--mono);font-size:7px;padding:1px 4px;background:rgba(255,59,48,0.15);color:var(--crimson);border:1px solid rgba(255,59,48,0.3);margin-left:4px">TRUNCATED</span>' : '';
