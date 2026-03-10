@@ -452,10 +452,10 @@ table.portfolio tr.selected td { color: var(--t1); }
 .strat-metrics-table th, .strat-metrics-table td { padding:5px 8px; border:1px solid var(--g600); font-variant-numeric:tabular-nums; }
 .strat-metrics-table th { color:var(--t3); font-weight:400; font-size:7px; background:var(--g700); text-transform:uppercase; }
 .strat-metrics-table td { color:var(--t2); }
-.sim-matrix { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 9px; }
-.sim-matrix th, .sim-matrix td { padding: 6px 8px; text-align: center; border: 1px solid var(--g600); }
-.sim-matrix th { color: var(--t3); font-weight: 400; font-size: 7px; background: var(--g700); white-space: nowrap; }
-.sim-matrix td { font-variant-numeric: tabular-nums; }
+.sim-matrix { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 10px; }
+.sim-matrix th, .sim-matrix td { padding: 10px 8px; text-align: center; border: 1px solid var(--g700); }
+.sim-matrix th { color: var(--t3); font-weight: 400; font-size: 7px; background: var(--g800); white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em; }
+.sim-matrix td { font-variant-numeric: tabular-nums; font-weight: 600; }
 #pfMatricesGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .sim-panel-label { font-family: var(--mono); font-size: 8px; color: var(--t3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
 .sim-legend { font-family: var(--mono); font-size: 7px; color: var(--t4); margin-top: 6px; line-height: 1.5; }
@@ -853,8 +853,8 @@ table.portfolio tr.selected td { color: var(--t1); }
   .pf-param-htable { font-size: 8px; }
   .pf-param-htable th, .pf-param-htable td { padding: 4px 6px; }
   #pfMatricesGrid { grid-template-columns: 1fr; }
-  .sim-matrix { font-size: 7px; }
-  .sim-matrix th, .sim-matrix td { padding: 4px 3px; }
+  .sim-matrix { font-size: 8px; }
+  .sim-matrix th, .sim-matrix td { padding: 6px 4px; }
 }
 
 /* Correlation Matrix */
@@ -1608,7 +1608,7 @@ table.portfolio tr.selected td { color: var(--t1); }
             <div>
               <div class="sim-panel-label">TRADE OVERLAP %</div>
               <div id="pfMatrixOverlap" style="overflow-x:auto"></div>
-              <div class="sim-legend">&lt;0.20 good · 0.20–0.40 moderate · &gt;0.40 redundant</div>
+              <div class="sim-legend">&lt;20% good · 20–40% moderate · &gt;40% redundant</div>
             </div>
             <div>
               <div class="sim-panel-label">RETURN CORRELATION</div>
@@ -1623,12 +1623,12 @@ table.portfolio tr.selected td { color: var(--t1); }
             <div>
               <div class="sim-panel-label">DRAWDOWN SYNCHRONIZATION</div>
               <div id="pfMatrixDDSync" style="overflow-x:auto"></div>
-              <div class="sim-legend">&lt;0.20 independent · 0.20–0.40 moderate · &gt;0.40 synchronized</div>
+              <div class="sim-legend">&lt;20% independent · 20–40% moderate · &gt;40% synchronized</div>
             </div>
             <div style="grid-column:1/-1">
               <div class="sim-panel-label">DIVERSIFICATION SCORE</div>
               <div id="pfMatrixDivScore" style="overflow-x:auto"></div>
-              <div class="sim-legend">higher = better · &gt;0.50 strong · 0.30–0.50 moderate · &lt;0.30 weak · formula: 1 − (0.25 × overlap + 0.25 × |corr| + 0.25 × concurrency + 0.25 × ddSync)</div>
+              <div class="sim-legend">higher = better · &gt;50% strong · 30–50% moderate · &lt;30% weak · formula: 1 − (0.25 × overlap + 0.25 × |corr| + 0.25 × concurrency + 0.25 × ddSync)</div>
             </div>
           </div>
           <!-- Regime Equity Curves -->
@@ -6444,44 +6444,43 @@ const PORTFOLIO_SYSTEM = {
   },
 
   // Drawdown Synchronization: how often regimes draw down at the same time
-  // Uses rolling drawdown series from combined equity curves, measures correlation
-  // of drawdown periods (when DD > threshold, both regimes are "in drawdown")
+  // DATE-ALIGNED: builds drawdown indicator per date, then compares on common dates
   computeDDSync(regimes, names) {
     const n = names.length;
     const matrix = Array.from({length: n}, () => Array(n).fill(0));
     const ddThreshold = 0.02; // 2% drawdown = "in drawdown"
 
-    // Build drawdown indicator series per regime
-    const ddSeries = {};
+    // Build DATE-KEYED drawdown indicator per regime
+    const ddByDate = {};
     for (const name of names) {
       const ids = regimes[name] || [];
-      if (ids.length === 0) { ddSeries[name] = []; continue; }
+      ddByDate[name] = {};
+      if (ids.length === 0) continue;
       try {
         const { combined } = this.computeCombined(ids);
-        // Compute rolling drawdown from peak
+        if (combined.length < 2) continue;
         let peak = combined[0].balance;
-        const series = [];
         for (const pt of combined) {
           if (pt.balance > peak) peak = pt.balance;
           const dd = peak > 0 ? (peak - pt.balance) / peak : 0;
-          series.push(dd >= ddThreshold ? 1 : 0); // 1 = in drawdown, 0 = not
+          const dateKey = (pt.time || '').split(' ')[0];
+          if (dateKey.length >= 8) ddByDate[name][dateKey] = dd >= ddThreshold ? 1 : 0;
         }
-        ddSeries[name] = series;
-      } catch(e) { ddSeries[name] = []; }
+      } catch(e) { /* skip */ }
     }
 
     for (let i = 0; i < n; i++) {
       matrix[i][i] = 1;
       for (let j = i + 1; j < n; j++) {
-        const si = ddSeries[names[i]], sj = ddSeries[names[j]];
-        const minLen = Math.min(si.length, sj.length);
-        if (minLen < 10) { matrix[i][j] = 0; matrix[j][i] = 0; continue; }
+        const di = ddByDate[names[i]], dj = ddByDate[names[j]];
+        // Find common dates where BOTH regimes have data
+        const commonDates = Object.keys(di).filter(d => dj[d] !== undefined);
+        if (commonDates.length < 10) { matrix[i][j] = 0; matrix[j][i] = 0; continue; }
 
-        // Count how often both are in drawdown simultaneously
         let bothDD = 0, eitherDD = 0;
-        for (let k = 0; k < minLen; k++) {
-          if (si[k] === 1 && sj[k] === 1) bothDD++;
-          if (si[k] === 1 || sj[k] === 1) eitherDD++;
+        for (const d of commonDates) {
+          if (di[d] === 1 && dj[d] === 1) bothDD++;
+          if (di[d] === 1 || dj[d] === 1) eitherDD++;
         }
         // Jaccard-style: intersection / union of drawdown periods
         const v = eitherDD > 0 ? bothDD / eitherDD : 0;
@@ -6506,6 +6505,32 @@ const PORTFOLIO_SYSTEM = {
     return matrix;
   },
 
+  // Heatmap color generator: returns {bg, tc} with intensity-scaled backgrounds
+  _heatmapColor(v, type) {
+    let level; // 0=good(green), 1=moderate(amber), 2=bad(red)
+    if (type === 'overlap') level = v < 0.20 ? 0 : v < 0.40 ? 1 : 2;
+    else if (type === 'corr') { const a = Math.abs(v); level = a < 0.30 ? 0 : a < 0.60 ? 1 : 2; }
+    else if (type === 'concur') level = v < 0.15 ? 0 : v < 0.30 ? 1 : 2;
+    else if (type === 'ddsync') level = v < 0.20 ? 0 : v < 0.40 ? 1 : 2;
+    else if (type === 'samedir') level = v < 0.25 ? 0 : v < 0.50 ? 1 : 2;
+    else { level = v > 0.50 ? 0 : v > 0.30 ? 1 : 2; } // divscore: higher=better
+
+    // Compute intensity (0-1) within each color band for gradient effect
+    const absV = type === 'corr' ? Math.abs(v) : v;
+    let intensity;
+    if (type === 'divscore') intensity = 1 - Math.min(absV, 1); // invert for divscore
+    else intensity = Math.min(absV, 1);
+
+    // Scale opacity by intensity: min 0.12, max 0.40
+    const alpha = (0.12 + intensity * 0.28).toFixed(2);
+    const colors = [
+      { bg: 'rgba(0,255,136,' + alpha + ')', tc: '#00ff88' },   // green
+      { bg: 'rgba(255,149,0,' + alpha + ')', tc: '#ff9500' },   // amber
+      { bg: 'rgba(255,59,48,' + alpha + ')', tc: '#ff3b30' }    // red
+    ];
+    return colors[level];
+  },
+
   renderInteractionMatrix(data, names, type) {
     const short = names.map(n => n.replace('MICRO-', ''));
     let html = '<table class="sim-matrix"><thead><tr><th></th>' + short.map(s => '<th>' + s + '</th>').join('') + '</tr></thead><tbody>';
@@ -6513,32 +6538,12 @@ const PORTFOLIO_SYSTEM = {
       html += '<tr><th>' + short[i] + '</th>';
       for (let j = 0; j < data[i].length; j++) {
         const v = data[i][j];
-        if (i === j) { html += '<td style="background:var(--g600);color:var(--t4)">—</td>'; continue; }
-        let bg, tc;
-        if (type === 'overlap') {
-          bg = v < 0.20 ? 'rgba(0,255,136,0.15)' : v < 0.40 ? 'rgba(255,149,0,0.15)' : 'rgba(255,59,48,0.15)';
-          tc = v < 0.20 ? '#00ff88' : v < 0.40 ? '#ff9500' : '#ff3b30';
-        } else if (type === 'corr') {
-          const a = Math.abs(v);
-          bg = a < 0.30 ? 'rgba(0,255,136,0.15)' : a < 0.60 ? 'rgba(255,149,0,0.15)' : 'rgba(255,59,48,0.15)';
-          tc = a < 0.30 ? '#00ff88' : a < 0.60 ? '#ff9500' : '#ff3b30';
-        } else if (type === 'concur') {
-          bg = v < 0.15 ? 'rgba(0,255,136,0.15)' : v < 0.30 ? 'rgba(255,149,0,0.15)' : 'rgba(255,59,48,0.15)';
-          tc = v < 0.15 ? '#00ff88' : v < 0.30 ? '#ff9500' : '#ff3b30';
-        } else if (type === 'ddsync') {
-          bg = v < 0.20 ? 'rgba(0,255,136,0.15)' : v < 0.40 ? 'rgba(255,149,0,0.15)' : 'rgba(255,59,48,0.15)';
-          tc = v < 0.20 ? '#00ff88' : v < 0.40 ? '#ff9500' : '#ff3b30';
-        } else if (type === 'samedir') {
-          bg = v < 0.25 ? 'rgba(0,255,136,0.15)' : v < 0.50 ? 'rgba(255,149,0,0.15)' : 'rgba(255,59,48,0.15)';
-          tc = v < 0.25 ? '#00ff88' : v < 0.50 ? '#ff9500' : '#ff3b30';
-        } else { // divscore — higher is better
-          bg = v > 0.50 ? 'rgba(0,255,136,0.15)' : v > 0.30 ? 'rgba(255,149,0,0.15)' : 'rgba(255,59,48,0.15)';
-          tc = v > 0.50 ? '#00ff88' : v > 0.30 ? '#ff9500' : '#ff3b30';
-        }
-        // Show percentages for overlap/samedir/divscore types, raw value for correlation/concur/ddsync
-        const isPct = (type === 'overlap' || type === 'samedir' || type === 'divscore');
+        if (i === j) { html += '<td style="background:var(--g700);color:var(--t4)">—</td>'; continue; }
+        const { bg, tc } = this._heatmapColor(v, type);
+        // Show percentages for overlap/samedir/divscore/ddsync, raw value for correlation/concur
+        const isPct = (type === 'overlap' || type === 'samedir' || type === 'divscore' || type === 'ddsync');
         const display = isPct ? (v * 100).toFixed(0) + '%' : v.toFixed(2);
-        html += '<td style="background:' + bg + ';color:' + tc + ';font-weight:500">' + display + '</td>';
+        html += '<td style="background:' + bg + ';color:' + tc + '">' + display + '</td>';
       }
       html += '</tr>';
     }
