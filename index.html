@@ -1618,7 +1618,7 @@ table.portfolio tr.selected td { color: var(--t1); }
             <div>
               <div class="sim-panel-label">SIGNAL CONCURRENCY (5 MIN)</div>
               <div id="pfMatrixConcur" style="overflow-x:auto"></div>
-              <div class="sim-legend">&lt;0.15 independent · 0.15–0.30 moderate · &gt;0.30 synchronized</div>
+              <div class="sim-legend">&lt;15% independent · 15–30% moderate · &gt;30% synchronized</div>
             </div>
             <div>
               <div class="sim-panel-label">DRAWDOWN SYNCHRONIZATION</div>
@@ -4207,7 +4207,7 @@ function computeCombinedByDate(reports) {
       initBal = deals[0].balance;
       if (initBal > 0) {
         for (const d of deals) {
-          const dt = (d.time || '').split(' ')[0];
+          const dt = (d.time || '').split(' ')[0].replace(/\./g, '-');
           if (dt.length >= 8) dateMap[dt] = d.balance / initBal;
         }
       }
@@ -4218,7 +4218,7 @@ function computeCombinedByDate(reports) {
       initBal = bc[0].balance;
       if (initBal > 0) {
         for (const p of bc) {
-          const dt = (p.time || '').split(' ')[0];
+          const dt = (p.time || '').split(' ')[0].replace(/\./g, '-');
           if (dt.length >= 8) dateMap[dt] = p.balance / initBal;
         }
       }
@@ -4390,6 +4390,10 @@ function renderAnalytics() {
   if (combined.length >= 2) {
     const initBal = combined[0].balance;
     const finalBal = combined[combined.length - 1].balance;
+    if (initBal <= 0) {
+      document.getElementById('anKpiReturn').textContent = '—';
+      document.getElementById('anKpiReturnSub').textContent = 'INSUFFICIENT DATA';
+    } else {
     const totalReturn = ((finalBal - initBal) / initBal) * 100;
     const retEl = document.getElementById('anKpiReturn');
     retEl.textContent = (totalReturn >= 0 ? '+' : '') + totalReturn.toFixed(2) + '%';
@@ -4412,7 +4416,7 @@ function renderAnalytics() {
 
     // Portfolio Sharpe from combined curve periodic returns (sample variance + proper annualization)
     const returns = [];
-    for (let i = 1; i < bals.length; i++) returns.push((bals[i] - bals[i-1]) / bals[i-1]);
+    for (let i = 1; i < bals.length; i++) { if (bals[i-1] > 0) returns.push((bals[i] - bals[i-1]) / bals[i-1]); }
     if (returns.length > 1) {
       const mean = returns.reduce((a,b)=>a+b,0) / returns.length;
       const variance = returns.reduce((s,r) => s + (r-mean)*(r-mean), 0) / (returns.length - 1);
@@ -4438,6 +4442,7 @@ function renderAnalytics() {
       bestEl.className = 'kpi-value pnl-pos';
       document.getElementById('anKpiWorstMonth').textContent = 'WORST: ' + worst.pct.toFixed(2) + '%';
     }
+  } // end else (initBal > 0)
   }
 
   // Build shared strategy metadata for toggle strip + charts
@@ -4504,10 +4509,11 @@ function buildAnalyticsAllEquity(reports) {
     const curve = getBalanceCurve(r);
     if (curve.length < 2) continue;
     const init = curve[0].balance;
+    if (init <= 0) continue; // Skip strategies with invalid initial balance
     const dateMap = {};
     let firstDate = null;
     for (const p of curve) {
-      const d = (p.time || '').split(' ')[0];
+      const d = (p.time || '').split(' ')[0].replace(/\./g, '-');
       if (d.length < 8) continue;
       if (!firstDate) firstDate = d;
       dateMap[d] = ((p.balance - init) / init) * 100;
@@ -4538,6 +4544,7 @@ function buildAnalyticsCombinedEquity(portfolio) {
   const { combined, labels } = portfolio;
   if (combined.length < 2) return;
   const init = combined[0].balance;
+  if (init <= 0) return; // Guard against zero balance
   const data = combined.map(p => ((p.balance - init) / init) * 100);
   const grad = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
   grad.addColorStop(0, 'rgba(0,255,136,0.15)');
@@ -4564,11 +4571,12 @@ function buildAnalyticsAllDD(reports) {
     const r = reports[i];
     const curve = getBalanceCurve(r);
     if (curve.length < 2) continue;
+    if (curve[0].balance <= 0) continue; // Skip strategies with zero balance
     const dateDD = {};
     let peak = curve[0].balance;
     let firstDate = null;
     for (const p of curve) {
-      const d = (p.time || '').split(' ')[0];
+      const d = (p.time || '').split(' ')[0].replace(/\./g, '-');
       if (d.length < 8) continue;
       if (!firstDate) firstDate = d;
       if (p.balance > peak) peak = p.balance;
@@ -4601,8 +4609,9 @@ function buildAnalyticsCombinedDD(portfolio) {
   const { combined, labels } = portfolio;
   if (combined.length < 2) return;
   const bals = combined.map(p => p.balance);
+  if (bals[0] <= 0) return;
   let peak = bals[0];
-  const dd = bals.map(b => { if (b > peak) peak = b; return ((b - peak) / peak) * 100; });
+  const dd = bals.map(b => { if (b > peak) peak = b; return peak > 0 ? ((b - peak) / peak) * 100 : 0; });
   const grad = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
   grad.addColorStop(0, 'rgba(220,20,60,0.12)');
   grad.addColorStop(1, 'rgba(220,20,60,0.01)');
@@ -6030,7 +6039,7 @@ const PORTFOLIO_SYSTEM = {
     const dateMaps = validCurves.map(c => {
       const dm = {};
       for (const p of c.curve) {
-        const d = (p.time || '').split(' ')[0];
+        const d = (p.time || '').split(' ')[0].replace(/\./g, '-');
         if (d.length >= 8) dm[d] = p.balance / c.initBal;  // normalized growth factor
       }
       return dm;
@@ -6541,7 +6550,7 @@ const PORTFOLIO_SYSTEM = {
         if (i === j) { html += '<td style="background:var(--g700);color:var(--t4)">—</td>'; continue; }
         const { bg, tc } = this._heatmapColor(v, type);
         // Show percentages for overlap/samedir/divscore/ddsync, raw value for correlation/concur
-        const isPct = (type === 'overlap' || type === 'samedir' || type === 'divscore' || type === 'ddsync');
+        const isPct = (type === 'overlap' || type === 'samedir' || type === 'divscore' || type === 'ddsync' || type === 'concur');
         const display = isPct ? (v * 100).toFixed(0) + '%' : v.toFixed(2);
         html += '<td style="background:' + bg + ';color:' + tc + '">' + display + '</td>';
       }
@@ -6671,6 +6680,7 @@ const PORTFOLIO_SYSTEM = {
     // Max drawdown of combined curve (from peak equity)
     let combinedDD = 0;
     let peak = combined[0].balance;
+    if (peak <= 0) return null;
     for (const p of combined) {
       if (p.balance > peak) peak = p.balance;
       const dd = peak > 0 ? ((peak - p.balance) / peak) * 100 : 0;
