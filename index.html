@@ -364,7 +364,7 @@ table.portfolio tr.selected td { color: var(--t1); }
 /* Chart container */
 .chart-panel {
   background: var(--g800); border: 1px solid var(--g400);
-  padding: 16px; position: relative; overflow: hidden; margin-bottom: 12px;
+  padding: 12px; position: relative; overflow: hidden; margin-bottom: 10px;
 }
 .chart-panel::before {
   content:''; position:absolute; top:0; left:0; right:0; height:1px;
@@ -408,10 +408,10 @@ table.portfolio tr.selected td { color: var(--t1); }
 .mc-progress-text { font-family: var(--mono); font-size:10px; color: var(--t2); min-width: 36px; }
 .mc-charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
 .mc-sub-panel { margin-bottom: 0; }
-.mc-metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
-.mc-metric { background: var(--g700); border: 1px solid var(--g400); padding: 8px 10px; }
-.mc-metric-label { font-family: var(--mono); font-size:8px; color: var(--t3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 3px; }
-.mc-metric-value { font-family: var(--mono); font-size:13px; color: var(--acc); font-weight: 600; word-break: break-word; }
+.mc-metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+.mc-metric { background: var(--g700); border: 1px solid var(--g400); padding: 6px 8px; }
+.mc-metric-label { font-family: var(--mono); font-size:7px; color: var(--t3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 2px; }
+.mc-metric-value { font-family: var(--mono); font-size:12px; color: var(--acc); font-weight: 600; word-break: break-word; }
 .mc-metric-value.positive { color: var(--neon); }
 .mc-metric-value.negative { color: var(--crimson); }
 .mc-empty { text-align: center; padding: 24px; }
@@ -443,22 +443,22 @@ table.portfolio tr.selected td { color: var(--t1); }
 .pf-corr-table th, .pf-corr-table td { padding: 4px 6px; text-align: center; border: 1px solid var(--g600); }
 .pf-corr-table th { color: var(--t3); font-weight: 400; font-size:8px; }
 /* Detail same-symbol analysis */
-#detailMatricesGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+#detailMatricesGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 @media (max-width:900px) { #detailMatricesGrid { grid-template-columns: 1fr; } }
-.cannibal-alert { padding:8px 12px; background:rgba(255,59,48,0.08); border:1px solid rgba(255,59,48,0.3); margin-bottom:12px; }
-.cannibal-title { font-family:var(--mono); font-size:9px; color:#ff3b30; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; }
-.cannibal-list { font-family:var(--mono); font-size:10px; color:var(--t1); line-height:1.6; }
-.strat-metrics-table { width:100%; border-collapse:collapse; font-family:var(--mono); font-size:9px; }
-.strat-metrics-table th, .strat-metrics-table td { padding:4px 6px; border:1px solid var(--g600); font-variant-numeric:tabular-nums; }
-.strat-metrics-table th { color:var(--t3); font-weight:400; font-size:8px; background:var(--g700); text-transform:uppercase; }
+.cannibal-alert { padding:6px 10px; background:rgba(255,59,48,0.08); border:1px solid rgba(255,59,48,0.3); margin-bottom:8px; }
+.cannibal-title { font-family:var(--mono); font-size:8px; color:#ff3b30; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px; }
+.cannibal-list { font-family:var(--mono); font-size:9px; color:var(--t1); line-height:1.5; }
+.strat-metrics-table { width:100%; border-collapse:collapse; font-family:var(--mono); font-size:8px; }
+.strat-metrics-table th, .strat-metrics-table td { padding:3px 5px; border:1px solid var(--g600); font-variant-numeric:tabular-nums; }
+.strat-metrics-table th { color:var(--t3); font-weight:400; font-size:7px; background:var(--g700); text-transform:uppercase; }
 .strat-metrics-table td { color:var(--t2); }
-.sim-matrix { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size:10px; }
-.sim-matrix th, .sim-matrix td { padding: 5px 6px; text-align: center; border: 1px solid var(--g700); }
-.sim-matrix th { color: var(--t3); font-weight: 400; font-size:8px; background: var(--g800); white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em; }
-.sim-matrix td { font-variant-numeric: tabular-nums; font-weight: 600; }
+.sim-matrix { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size:8px; }
+.sim-matrix th, .sim-matrix td { padding: 3px 4px; text-align: center; border: 1px solid var(--g700); }
+.sim-matrix th { color: var(--t3); font-weight: 400; font-size:7px; background: var(--g800); white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em; }
+.sim-matrix td { font-variant-numeric: tabular-nums; font-weight: 500; }
 #pfMatricesGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.sim-panel-label { font-family: var(--mono); font-size:9px; color: var(--t3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
-.sim-legend { font-family: var(--mono); font-size:8px; color: var(--t4); margin-top: 6px; line-height: 1.5; }
+.sim-panel-label { font-family: var(--mono); font-size:8px; color: var(--t3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+.sim-legend { font-family: var(--mono); font-size:7px; color: var(--t4); margin-top: 4px; line-height: 1.4; }
 .pf-alloc-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; font-family: var(--mono); font-size:12px; color: var(--t2); }
 .pf-alloc-bar { height: 8px; background: var(--neon); min-width: 2px; }
 .pf-algo-rec { background: var(--g700); border: 1px solid var(--g400); padding: 12px 16px; margin-bottom: 8px; }
@@ -476,22 +476,22 @@ table.portfolio tr.selected td { color: var(--t1); }
 
 /* Metrics grid */
 .metrics-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px;
 }
 .metric-card {
   background: var(--g800); border: 1px solid var(--g400);
-  padding: 10px 12px; position: relative; overflow: hidden;
+  padding: 7px 10px; position: relative; overflow: hidden;
 }
 .metric-card::before {
   content:''; position:absolute; top:0; left:0; right:0; height:1px;
   background: linear-gradient(90deg, transparent 0%, var(--g400) 20%, var(--g400) 80%, transparent 100%);
 }
 .metric-label {
-  font-family: var(--mono); font-size:9px; color: var(--t3);
-  text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;
+  font-family: var(--mono); font-size:8px; color: var(--t3);
+  text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 2px;
 }
 .metric-value {
-  font-family: var(--mono); font-size:16px; color: var(--t1);
+  font-family: var(--mono); font-size:14px; color: var(--t1);
   font-variant-numeric: tabular-nums;
 }
 
@@ -7596,9 +7596,8 @@ async function syncFromDrive() {
   btn.style.opacity = '0.5';
 
   try {
-    // On first sync or manual trigger, force reconciliation to clean up deleted/moved files
-    const url = DRIVE_SYNC.lastSync ? DRIVE_SYNC.WEB_APP_URL : DRIVE_SYNC.WEB_APP_URL + '?action=reconcile';
-    const resp = await fetch(url);
+    // Always force reconciliation to ensure deleted/moved files are cleaned up
+    const resp = await fetch(DRIVE_SYNC.WEB_APP_URL + '?action=reconcile');
     const json = await resp.json();
 
     if (json.error) {
@@ -7751,10 +7750,7 @@ async function syncFromDrive() {
   }
 }
 
-document.getElementById('btnSyncDrive').addEventListener('click', () => {
-  DRIVE_SYNC.lastSync = null; // Force reconcile on manual sync
-  syncFromDrive();
-});
+document.getElementById('btnSyncDrive').addEventListener('click', syncFromDrive);
 
 // ─── DRIVE BALANCE CURVE FETCHER ───
 // For Drive-synced reports missing balance curves, fetch original
