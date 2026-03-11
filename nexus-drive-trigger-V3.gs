@@ -533,19 +533,37 @@ function cleanupDeletedFiles() {
     var fileIdCol = headers.indexOf('File ID');
     if (fileIdCol === -1) return;
 
+    // Build set of ALL file IDs currently in the monitored folder tree
+    var currentFileIds = new Set();
+    function collectFileIds(folder) {
+      var files = folder.getFiles();
+      while (files.hasNext()) currentFileIds.add(files.next().getId());
+      var subs = folder.getFolders();
+      while (subs.hasNext()) collectFileIds(subs.next());
+    }
+    try {
+      collectFileIds(DriveApp.getFolderById(CONFIG.ROOT_FOLDER_ID));
+    } catch (e) {
+      Logger.log('Cleanup: cannot read root folder — ' + e.message);
+      return;
+    }
+
     var rowsToDelete = [];
     for (var i = data.length - 1; i >= 1; i--) {
       var fileId = data[i][fileIdCol];
       if (!fileId) continue;
-      try {
-        var file = DriveApp.getFileById(fileId);
-        // Check if file is in trash
-        if (file.isTrashed()) {
-          rowsToDelete.push(i + 1); // Sheet rows are 1-indexed
+      // Remove row if file is no longer in the monitored folder tree
+      if (!currentFileIds.has(fileId)) {
+        rowsToDelete.push(i + 1); // Sheet rows are 1-indexed
+      } else {
+        // Also remove if file is trashed
+        try {
+          if (DriveApp.getFileById(fileId).isTrashed()) {
+            rowsToDelete.push(i + 1);
+          }
+        } catch (e) {
+          rowsToDelete.push(i + 1);
         }
-      } catch (e) {
-        // File not found — mark for deletion
-        rowsToDelete.push(i + 1);
       }
     }
 
@@ -555,7 +573,15 @@ function cleanupDeletedFiles() {
     }
 
     if (rowsToDelete.length > 0) {
-      Logger.log('Cleanup: removed ' + rowsToDelete.length + ' rows for deleted/trashed Drive files');
+      // Also clean processed tracking so files can be re-added if moved back
+      var processed = getProcessedFiles();
+      for (var d = 0; d < rowsToDelete.length; d++) {
+        var removedFileId = data[rowsToDelete[d] - 1][fileIdCol];
+        processed.delete(removedFileId);
+      }
+      PropertiesService.getScriptProperties()
+        .setProperty(CONFIG.PROCESSED_KEY, JSON.stringify([...processed].slice(-10000)));
+      Logger.log('Cleanup: removed ' + rowsToDelete.length + ' rows for deleted/moved/trashed files');
     }
   } catch (e) {
     Logger.log('Cleanup error: ' + e.message);
@@ -645,6 +671,12 @@ function doGet(e) {
   var params = e ? e.parameter : {};
 
   try {
+    // Action: reconcile — force cleanup of deleted/moved files, then return fresh data
+    if (params.action === 'reconcile') {
+      cleanupDeletedFiles();
+      // Fall through to default data return
+    }
+
     // Action: getHtml — return raw HTML content of a Drive file (for client-side parsing)
     if (params.action === 'getHtml' && params.fileId) {
       var file = DriveApp.getFileById(params.fileId);
