@@ -4640,7 +4640,7 @@ function buildAnalyticsAllDD(reports) {
       if (d.length < 8) continue;
       if (!firstDate) firstDate = d;
       if (p.balance > peak) peak = p.balance;
-      dateDD[d] = ((p.balance - peak) / peak) * 100;
+      dateDD[d] = peak > 0 ? ((p.balance - peak) / peak) * 100 : 0;
       allDatesSet.add(d);
     }
     strategyData.push({ sym: getSymbol(r), dateDD, firstDate, idx: i });
@@ -4859,7 +4859,7 @@ function renderComparePairs(empty, view, modeBar) {
 
   const datasets = selected.map((r, i) => {
     const curve = getBalanceCurve(r);
-    const initial = curve.length ? curve[0].balance : 1;
+    const initial = (curve.length ? curve[0].balance : 1) || 1;
     return {
       label: getSymbol(r) + ' (' + r.id.slice(-8) + ')',
       data: curve.map(p => ((p.balance - initial) / initial) * 100),
@@ -4968,7 +4968,7 @@ function renderComparePortfolios(empty, view, modeBar) {
   selRegimes.forEach((rg, i) => {
     const { combined, totalInit } = PORTFOLIO_SYSTEM.computeCombined(regimes[rg]);
     if (combined.length === 0) return;
-    const initial = combined[0].balance || totalInit;
+    const initial = combined[0].balance || totalInit || 1;
     portfolioData.push({ regime: rg, combined, totalInit, initial, ids: regimes[rg] });
     datasets.push({
       label: rg + ' (' + regimes[rg].length + ' pairs)',
@@ -6916,7 +6916,7 @@ const PORTFOLIO_SYSTEM = {
     const colors = ['rgba(0,212,255,0.6)', 'rgba(255,149,0,0.6)', 'rgba(175,82,222,0.6)', 'rgba(255,204,0,0.6)', 'rgba(255,59,48,0.6)', 'rgba(52,199,89,0.6)'];
     individual.forEach((c, idx) => {
       const r = store.get(c.id);
-      const init = c.initBal || c.curve[0].balance || 1;
+      const init = c.initBal || (c.curve.length > 0 ? c.curve[0].balance : 0) || 1;
       const dateMap = {};
       for (const p of c.curve) {
         const d = (p.time || '').split(' ')[0].replace(/\./g, '-');
