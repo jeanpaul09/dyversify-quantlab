@@ -1658,10 +1658,10 @@ table.portfolio tr.selected td { color: var(--t1); }
               <div id="pfMatrixDDSync" style="overflow-x:auto"></div>
               <div class="sim-legend">&lt;20% independent · 20–40% moderate · &gt;40% synchronized</div>
             </div>
-            <div style="grid-column:1/-1">
+            <div>
               <div class="sim-panel-label">DIVERSIFICATION SCORE</div>
               <div id="pfMatrixDivScore" style="overflow-x:auto"></div>
-              <div class="sim-legend">higher = better · &gt;50% strong · 30–50% moderate · &lt;30% weak · formula: 1 − (0.25 × overlap + 0.25 × |corr| + 0.25 × concurrency + 0.25 × ddSync)</div>
+              <div class="sim-legend">higher = better · &gt;50% strong · 30–50% moderate · &lt;30% weak</div>
             </div>
           </div>
           <!-- Regime Equity Curves -->
@@ -4406,24 +4406,23 @@ function renderAnalytics() {
     retEl.className = 'kpi-value ' + (totalReturn >= 0 ? 'pnl-pos' : 'pnl-neg');
     document.getElementById('anKpiReturnSub').textContent = 'EQUAL-WEIGHT ' + n + ' STRATEGIES';
 
-    // Portfolio Max DD — compute from COMBINED CURVE (actual portfolio drawdown)
-    const bals = combined.map(p => p.balance);
-    let peak = bals[0], maxDD = 0;
-    for (const b of bals) {
-      if (b > peak) peak = b;
-      const dd = peak > 0 ? ((peak - b) / peak) * 100 : 0;
-      if (dd > maxDD) maxDD = dd;
-    }
-    if (maxDD > 0) {
-      document.getElementById('anKpiMaxDD').textContent = '-' + maxDD.toFixed(2) + '%';
-      document.getElementById('anKpiMaxDDSub').textContent = 'FROM COMBINED CURVE';
+    // Portfolio Max DD — show WORST individual strategy DD (real risk metric)
+    // The combined curve DD is diluted by normalization and is misleading.
+    const { avgDD, worstDD } = portfolio;
+    if (worstDD > 0) {
+      document.getElementById('anKpiMaxDD').textContent = '-' + worstDD.toFixed(2) + '%';
+      document.getElementById('anKpiMaxDDSub').textContent = 'WORST STRATEGY (AVG: ' + avgDD.toFixed(2) + '%)';
     } else {
-      // Fallback to avg individual DD
-      const { avgDD, worstDD } = portfolio;
-      if (avgDD > 0) {
-        document.getElementById('anKpiMaxDD').textContent = '-' + avgDD.toFixed(2) + '%';
-        document.getElementById('anKpiMaxDDSub').textContent = 'AVG STRATEGY DD (WORST: ' + worstDD.toFixed(2) + '%)';
+      // Fallback: compute from combined curve
+      const bals = combined.map(p => p.balance);
+      let peak = bals[0], maxDD = 0;
+      for (const b of bals) {
+        if (b > peak) peak = b;
+        const dd = peak > 0 ? ((peak - b) / peak) * 100 : 0;
+        if (dd > maxDD) maxDD = dd;
       }
+      document.getElementById('anKpiMaxDD').textContent = maxDD > 0 ? '-' + maxDD.toFixed(2) + '%' : '—';
+      document.getElementById('anKpiMaxDDSub').textContent = 'FROM COMBINED CURVE';
     }
 
     // Portfolio Sharpe from DAILY equity curve returns, annualized by √252
@@ -6841,7 +6840,7 @@ const PORTFOLIO_SYSTEM = {
         }
         if (best) {
           recommendations.push({ size, combo: best.combo, m: best.m, score: best.score,
-            names: best.combo.map(id => { const r = store.get(id); return r ? getSymbol(r) : id; })
+            names: best.combo.map(id => { const r = store.get(id); return r ? getDisplaySymbol(r) : id; })
           });
         }
       }
@@ -6930,7 +6929,7 @@ const PORTFOLIO_SYSTEM = {
         return lastVal;
       });
       datasets.push({
-        label: r ? getSymbol(r) : c.id,
+        label: r ? getDisplaySymbol(r) : c.id,
         data, borderColor: colors[idx % colors.length], backgroundColor: 'transparent',
         fill: false, pointRadius: 0, borderWidth: 1.2, spanGaps: true
       });
@@ -7107,7 +7106,7 @@ const PORTFOLIO_SYSTEM = {
       const chartWarn = document.getElementById('pfChartWarning');
       if (chartWarn) {
         if (missingCurves.length > 0) {
-          const names = missingCurves.map(id => { const r = store.get(id); return r ? getSymbol(r) : id; });
+          const names = missingCurves.map(id => { const r = store.get(id); return r ? getDisplaySymbol(r) : id; });
           chartWarn.innerHTML = '<span style="font-family:var(--mono);font-size:9px;color:var(--amber);letter-spacing:.5px">⚠ ' + missingCurves.length + ' PAIR' + (missingCurves.length > 1 ? 'S' : '') + ' EXCLUDED FROM CHART (NO CURVE DATA): ' + names.join(', ') + '</span>';
           chartWarn.style.display = '';
         } else {
@@ -7120,10 +7119,10 @@ const PORTFOLIO_SYSTEM = {
       const corrDiv = document.getElementById('pfCorrelation');
       if (ids.length >= 2) {
         const matrix = this.computeCorrelationMatrix(ids);
-        const symbols = ids.map(id => { const r = store.get(id); return r ? getSymbol(r) : id; });
-        let corrHtml = '<table class="pf-corr-table"><thead><tr><th></th>' + symbols.map(s => '<th>' + s.slice(0, 10) + '</th>').join('') + '</tr></thead><tbody>';
+        const symbols = ids.map(id => { const r = store.get(id); return r ? getDisplaySymbol(r) : id; });
+        let corrHtml = '<table class="pf-corr-table"><thead><tr><th></th>' + symbols.map(s => '<th>' + s + '</th>').join('') + '</tr></thead><tbody>';
         for (let i = 0; i < matrix.length; i++) {
-          corrHtml += '<tr><th>' + symbols[i].slice(0, 10) + '</th>';
+          corrHtml += '<tr><th>' + symbols[i] + '</th>';
           for (let j = 0; j < matrix[i].length; j++) {
             const v = matrix[i][j];
             const abs = Math.abs(v);
@@ -7141,7 +7140,7 @@ const PORTFOLIO_SYSTEM = {
       const pct = ids.length > 0 ? (100 / ids.length).toFixed(1) : 0;
       allocDiv.innerHTML = ids.map(id => {
         const r = store.get(id);
-        const sym = r ? getSymbol(r) : id;
+        const sym = r ? getDisplaySymbol(r) : id;
         const pnl = r ? parseFloat(R(r, 'netProfit')) || 0 : 0;
         return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--g600)">' +
           '<span style="font-family:var(--mono);font-size:12px;color:var(--acc);min-width:90px">' + sym + '</span>' +
@@ -7170,7 +7169,7 @@ const PORTFOLIO_SYSTEM = {
         const truncTag = r._curveTruncated ? '<span style="font-family:var(--mono);font-size:8px;padding:1px 4px;background:rgba(255,59,48,0.15);color:var(--crimson);border:1px solid rgba(255,59,48,0.3);margin-left:4px">TRUNCATED</span>' : '';
         const safeId = id.replace(/'/g, "\\'").replace(/\\/g, '\\\\');
         return '<div style="display:flex;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid var(--g600);cursor:pointer;flex-wrap:wrap" onclick="selectReportForDetail(\'' + safeId + '\')">' +
-          '<span style="font-family:var(--mono);font-size:12px;color:var(--acc);min-width:90px">' + getSymbol(r) + truncTag + '</span>' +
+          '<span style="font-family:var(--mono);font-size:12px;color:var(--acc);min-width:160px">' + getDisplaySymbol(r) + truncTag + '</span>' +
           '<span style="font-family:var(--mono);font-size:10px;color:' + (pnl >= 0 ? 'var(--neon)' : 'var(--crimson)') + '">$' + pnl.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span>' +
           '<span style="font-family:var(--mono);font-size:10px;color:var(--t2)">PF ' + pf.toFixed(2) + '</span>' +
           '<span style="font-family:var(--mono);font-size:10px;color:var(--acc)">DD ' + dd.toFixed(2) + '%</span>' +
