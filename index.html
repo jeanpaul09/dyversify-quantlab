@@ -3717,7 +3717,16 @@ document.getElementById('togEquity').addEventListener('click', () => {
 function buildUnderwaterChart(r) {
   if (CHARTS.underwater) CHARTS.underwater.destroy();
   const ctx = document.getElementById('underwaterChart').getContext('2d');
-  const curve = getBalanceCurve(r);
+  // Prefer deals data (trade-level precision) over downsampled balance curves
+  const deals = (DATE_FILTER.isActive() ? DATE_FILTER.filterDeals(r) : (r.deals || []))
+    .filter(d => d.balance > 0 && d.time);
+  const bc = getBalanceCurve(r);
+  let curve = [];
+  if (deals.length >= 2) {
+    curve = deals.map(d => ({ time: d.time, balance: d.balance }));
+  } else if (bc && bc.length >= 2) {
+    curve = bc;
+  }
   if (!curve.length) return;
 
   const balances = curve.map(p => p.balance);
@@ -4244,15 +4253,19 @@ function computeCombinedByDate(reports) {
 
   const totalInit = curveData.reduce((s, c) => s + c.initBal, 0);
   const combined = [];
+  const combinedDollar = []; // dollar-weighted equity (sum of real balances) for accurate DD
   const lastKnown = curveData.map(() => 1.0);
   const n = curveData.length;
   for (const date of allDates) {
     let totalNorm = 0;
+    let dollarBal = 0;
     for (let i = 0; i < n; i++) {
       if (curveData[i].dateMap[date] !== undefined) lastKnown[i] = curveData[i].dateMap[date];
       totalNorm += lastKnown[i];
+      dollarBal += lastKnown[i] * curveData[i].initBal; // actual $ value per strategy
     }
     combined.push({ time: date, balance: totalNorm / n });
+    combinedDollar.push({ time: date, balance: dollarBal });
   }
 
   // Phase 3: Compute monthly returns from combined curve
@@ -4280,7 +4293,7 @@ function computeCombinedByDate(reports) {
   }
   const avgDD = ddCount > 0 ? totalDD / ddCount : 0;
 
-  return { combined, labels: allDates, monthlyReturns, avgDD, worstDD, totalInit };
+  return { combined, combinedDollar, labels: allDates, monthlyReturns, avgDD, worstDD, totalInit };
 }
 
 // ─── ANALYTICS STATE ───
@@ -4625,9 +4638,18 @@ function buildAnalyticsAllDD(reports) {
   const strategyData = [];
   for (let i = 0; i < reports.length; i++) {
     const r = reports[i];
-    const curve = getBalanceCurve(r);
+    // Prefer deals data (trade-level precision) over downsampled balance curves
+    const deals = (DATE_FILTER.isActive() ? DATE_FILTER.filterDeals(r) : (r.deals || []))
+      .filter(d => d.balance > 0 && d.time);
+    const bc = getBalanceCurve(r);
+    let curve = [];
+    if (deals.length >= 2) {
+      curve = deals.map(d => ({ time: d.time, balance: d.balance }));
+    } else if (bc && bc.length >= 2) {
+      curve = bc;
+    }
     if (curve.length < 2) continue;
-    if (curve[0].balance <= 0) continue; // Skip strategies with zero balance
+    if (curve[0].balance <= 0) continue;
     const dateDD = {};
     let peak = curve[0].balance;
     let firstDate = null;
@@ -4662,9 +4684,10 @@ function buildAnalyticsAllDD(reports) {
 function buildAnalyticsCombinedDD(portfolio) {
   if (CHARTS.analyticsCombinedDD) CHARTS.analyticsCombinedDD.destroy();
   const ctx = document.getElementById('analyticsCombinedDD').getContext('2d');
-  const { combined, labels } = portfolio;
-  if (combined.length < 2) return;
-  const bals = combined.map(p => p.balance);
+  // Use dollar-weighted equity for accurate DD (not averaged growth factors which dilute DD)
+  const { combinedDollar, labels } = portfolio;
+  if (!combinedDollar || combinedDollar.length < 2) return;
+  const bals = combinedDollar.map(p => p.balance);
   if (bals[0] <= 0) return;
   let peak = bals[0];
   const dd = bals.map(b => { if (b > peak) peak = b; return peak > 0 ? ((b - peak) / peak) * 100 : 0; });
@@ -6524,6 +6547,7 @@ const PORTFOLIO_SYSTEM = {
       try {
         const { combined } = this.computeCombined(ids);
         if (combined.length < 2) continue;
+        if (combined[0].balance <= 0) continue;
         let peak = combined[0].balance;
         for (const pt of combined) {
           if (pt.balance > peak) peak = pt.balance;
