@@ -418,7 +418,7 @@ table.portfolio tr.selected td { color: var(--t1); }
 
 /* Portfolio */
 .pf-empty { text-align: center; padding: 48px 24px; }
-.pf-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.pf-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-bottom: 16px; }
 .pf-card { background: var(--g800); border: 1px solid var(--g400); cursor: pointer; transition: border-color 0.15s; overflow: hidden; }
 .pf-card:hover { border-color: var(--t2); }
 .pf-card .mc-spark { height: 60px; padding: 8px 12px 0; }
@@ -456,7 +456,9 @@ table.portfolio tr.selected td { color: var(--t1); }
 .sim-matrix th, .sim-matrix td { padding: 3px 4px; text-align: center; border: 1px solid var(--g700); }
 .sim-matrix th { color: var(--t3); font-weight: 400; font-size:7px; background: var(--g800); white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em; }
 .sim-matrix td { font-variant-numeric: tabular-nums; font-weight: 500; }
-#pfMatricesGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+#pfMatricesGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
+.sim-panel-label { font-size: 8px; }
+.sim-legend { font-size: 7px; }
 .sim-panel-label { font-family: var(--mono); font-size:8px; color: var(--t3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
 .sim-legend { font-family: var(--mono); font-size:7px; color: var(--t4); margin-top: 4px; line-height: 1.4; }
 .pf-alloc-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; font-family: var(--mono); font-size:12px; color: var(--t2); }
@@ -581,11 +583,13 @@ table.portfolio tr.selected td { color: var(--t1); }
 
 /* ─── PERFORMANCE TAB ─── */
 .perf-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  display: grid; grid-template-columns: 1fr; gap: 10px;
   padding: 12px 24px;
 }
 .perf-grid .chart-panel { margin-bottom: 0; }
 .perf-full { grid-column: 1 / -1; }
+.perf-half-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width:768px) { .perf-half-grid { grid-template-columns: 1fr; } }
 
 .perf-grid .ranking-list { max-height: 260px; overflow-y: auto; }
 
@@ -1051,7 +1055,6 @@ table.portfolio tr.selected td { color: var(--t1); }
     <button class="tab-btn" data-tab="compare">COMPARE <span class="tab-badge" id="compareBadge"></span></button>
     <button class="tab-btn" data-tab="performance">PERFORMANCE</button>
     <button class="tab-btn" data-tab="portfolio">PORTFOLIO</button>
-    <button class="tab-btn" data-tab="analytics">ANALYTICS</button>
     <button class="tab-btn" data-tab="account">ACCOUNT</button>
   </div>
 
@@ -1422,7 +1425,7 @@ table.portfolio tr.selected td { color: var(--t1); }
     </div>
   </div>
 
-  <!-- ═══ TAB 5: PERFORMANCE ═══ -->
+  <!-- ═══ TAB 5: PERFORMANCE (merged Performance + Analytics) ═══ -->
   <div class="tab-pane" id="panePerformance">
     <div class="empty-state" id="perfEmpty">
       <div class="empty-icon">&#x26A1;</div>
@@ -1430,7 +1433,7 @@ table.portfolio tr.selected td { color: var(--t1); }
       <div class="empty-sub">Performance metrics will appear once reports are loaded</div>
     </div>
     <div id="perfContent" class="hidden">
-      <!-- Aggregate KPIs for Performance -->
+      <!-- Portfolio-level KPIs (top row) -->
       <div class="kpi-strip" id="perfKpiStrip">
         <div class="kpi-card">
           <div class="kpi-label">STRATEGIES</div>
@@ -1438,9 +1441,24 @@ table.portfolio tr.selected td { color: var(--t1); }
           <div class="kpi-sub" id="perfKpiProfitable">0 PROFITABLE</div>
         </div>
         <div class="kpi-card">
+          <div class="kpi-label">PORTFOLIO RETURN</div>
+          <div class="kpi-value" id="anKpiReturn">&mdash;</div>
+          <div class="kpi-sub" id="anKpiReturnSub">&mdash;</div>
+        </div>
+        <div class="kpi-card">
           <div class="kpi-label">TOTAL P&L</div>
           <div class="kpi-value" id="perfKpiPnl">&mdash;</div>
           <div class="kpi-sub" id="perfKpiAvgPnl">AVG &mdash;</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">PORTFOLIO SHARPE</div>
+          <div class="kpi-value" id="anKpiSharpe">&mdash;</div>
+          <div class="kpi-sub" id="anKpiSharpeSub">ANNUALIZED</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">PORTFOLIO MAX DD</div>
+          <div class="kpi-value" id="anKpiMaxDD">&mdash;</div>
+          <div class="kpi-sub" id="anKpiMaxDDSub">FROM COMBINED CURVE</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-label">AVG PROFIT FACTOR</div>
@@ -1448,14 +1466,9 @@ table.portfolio tr.selected td { color: var(--t1); }
           <div class="kpi-sub" id="perfKpiMedianPF">MEDIAN &mdash;</div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-label">AVG SHARPE</div>
-          <div class="kpi-value" id="perfKpiSharpe">&mdash;</div>
-          <div class="kpi-sub" id="perfKpiMedianSharpe">MEDIAN &mdash;</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">AVG MAX DD</div>
-          <div class="kpi-value" id="perfKpiDD">&mdash;</div>
-          <div class="kpi-sub" id="perfKpiWorstDD">WORST &mdash;</div>
+          <div class="kpi-label">WIN MONTHS</div>
+          <div class="kpi-value" id="anKpiWinMonths">&mdash;</div>
+          <div class="kpi-sub" id="anKpiWinMonthsSub">&mdash;</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-label">AVG WIN RATE</div>
@@ -1464,89 +1477,109 @@ table.portfolio tr.selected td { color: var(--t1); }
         </div>
       </div>
 
+      <!-- All charts stacked vertically (full width) -->
       <div class="perf-grid">
-        <!-- Row 1: Charts -->
+        <!-- SECTION: Portfolio Equity Curves -->
         <div class="chart-panel">
-          <div class="chart-header">
-            <span class="chart-title">RETURN DISTRIBUTION</span>
+          <div class="chart-header"><span class="chart-title" id="anAllEquityTitle">ALL EQUITY CURVES (% RETURN)</span><div class="chart-toggles" style="margin-left:auto"><button class="chart-toggle" id="anAllEqBal">$ BALANCE</button><button class="chart-toggle active" id="anAllEqPct">% RETURN</button></div></div>
+          <div id="analyticsToggleStrip" style="display:flex;flex-wrap:wrap;gap:6px;padding:4px 0 8px;align-items:center;">
+            <span style="font:600 8px/1 'JetBrains Mono';color:var(--t3);text-transform:uppercase;margin-right:2px;letter-spacing:.5px">Strategies:</span>
           </div>
-          <div class="chart-canvas-wrap short">
-            <canvas id="histogramChart"></canvas>
-          </div>
+          <div class="chart-canvas-wrap tall"><canvas id="analyticsAllEquity"></canvas></div>
         </div>
 
+        <!-- ALL DRAWDOWNS -->
         <div class="chart-panel">
-          <div class="chart-header">
-            <span class="chart-title">RISK VS RETURN</span>
-          </div>
-          <div class="chart-canvas-wrap short">
-            <canvas id="riskReturnChart"></canvas>
-          </div>
+          <div class="chart-header"><span class="chart-title">ALL DRAWDOWNS</span></div>
+          <div class="chart-canvas-wrap tall"><canvas id="analyticsAllDD"></canvas></div>
         </div>
 
-        <!-- Row 2: Charts -->
+        <!-- COMBINED PORTFOLIO EQUITY -->
         <div class="chart-panel">
-          <div class="chart-header">
-            <span class="chart-title">METRIC SCATTER</span>
-            <div class="perf-controls">
-              <select id="scatterX">
-                <option value="profitFactor">PF</option>
-                <option value="sharpeRatio">SHARPE</option>
-                <option value="maxDDPct">MAX DD%</option>
-                <option value="winRate">WIN%</option>
-                <option value="netProfit">NET P&L</option>
-                <option value="recoveryFactor">RECOVERY</option>
-              </select>
-              <span style="font-family:var(--mono);font-size:9px;color:var(--t4)">VS</span>
-              <select id="scatterY">
-                <option value="netProfit">NET P&L</option>
-                <option value="sharpeRatio" selected>SHARPE</option>
-                <option value="maxDDPct">MAX DD%</option>
-                <option value="winRate">WIN%</option>
-                <option value="profitFactor">PF</option>
-                <option value="recoveryFactor">RECOVERY</option>
-              </select>
+          <div class="chart-header"><span class="chart-title" id="anCombinedEquityTitle">COMBINED PORTFOLIO EQUITY (% RETURN)</span><div class="chart-toggles" style="margin-left:auto"><button class="chart-toggle" id="anCombEqBal">$ BALANCE</button><button class="chart-toggle active" id="anCombEqPct">% RETURN</button></div></div>
+          <div class="chart-canvas-wrap"><canvas id="analyticsCombinedEquity"></canvas></div>
+        </div>
+
+        <!-- COMBINED PORTFOLIO DRAWDOWN -->
+        <div class="chart-panel">
+          <div class="chart-header"><span class="chart-title">COMBINED PORTFOLIO DRAWDOWN</span></div>
+          <div class="chart-canvas-wrap"><canvas id="analyticsCombinedDD"></canvas></div>
+        </div>
+
+        <!-- COMBINED MONTHLY RETURNS -->
+        <div class="chart-panel">
+          <div class="chart-header"><span class="chart-title">COMBINED MONTHLY RETURNS</span></div>
+          <div class="chart-canvas-wrap short"><canvas id="analyticsMonthly"></canvas></div>
+        </div>
+
+        <!-- SECTION: Individual Strategy Analysis (2-col grid) -->
+        <div class="perf-half-grid">
+          <div class="chart-panel">
+            <div class="chart-header"><span class="chart-title">RETURN DISTRIBUTION</span></div>
+            <div class="chart-canvas-wrap short"><canvas id="histogramChart"></canvas></div>
+          </div>
+          <div class="chart-panel">
+            <div class="chart-header"><span class="chart-title">RISK VS RETURN</span></div>
+            <div class="chart-canvas-wrap short"><canvas id="riskReturnChart"></canvas></div>
+          </div>
+          <div class="chart-panel">
+            <div class="chart-header">
+              <span class="chart-title">METRIC SCATTER</span>
+              <div class="perf-controls">
+                <select id="scatterX">
+                  <option value="profitFactor">PF</option>
+                  <option value="sharpeRatio">SHARPE</option>
+                  <option value="maxDDPct">MAX DD%</option>
+                  <option value="winRate">WIN%</option>
+                  <option value="netProfit">NET P&L</option>
+                  <option value="recoveryFactor">RECOVERY</option>
+                </select>
+                <span style="font-family:var(--mono);font-size:9px;color:var(--t4)">VS</span>
+                <select id="scatterY">
+                  <option value="netProfit">NET P&L</option>
+                  <option value="sharpeRatio" selected>SHARPE</option>
+                  <option value="maxDDPct">MAX DD%</option>
+                  <option value="winRate">WIN%</option>
+                  <option value="profitFactor">PF</option>
+                  <option value="recoveryFactor">RECOVERY</option>
+                </select>
+              </div>
             </div>
+            <div class="chart-canvas-wrap short"><canvas id="scatterChart"></canvas></div>
           </div>
-          <div class="chart-canvas-wrap short">
-            <canvas id="scatterChart"></canvas>
+          <div class="chart-panel">
+            <div class="chart-header"><span class="chart-title">DRAWDOWN COMPARISON</span></div>
+            <div class="chart-canvas-wrap short"><canvas id="ddCompareChart"></canvas></div>
           </div>
         </div>
 
+        <!-- METRIC CORRELATION MATRIX (full width) -->
         <div class="chart-panel">
-          <div class="chart-header">
-            <span class="chart-title">DRAWDOWN COMPARISON</span>
-          </div>
-          <div class="chart-canvas-wrap short">
-            <canvas id="ddCompareChart"></canvas>
-          </div>
-        </div>
-
-        <!-- Row 3: Correlation Matrix (full width) -->
-        <div class="chart-panel perf-full">
-          <div class="chart-header">
-            <span class="chart-title">METRIC CORRELATION MATRIX</span>
-          </div>
+          <div class="chart-header"><span class="chart-title">METRIC CORRELATION MATRIX</span></div>
           <div id="corrMatrix" style="overflow-x:auto"></div>
         </div>
 
-        <!-- Row 4: Rankings side by side -->
-        <div class="chart-panel">
-          <div class="chart-header">
-            <span class="chart-title">TOP PERFORMERS</span>
+        <!-- Rankings side by side -->
+        <div class="perf-half-grid">
+          <div class="chart-panel">
+            <div class="chart-header"><span class="chart-title">TOP PERFORMERS</span></div>
+            <div class="ranking-list" id="topPerformers"></div>
           </div>
-          <div class="ranking-list" id="topPerformers"></div>
+          <div class="chart-panel">
+            <div class="chart-header"><span class="chart-title">BOTTOM PERFORMERS</span></div>
+            <div class="ranking-list" id="bottomPerformers"></div>
+          </div>
         </div>
 
-        <div class="chart-panel">
-          <div class="chart-header">
-            <span class="chart-title">BOTTOM PERFORMERS</span>
+        <!-- BEST/WORST MONTH KPI -->
+        <div class="chart-panel" style="max-width:320px">
+          <div class="kpi-strip" style="grid-template-columns:1fr;padding:8px 12px;gap:4px">
+            <div class="kpi-card"><div class="kpi-label">BEST / WORST MONTH</div><div class="kpi-value" id="anKpiBestMonth">&mdash;</div><div class="kpi-sub" id="anKpiWorstMonth">&mdash;</div></div>
           </div>
-          <div class="ranking-list" id="bottomPerformers"></div>
         </div>
 
-        <!-- Row 5: AI Analyst (auto-sized) -->
-        <div class="chart-panel" style="align-self:start;width:fit-content;min-width:320px;max-width:600px">
+        <!-- AI Analyst -->
+        <div class="chart-panel" style="max-width:600px">
           <div class="chart-header" style="gap:16px">
             <span class="chart-title">QUANTLAB ANALYST</span>
             <button class="chart-toggle active" id="btnRunAI" onclick="runQuantAnalyst()">ANALYZE</button>
@@ -1667,50 +1700,7 @@ table.portfolio tr.selected td { color: var(--t1); }
     </div>
   </div>
 
-  <!-- ═══ ANALYTICS TAB ═══ -->
-  <div class="tab-pane" id="paneAnalytics">
-    <div class="empty-state" id="analyticsEmpty">
-      <div class="empty-icon">&#x1F4CA;</div>
-      <div class="empty-title">LOAD REPORTS FOR ANALYTICS</div>
-      <div class="empty-sub">Combined equity curves, drawdowns, and aggregate performance will appear here</div>
-    </div>
-    <div id="analyticsContent" class="hidden">
-      <div class="kpi-strip" id="analyticsKpiStrip">
-        <div class="kpi-card"><div class="kpi-label">STRATEGIES</div><div class="kpi-value" id="anKpiCount">0</div><div class="kpi-sub" id="anKpiProfitable">0 PROFITABLE</div></div>
-        <div class="kpi-card"><div class="kpi-label">PORTFOLIO RETURN</div><div class="kpi-value" id="anKpiReturn">&mdash;</div><div class="kpi-sub" id="anKpiReturnSub">&mdash;</div></div>
-        <div class="kpi-card"><div class="kpi-label">PORTFOLIO MAX DD</div><div class="kpi-value" id="anKpiMaxDD">&mdash;</div><div class="kpi-sub" id="anKpiMaxDDSub">FROM COMBINED CURVE</div></div>
-        <div class="kpi-card"><div class="kpi-label">PORTFOLIO SHARPE</div><div class="kpi-value" id="anKpiSharpe">&mdash;</div><div class="kpi-sub" id="anKpiSharpeSub">ANNUALIZED</div></div>
-        <div class="kpi-card"><div class="kpi-label">WIN MONTHS</div><div class="kpi-value" id="anKpiWinMonths">&mdash;</div><div class="kpi-sub" id="anKpiWinMonthsSub">&mdash;</div></div>
-        <div class="kpi-card"><div class="kpi-label">BEST / WORST MONTH</div><div class="kpi-value" id="anKpiBestMonth">&mdash;</div><div class="kpi-sub" id="anKpiWorstMonth">&mdash;</div></div>
-      </div>
-      <div class="perf-grid">
-        <div class="chart-panel perf-full">
-          <div class="chart-header"><span class="chart-title" id="anAllEquityTitle">ALL EQUITY CURVES (% RETURN)</span><div class="chart-toggles" style="margin-left:auto"><button class="chart-toggle" id="anAllEqBal">$ BALANCE</button><button class="chart-toggle active" id="anAllEqPct">% RETURN</button></div></div>
-          <!-- Strategy toggle strip (synced across equity & DD) -->
-          <div id="analyticsToggleStrip" style="display:flex;flex-wrap:wrap;gap:6px;padding:4px 0 8px;align-items:center;">
-            <span style="font:600 8px/1 'JetBrains Mono';color:var(--t3);text-transform:uppercase;margin-right:2px;letter-spacing:.5px">Strategies:</span>
-          </div>
-          <div class="chart-canvas-wrap tall"><canvas id="analyticsAllEquity"></canvas></div>
-        </div>
-        <div class="chart-panel perf-full">
-          <div class="chart-header"><span class="chart-title">ALL DRAWDOWNS</span></div>
-          <div class="chart-canvas-wrap tall"><canvas id="analyticsAllDD"></canvas></div>
-        </div>
-        <div class="chart-panel">
-          <div class="chart-header"><span class="chart-title" id="anCombinedEquityTitle">COMBINED PORTFOLIO EQUITY (% RETURN)</span><div class="chart-toggles" style="margin-left:auto"><button class="chart-toggle" id="anCombEqBal">$ BALANCE</button><button class="chart-toggle active" id="anCombEqPct">% RETURN</button></div></div>
-          <div class="chart-canvas-wrap"><canvas id="analyticsCombinedEquity"></canvas></div>
-        </div>
-        <div class="chart-panel">
-          <div class="chart-header"><span class="chart-title">COMBINED PORTFOLIO DRAWDOWN</span></div>
-          <div class="chart-canvas-wrap"><canvas id="analyticsCombinedDD"></canvas></div>
-        </div>
-        <div class="chart-panel perf-full">
-          <div class="chart-header"><span class="chart-title">COMBINED MONTHLY RETURNS</span></div>
-          <div class="chart-canvas-wrap short"><canvas id="analyticsMonthly"></canvas></div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- Analytics tab removed — merged into Performance -->
 
   <!-- ═══ TAB 8: ACCOUNT ═══ -->
   <div class="tab-pane" id="paneAccount">
@@ -1811,7 +1801,12 @@ const AUTH = {
   async init() {
     try {
       const { data: { session }, error } = await _supabase.auth.getSession();
-      if (error) { console.error('Auth init:', error); this.showLogin(); return; }
+      if (error) {
+        console.error('Auth init:', error);
+        await _supabase.auth.signOut();   // clear stale tokens from localStorage
+        this.showLogin();
+        return;
+      }
 
       if (session?.user) {
         if (this.validateDomain(session.user.email)) {
@@ -1827,6 +1822,7 @@ const AUTH = {
       }
     } catch (e) {
       console.error('Auth init error:', e);
+      try { await _supabase.auth.signOut(); } catch (_) {}  // clear stale tokens
       this.showLogin();
     }
   },
@@ -2334,6 +2330,11 @@ function R(report, key) {
   return 0;
 }
 function getSymbol(r) { return (r.symbol || (r.settings && r.settings.symbol) || r.id || '').toUpperCase(); }
+function getDisplaySymbol(r) {
+  const sym = getSymbol(r);
+  const style = getStyle(r.id);
+  return style ? sym + ' · ' + style.replace('MICRO-', '') : sym;
+}
 function getBalanceCurve(r) {
   const curve = r.balanceCurve || [];
   if (DATE_FILTER.isActive()) return DATE_FILTER.filterCurve(r);
@@ -2596,7 +2597,7 @@ const TAB_SYSTEM = {
     });
     // Show/hide panes
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-    const paneMap = { overview:'paneOverview', reports:'paneReports', detail:'paneDetail', compare:'paneCompare', performance:'panePerformance', portfolio:'panePortfolio', analytics:'paneAnalytics', account:'paneAccount' };
+    const paneMap = { overview:'paneOverview', reports:'paneReports', detail:'paneDetail', compare:'paneCompare', performance:'panePerformance', portfolio:'panePortfolio', account:'paneAccount' };
     const pane = document.getElementById(paneMap[name]);
     if (pane) pane.classList.add('active');
     // Render active tab
@@ -2611,7 +2612,6 @@ const TAB_SYSTEM = {
       case 'compare': renderCompare(); break;
       case 'performance': renderPerformance(); break;
       case 'portfolio': PORTFOLIO_SYSTEM.render(); break;
-      case 'analytics': renderAnalytics(); break;
       case 'account': renderAccount(); break;
     }
   }
@@ -4382,24 +4382,16 @@ function _buildToggleStrip(strategyMeta) {
 }
 
 function renderAnalytics() {
-  const empty = document.getElementById('analyticsEmpty');
-  const content = document.getElementById('analyticsContent');
-  if (store.size === 0) { empty.classList.remove('hidden'); content.classList.add('hidden'); return; }
-  empty.classList.add('hidden'); content.classList.remove('hidden');
-
+  // Analytics is now merged into Performance tab — this function populates
+  // the portfolio-level KPIs and charts within the Performance pane.
   const rawReports = Array.from(store.values());
   const reports = DATE_FILTER.isActive() ? rawReports.map(r => DATE_FILTER.getView(r)).filter(Boolean) : rawReports;
   const n = reports.length;
-  if (n === 0) { empty.classList.remove('hidden'); content.classList.add('hidden'); return; }
+  if (n === 0) return;
 
   // Compute date-aligned combined portfolio (shared by all charts + KPIs)
   const portfolio = computeCombinedByDate(reports);
   const { combined, monthlyReturns } = portfolio;
-  const profCount = reports.filter(r => (R(r,'netProfit')||0) > 0).length;
-
-  // ─── PORTFOLIO-SPECIFIC KPIs (computed from the combined curve) ───
-  document.getElementById('anKpiCount').textContent = n;
-  document.getElementById('anKpiProfitable').textContent = profCount + '/' + n + ' PROFITABLE';
 
   if (combined.length >= 2) {
     const initBal = combined[0].balance;
@@ -4414,22 +4406,27 @@ function renderAnalytics() {
     retEl.className = 'kpi-value ' + (totalReturn >= 0 ? 'pnl-pos' : 'pnl-neg');
     document.getElementById('anKpiReturnSub').textContent = 'EQUAL-WEIGHT ' + n + ' STRATEGIES';
 
-    // Portfolio Max DD — use individual strategy DDs from MT5 (accurate equity DD)
-    const { avgDD, worstDD } = portfolio;
+    // Portfolio Max DD — compute from COMBINED CURVE (actual portfolio drawdown)
     const bals = combined.map(p => p.balance);
-    if (avgDD > 0) {
-      document.getElementById('anKpiMaxDD').textContent = '-' + avgDD.toFixed(2) + '%';
-      document.getElementById('anKpiMaxDDSub').textContent = 'AVG STRATEGY DD (WORST: ' + worstDD.toFixed(2) + '%)';
-    } else {
-      // Fallback: compute from combined curve
-      let peak = bals[0], maxDD = 0;
-      for (const b of bals) { if (b > peak) peak = b; const dd = ((b - peak) / peak) * 100; if (dd < maxDD) maxDD = dd; }
-      document.getElementById('anKpiMaxDD').textContent = maxDD.toFixed(2) + '%';
+    let peak = bals[0], maxDD = 0;
+    for (const b of bals) {
+      if (b > peak) peak = b;
+      const dd = peak > 0 ? ((peak - b) / peak) * 100 : 0;
+      if (dd > maxDD) maxDD = dd;
+    }
+    if (maxDD > 0) {
+      document.getElementById('anKpiMaxDD').textContent = '-' + maxDD.toFixed(2) + '%';
       document.getElementById('anKpiMaxDDSub').textContent = 'FROM COMBINED CURVE';
+    } else {
+      // Fallback to avg individual DD
+      const { avgDD, worstDD } = portfolio;
+      if (avgDD > 0) {
+        document.getElementById('anKpiMaxDD').textContent = '-' + avgDD.toFixed(2) + '%';
+        document.getElementById('anKpiMaxDDSub').textContent = 'AVG STRATEGY DD (WORST: ' + worstDD.toFixed(2) + '%)';
+      }
     }
 
     // Portfolio Sharpe from DAILY equity curve returns, annualized by √252
-    // Aggregate to daily (last balance per day) to avoid inflation from intraday points
     const dailyBalMap = {};
     for (const p of combined) {
       const d = (p.time || '').split(' ')[0].replace(/\./g, '-');
@@ -4472,7 +4469,7 @@ function renderAnalytics() {
     const r = reports[i];
     const curve = getBalanceCurve(r);
     if (curve.length < 2) continue;
-    strategyMeta.push({ sym: getSymbol(r), color: COMPARE_COLORS[i % COMPARE_COLORS.length], idx: i });
+    strategyMeta.push({ sym: getDisplaySymbol(r), color: COMPARE_COLORS[i % COMPARE_COLORS.length], idx: i });
   }
   _buildToggleStrip(strategyMeta);
 
@@ -4543,7 +4540,7 @@ function buildAnalyticsAllEquity(reports) {
       dateMap[d] = mode === 'bal' ? p.balance : ((p.balance - init) / init) * 100;
       allDatesSet.add(d);
     }
-    strategyData.push({ sym: getSymbol(r), dateMap, firstDate, idx: i });
+    strategyData.push({ sym: getDisplaySymbol(r), dateMap, firstDate, idx: i });
   }
   if (strategyData.length === 0) return;
   const allDates = [...allDatesSet].sort();
@@ -4643,7 +4640,7 @@ function buildAnalyticsAllDD(reports) {
       dateDD[d] = peak > 0 ? ((p.balance - peak) / peak) * 100 : 0;
       allDatesSet.add(d);
     }
-    strategyData.push({ sym: getSymbol(r), dateDD, firstDate, idx: i });
+    strategyData.push({ sym: getDisplaySymbol(r), dateDD, firstDate, idx: i });
   }
   if (strategyData.length === 0) return;
   const allDates = [...allDatesSet].sort();
@@ -5143,19 +5140,19 @@ function renderPerformance() {
   const weightedPF = totalGL > 0 ? totalGP / totalGL : totalGP > 0 ? 999 : 0;
   document.getElementById('perfKpiPF').textContent = (weightedPF || 0).toFixed(2);
   document.getElementById('perfKpiMedianPF').textContent = 'MEDIAN ' + (median(pfs) || 0).toFixed(2);
-  document.getElementById('perfKpiSharpe').textContent = (avg(sharpes) || 0).toFixed(2);
-  document.getElementById('perfKpiMedianSharpe').textContent = 'MEDIAN ' + (median(sharpes) || 0).toFixed(2);
-  document.getElementById('perfKpiDD').textContent = (avg(dds) || 0).toFixed(2) + '%';
-  document.getElementById('perfKpiWorstDD').textContent = 'WORST ' + (dds.length > 0 ? Math.max(...dds) : 0).toFixed(2) + '%';
   document.getElementById('perfKpiWR').textContent = (avg(wrs) || 0).toFixed(2) + '%';
   document.getElementById('perfKpiAvgRecovery').textContent = 'RECOVERY ' + (avg(recs) || 0).toFixed(2);
 
+  // Build individual strategy charts
   buildHistogramChart();
   buildScatterChart();
   buildRankings();
   buildCorrelationMatrix();
   buildRiskReturnChart();
   buildDDCompareChart();
+
+  // Render portfolio-level analytics (equity curves, combined DD, monthly returns)
+  renderAnalytics();
 }
 
 function getDateFilteredReports() {
@@ -5252,7 +5249,7 @@ function buildScatterChart() {
   const data = reports.map(r => ({
     x: R(r, xKey),
     y: R(r, yKey),
-    label: getSymbol(r)
+    label: getDisplaySymbol(r)
   }));
 
   CHARTS.scatter = new Chart(ctx, {
@@ -5314,7 +5311,7 @@ function buildRankings() {
     const pnl = R(r, 'netProfit');
     return `<div class="ranking-item" onclick="selectReportForDetail('${r.id}')">
       <span class="ranking-rank">#${i+1}</span>
-      <span class="ranking-name">${getSymbol(r)}</span>
+      <span class="ranking-name">${getDisplaySymbol(r)}</span>
       <span class="ranking-value ${pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtPnl(pnl)}</span>
     </div>`;
   }).join('');
@@ -5323,7 +5320,7 @@ function buildRankings() {
     const pnl = R(r, 'netProfit');
     return `<div class="ranking-item" onclick="selectReportForDetail('${r.id}')">
       <span class="ranking-rank">#${reports.length - i}</span>
-      <span class="ranking-name">${getSymbol(r)}</span>
+      <span class="ranking-name">${getDisplaySymbol(r)}</span>
       <span class="ranking-value ${pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtPnl(pnl)}</span>
     </div>`;
   }).join('');
@@ -5379,7 +5376,7 @@ function buildRiskReturnChart() {
   const data = reports.map(r => ({
     x: Math.abs(R(r,'maxDDPct') || 0),
     y: R(r,'netProfit') || 0,
-    label: getSymbol(r),
+    label: getDisplaySymbol(r),
     pf: R(r,'profitFactor') || 0
   }));
 
@@ -5429,7 +5426,7 @@ function buildDDCompareChart() {
   CHARTS.ddCompare = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: top10.map(r => getSymbol(r)),
+      labels: top10.map(r => getDisplaySymbol(r)),
       datasets: [{
         label: 'Max Drawdown %',
         data: top10.map(r => -Math.abs(R(r,'maxDDPct')||0)),
