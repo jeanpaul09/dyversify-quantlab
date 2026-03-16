@@ -5113,7 +5113,7 @@ function renderComparePortfolios(empty, view, modeBar) {
     const riskKeys = [
       ['BEST PAIR P&L', p => { let best = -Infinity; for (const id of p.ids) { const r = store.get(id); if (r) { const v = R(r,'netProfit'); if (v > best) best = v; } } return best; }, v => fmtPnl(v)],
       ['WORST PAIR P&L', p => { let worst = Infinity; for (const id of p.ids) { const r = store.get(id); if (r) { const v = R(r,'netProfit'); if (v < worst) worst = v; } } return worst; }, v => fmtPnl(v)],
-      ['P&L STD DEV', p => { const pnls = p.ids.map(id => { const r = store.get(id); return r ? R(r,'netProfit') : 0; }); const m = pnls.reduce((s,v)=>s+v,0)/pnls.length; return Math.sqrt(pnls.reduce((s,v)=>s+(v-m)**2,0)/pnls.length); }, v => '$' + fmt(v)],
+      ['P&L STD DEV', p => { const pnls = p.ids.map(id => { const r = store.get(id); return r ? R(r,'netProfit') : 0; }); if (pnls.length === 0) return 0; const m = pnls.reduce((s,v)=>s+v,0)/pnls.length; return Math.sqrt(pnls.reduce((s,v)=>s+(v-m)**2,0)/pnls.length); }, v => '$' + fmt(v)],
       ['AVG PAIR DD%', p => { let sum = 0, cnt = 0; for (const id of p.ids) { const r = store.get(id); if (r) { sum += Math.abs(R(r,'maxDDPct')||0); cnt++; } } return cnt > 0 ? sum/cnt : 0; }, v => fmtPct(v)],
       ['WORST PAIR DD%', p => { let worst = 0; for (const id of p.ids) { const r = store.get(id); if (r) { const v = Math.abs(R(r,'maxDDPct')||0); if (v > worst) worst = v; } } return worst; }, v => fmtPct(v)],
       ['AVG PAIR PF', p => { let sum = 0, cnt = 0; for (const id of p.ids) { const r = store.get(id); if (r) { sum += R(r,'profitFactor')||0; cnt++; } } return cnt > 0 ? sum/cnt : 0; }, v => fmt(v)],
@@ -6338,8 +6338,8 @@ const PORTFOLIO_SYSTEM = {
         overlapMs += Math.min(a.close, b.close) - Math.max(a.open, b.open);
       }
     }
-    const pctI = overlapMs / totalI;
-    const pctJ = overlapMs / totalJ;
+    const pctI = totalI > 0 ? overlapMs / totalI : 0;
+    const pctJ = totalJ > 0 ? overlapMs / totalJ : 0;
     return Math.min((pctI + pctJ) / 2, 1);
   },
 
@@ -6567,7 +6567,7 @@ const PORTFOLIO_SYSTEM = {
           if (lo2 < ei.length && ei[lo2] <= tJ + windowMs) concJ++;
         }
         // Symmetric average
-        const v = Math.min(((concI / ei.length) + (concJ / ej.length)) / 2, 1);
+        const v = (ei.length > 0 && ej.length > 0) ? Math.min(((concI / ei.length) + (concJ / ej.length)) / 2, 1) : 0;
         matrix[i][j] = v; matrix[j][i] = v;
       }
     }
