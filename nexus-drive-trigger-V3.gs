@@ -40,7 +40,7 @@
 // ─── CONFIGURATION ───
 const CONFIG = {
   // YOUR FOLDER ID — change this to your backtest results folder
-  ROOT_FOLDER_ID: '10eNtl3pDDWcpxUV27VxG9XmIcCNdfUpS',
+  ROOT_FOLDER_ID: '1fp8AOFsiUv50IonWFahMFSB-GF-03c1x',
 
   // Sheet name (auto-created if it doesn't exist)
   SHEET_NAME: 'QuantLab Backtest Results',
@@ -675,6 +675,12 @@ function doGet(e) {
     if (params.action === 'reconcile') {
       cleanupDeletedFiles();
       // Fall through to default data return
+    }
+
+    // Action: reprocess — clear tracking and re-scan all files from the folder
+    if (params.action === 'reprocess') {
+      reprocessAll();
+      // Fall through to default data return (will now include freshly scanned data)
     }
 
     // Action: getHtml — return raw HTML content of a Drive file (for client-side parsing)

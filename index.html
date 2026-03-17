@@ -7650,7 +7650,7 @@ function setDriveStatus(text, color) {
   el.style.color = color || 'var(--t3)';
 }
 
-async function syncFromDrive() {
+async function syncFromDrive(forceReconcile) {
   if (DRIVE_SYNC.syncing) return;
   DRIVE_SYNC.syncing = true;
   setDriveStatus('SYNCING...', 'var(--amber)');
@@ -7659,8 +7659,10 @@ async function syncFromDrive() {
   btn.style.opacity = '0.5';
 
   try {
-    // Always force reconciliation to ensure deleted/moved files are cleaned up
-    const resp = await fetch(DRIVE_SYNC.WEB_APP_URL + '?action=reconcile');
+    // Only reconcile on manual SYNC DRIVE clicks (not auto-polls)
+    // Reconcile removes rows for files no longer in the folder — dangerous to run every 30s
+    const url = forceReconcile ? DRIVE_SYNC.WEB_APP_URL + '?action=reconcile' : DRIVE_SYNC.WEB_APP_URL;
+    const resp = await fetch(url);
     const json = await resp.json();
 
     if (json.error) {
@@ -7668,7 +7670,23 @@ async function syncFromDrive() {
       return;
     }
 
-    const rows = json.data || [];
+    let rows = json.data || [];
+
+    // If sheet is empty and we have no local data, auto-trigger reprocess to repopulate
+    if (rows.length === 0 && store.size === 0 && !DRIVE_SYNC._reprocessAttempted) {
+      DRIVE_SYNC._reprocessAttempted = true;
+      setDriveStatus('REPROCESSING FILES...', 'var(--amber)');
+      try {
+        const reResp = await fetch(DRIVE_SYNC.WEB_APP_URL + '?action=reprocess');
+        const reJson = await reResp.json();
+        if (reJson.data && reJson.data.length > 0) {
+          rows = reJson.data;
+          console.log('Auto-reprocess recovered ' + rows.length + ' reports');
+        }
+      } catch (reErr) {
+        console.warn('Auto-reprocess failed:', reErr);
+      }
+    }
 
     // Helper: deterministic Drive report ID from a row
     function driveRowId(row) {
@@ -7813,7 +7831,7 @@ async function syncFromDrive() {
   }
 }
 
-document.getElementById('btnSyncDrive').addEventListener('click', syncFromDrive);
+document.getElementById('btnSyncDrive').addEventListener('click', () => syncFromDrive(true));
 
 // ─── DRIVE BALANCE CURVE FETCHER ───
 // For Drive-synced reports missing balance curves, fetch original
