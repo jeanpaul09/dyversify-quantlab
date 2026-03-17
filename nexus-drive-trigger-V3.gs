@@ -132,8 +132,15 @@ function checkForNewFiles() {
     scanFolder(rootFolder, newFiles, processed);
 
     if (newFiles.length === 0) {
-      // Even if no new files, clean up deleted ones periodically
-      cleanupDeletedFiles();
+      // Only run cleanup occasionally, not every cycle (saves API quota)
+      var props = PropertiesService.getScriptProperties();
+      var lastCleanup = parseInt(props.getProperty('quantlab_last_cleanup') || '0');
+      var now = new Date().getTime();
+      var CLEANUP_INTERVAL_MS = 10 * 60 * 1000; // Every 10 minutes max
+      if (now - lastCleanup > CLEANUP_INTERVAL_MS) {
+        cleanupDeletedFiles();
+        props.setProperty('quantlab_last_cleanup', String(now));
+      }
       return;
     }
 
@@ -548,6 +555,20 @@ function cleanupDeletedFiles() {
       return;
     }
 
+    // ═══ SAFETY CHECK ═══
+    // If the folder scan found ZERO files but we have rows in the sheet,
+    // this almost certainly means the Drive API failed silently or timed out.
+    // NEVER delete all rows — abort cleanup to protect data.
+    var sheetRowCount = data.length - 1; // exclude header
+    if (currentFileIds.size === 0 && sheetRowCount > 0) {
+      Logger.log('SAFETY ABORT: Folder scan returned 0 files but sheet has ' + sheetRowCount + ' rows. Skipping cleanup to protect data.');
+      return;
+    }
+
+    // Additional safeguard: never delete more than 50% of rows in a single cleanup.
+    // If something is wrong, this limits the blast radius.
+    var maxDeletions = Math.max(1, Math.ceil(sheetRowCount * 0.5));
+
     var rowsToDelete = [];
     for (var i = data.length - 1; i >= 1; i--) {
       var fileId = data[i][fileIdCol];
@@ -565,6 +586,12 @@ function cleanupDeletedFiles() {
           rowsToDelete.push(i + 1);
         }
       }
+    }
+
+    // Enforce max deletion safeguard
+    if (rowsToDelete.length > maxDeletions) {
+      Logger.log('SAFETY LIMIT: Cleanup wants to delete ' + rowsToDelete.length + ' of ' + sheetRowCount + ' rows. Capping at ' + maxDeletions + ' to prevent data wipe.');
+      rowsToDelete = rowsToDelete.slice(0, maxDeletions);
     }
 
     // Delete bottom-up to preserve row indices
