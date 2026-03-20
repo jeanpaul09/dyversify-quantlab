@@ -163,7 +163,7 @@ body {
   display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
 }
 .mini-card .mc-metrics {
-  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px 10px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px;
 }
 .mini-card .mc-metric {
   display: flex; justify-content: space-between;
@@ -171,6 +171,12 @@ body {
 }
 .mini-card .mc-metric .mc-k { color: var(--t3); text-transform: uppercase; letter-spacing: 0.05em; }
 .mini-card .mc-metric .mc-v { color: var(--t2); font-variant-numeric: tabular-nums; }
+.mini-card .mc-score-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 5px 0 0; margin-top: 4px; border-top: 1px solid var(--g600);
+  font-family: var(--mono); font-size: 10px;
+}
+.mini-card .mc-score-row .mc-k { color: var(--t3); text-transform: uppercase; letter-spacing: 0.05em; }
 
 /* ─── REPORTS: TABLE CONTROLS + VIEWS ─── */
 .reports-toolbar {
@@ -314,9 +320,9 @@ table.portfolio tr.selected td { color: var(--t1); }
 .score-meter .score-val {
   font-size: 11px; font-weight: 500; letter-spacing: 0.02em;
 }
-/* Mini version for cards */
-.mc-metric .score-meter .score-bar { width: 24px; height: 4px; }
-.mc-metric .score-meter .score-val { font-size: 10px; }
+/* Mini version for mini-cards */
+.mc-score-row .score-meter .score-bar { width: 28px; height: 5px; }
+.mc-score-row .score-meter .score-val { font-size: 11px; }
 .rc-m .score-meter { justify-content: center; }
 .rc-m .score-meter .score-bar { width: 24px; height: 4px; }
 .rc-m .score-meter .score-val { font-size: 11px; }
@@ -3286,8 +3292,9 @@ function renderOverview() {
         '<div class="mc-metric"><span class="mc-k">PF</span><span class="mc-v">' + fmt(m.profitFactor) + '</span></div>' +
         '<div class="mc-metric"><span class="mc-k">SHARPE</span><span class="mc-v">' + fmt(m.avgSharpe) + '</span></div>' +
         '<div class="mc-metric"><span class="mc-k">DD%</span><span class="mc-v">' + fmtPct(m.maxDD) + '</span></div>' +
-        '<div class="mc-metric"><span class="mc-k">SCORE</span><span class="mc-v">' + renderScoreMeter(pfScore) + '</span></div>' +
-        '</div></div></div>';
+        '</div>' +
+        '<div class="mc-score-row"><span class="mc-k">SCORE</span>' + renderScoreMeter(pfScore) + '</div>' +
+        '</div></div>';
     }).join('');
   }
 
@@ -3324,8 +3331,9 @@ function renderOverview() {
       '<div class="mc-metric"><span class="mc-k">PF</span><span class="mc-v">' + fmt(R(rv,'profitFactor')) + '</span></div>' +
       '<div class="mc-metric"><span class="mc-k">SHARPE</span><span class="mc-v">' + fmt(R(rv,'sharpeRatio')) + '</span></div>' +
       '<div class="mc-metric"><span class="mc-k">DD%</span><span class="mc-v">' + fmtPct(R(rv,'maxDDPct')) + '</span></div>' +
-      '<div class="mc-metric"><span class="mc-k">SCORE</span><span class="mc-v">' + renderScoreMeter(rScore) + '</span></div>' +
-      '</div></div></div>';
+      '</div>' +
+      '<div class="mc-score-row"><span class="mc-k">SCORE</span>' + renderScoreMeter(rScore) + '</div>' +
+      '</div></div>';
   }).join('');
 
   grid.innerHTML = html;
