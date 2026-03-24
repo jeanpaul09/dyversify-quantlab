@@ -2588,7 +2588,7 @@ function computeScore(profit, pf, drawdown) {
 function reportScore(r) {
   const profit = R(r, 'netProfit');
   const pf = R(r, 'profitFactor');
-  const dd = R(r, 'maxDDPct');
+  const dd = Math.abs(R(r, 'maxDDPct') || 0);
   if (profit <= 0) return 0;
   return computeScore(profit, pf, dd);
 }
@@ -2619,7 +2619,7 @@ function scoreColor(score) {
 
 // Renders inline HTML for score meter: colored value + mini bar
 function renderScoreMeter(score, opts = {}) {
-  const s = Math.max(0, Math.min(100, score));
+  const s = Math.max(0, Math.min(100, score || 0));
   const color = scoreColor(s);
   const display = s > 0 ? s.toFixed(1) : '\u2014';
   const pct = Math.max(2, s) + '%'; // min 2% fill for visibility
