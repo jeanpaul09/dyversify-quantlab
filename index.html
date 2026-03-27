@@ -5040,6 +5040,7 @@ function renderComparePairs(empty, view, modeBar) {
     };
   });
 
+  if (selected.length === 0) return;
   const longest = selected.reduce((a, b) => getBalanceCurve(a).length > getBalanceCurve(b).length ? a : b);
   const labels = getBalanceCurve(longest).map(p => (p.time || '').split(' ')[0].replace(/\./g, '-'));
 
